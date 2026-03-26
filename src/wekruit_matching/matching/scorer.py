@@ -71,18 +71,30 @@ def score_skills_overlap(
     user_skills: list[str],
     job_skills: list[str],
 ) -> float:
-    """Fraction of required job skills covered by user skills.
+    """Geometric mean of coverage and relevance for better discrimination.
 
-    Returns 0.0 if job has no required skills.
+    coverage  = what fraction of job's required skills does user have (0-1)
+    relevance = what fraction of user's skills does this job use (0-1)
+    score     = sqrt(coverage * relevance)
+
+    This discriminates better than pure coverage for users with many skills:
+    - User has 50 skills, job needs [Python] → coverage=1.0, relevance=0.02 → score=0.14
+    - User has 50 skills, job needs [Python,React,TS,Docker,AWS] → cov=1.0, rel=0.10 → score=0.32
+
+    Returns 0.0 if job or user has no skills.
     Case-insensitive comparison.
     """
-    if not job_skills:
+    if not job_skills or not user_skills:
         return 0.0
 
     user_set = {s.lower() for s in user_skills}
     job_set = {s.lower() for s in job_skills}
+    matched = len(user_set & job_set)
 
-    return len(user_set & job_set) / len(job_set)
+    coverage = matched / len(job_set)
+    relevance = matched / len(user_set)
+
+    return (coverage * relevance) ** 0.5
 
 
 def score_industry_match(
@@ -223,6 +235,11 @@ def score_job(
             },
         }
     """
+    job_skills = job.get("required_skills") or []
+    user_set = {s.lower() for s in profile.skills}
+    job_set = {s.lower() for s in job_skills}
+    matched_skills = sorted(user_set & job_set)
+
     signals: dict[str, float] = {
         "title_similarity": score_title_similarity(
             query_embedding=query_embedding,
@@ -230,7 +247,7 @@ def score_job(
         ),
         "skills_overlap": score_skills_overlap(
             user_skills=profile.skills,
-            job_skills=job.get("required_skills") or [],
+            job_skills=job_skills,
         ),
         "industry_match": score_industry_match(
             job_industry=job.get("industry"),
@@ -256,4 +273,9 @@ def score_job(
 
     score = sum(WEIGHTS[k] * signals[k] for k in WEIGHTS)
 
-    return {"score": round(score, 6), "signals": signals}
+    return {
+        "score": round(score, 6),
+        "signals": signals,
+        "matched_skills": matched_skills,
+        "required_skills": job_skills,
+    }
