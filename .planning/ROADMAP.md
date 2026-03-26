@@ -64,7 +64,11 @@ Plans:
   2. Re-running the enrichment worker on jobs with unchanged content hashes makes zero Anthropic API calls
   3. Enrichment output contains no hallucinated values — skills lists and industry values are drawn from a controlled vocabulary; unknown/null is a valid first-class output
   4. All Anthropic API calls retry with exponential backoff on 429/5xx responses; a single API failure does not abort the entire enrichment run
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — LLM classifier: EnrichmentResult model, controlled vocabularies, tenacity retry, classify_job()
+- [ ] 03-02-PLAN.md — Enrichment worker: content-hash gating, per-job failure isolation, DB writes, CLI entrypoint
 
 ### Phase 4: Embeddings
 **Goal**: Every enriched job has a semantic embedding stored in pgvector, with model provenance tracked for future drift detection
@@ -130,7 +134,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
-| 3. LLM Enrichment | 0/? | Not started | - |
+| 3. LLM Enrichment | 0/2 | Not started | - |
 | 4. Embeddings | 0/? | Not started | - |
 | 5. Hard Filters | 0/? | Not started | - |
 | 6. Scoring Engine | 0/? | Not started | - |
