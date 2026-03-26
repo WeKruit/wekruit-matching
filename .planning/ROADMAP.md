@@ -67,7 +67,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — LLM classifier: EnrichmentResult model, controlled vocabularies, tenacity retry, classify_job()
+- [x] 03-01-PLAN.md — LLM classifier: EnrichmentResult model, controlled vocabularies, tenacity retry, classify_job()
 - [ ] 03-02-PLAN.md — Enrichment worker: content-hash gating, per-job failure isolation, DB writes, CLI entrypoint
 
 ### Phase 4: Embeddings
@@ -134,7 +134,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
-| 3. LLM Enrichment | 0/2 | Not started | - |
+| 3. LLM Enrichment | 1/2 | In Progress|  |
 | 4. Embeddings | 0/? | Not started | - |
 | 5. Hard Filters | 0/? | Not started | - |
 | 6. Scoring Engine | 0/? | Not started | - |
