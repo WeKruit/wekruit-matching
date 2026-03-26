@@ -93,7 +93,10 @@ Plans:
   1. Passing `job_type="intern"` in a profile returns only internship listings; passing `job_type="new_grad"` returns only new grad listings
   2. Passing `requires_sponsorship=True` in a profile excludes all jobs where sponsorship is classified as False or unknown
   3. Passing `location="SF"` in a profile matches jobs tagged "San Francisco", "San Francisco, CA", and "SF, CA" — the alias map normalizes them to the same bucket
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 05-01-PLAN.md — matching package, apply_hard_filters(), LOCATION_ALIASES, job_type/sponsorship/location filters, full unit tests
 
 ### Phase 6: Scoring Engine
 **Goal**: Users can call `get_matches(profile, top_n=30)` and receive a ranked list of jobs with per-signal score breakdowns
@@ -140,7 +143,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
 | 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
-| 5. Hard Filters | 0/? | Not started | - |
+| 5. Hard Filters | 0/1 | Not started | - |
 | 6. Scoring Engine | 0/? | Not started | - |
 | 7. Feedback Loop | 0/? | Not started | - |
 | 8. Integration & Operations | 0/? | Not started | - |
