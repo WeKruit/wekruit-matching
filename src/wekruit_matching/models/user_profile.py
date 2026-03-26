@@ -48,7 +48,4 @@ class UserProfile(BaseModel):
 
     # Affinity embedding (rolling average of liked job embeddings — updated in Phase 7)
     # Stored as a plain Python list because pydantic doesn't know pgvector types
-    affinity_embedding: Optional[list[float]] = Field(
-        None,
-        description="1536-dim affinity vector (rolling weighted avg of liked job embeddings)",
-    )
+    affinity_embedding: Optional[list[float]] = Field(None, max_length=1536)

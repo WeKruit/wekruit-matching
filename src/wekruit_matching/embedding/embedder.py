@@ -70,8 +70,15 @@ def _call_openai(client: openai.OpenAI, text: str) -> list[float]:
     return response.data[0].embedding
 
 
+_embedding_cache: dict[str, list[float]] = {}
+_CACHE_MAX = 256
+
+
 def embed_text(text: str, client: openai.OpenAI | None = None) -> list[float]:
     """Generate a 1536-dimension embedding for the given text.
+
+    Results are cached in-memory (LRU, 256 entries) to avoid duplicate
+    OpenAI calls for repeated skill combinations.
 
     Args:
         text: The text to embed (use compose_embedding_text to produce it).
@@ -84,5 +91,16 @@ def embed_text(text: str, client: openai.OpenAI | None = None) -> list[float]:
     Raises:
         openai.RateLimitError or openai.APIStatusError after retries exhausted.
     """
+    if client is None and text in _embedding_cache:
+        return _embedding_cache[text]
+
     c = client if client is not None else _get_client()
-    return _call_openai(c, text)
+    result = _call_openai(c, text)
+
+    if client is None:
+        if len(_embedding_cache) >= _CACHE_MAX:
+            # Evict oldest entry
+            _embedding_cache.pop(next(iter(_embedding_cache)))
+        _embedding_cache[text] = result
+
+    return result

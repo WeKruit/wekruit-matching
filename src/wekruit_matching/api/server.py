@@ -17,7 +17,7 @@ import hmac
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from wekruit_matching.config import get_settings
 from wekruit_matching.matching.matcher import get_matches
@@ -29,7 +29,9 @@ from wekruit_matching.db.connection import get_connection
 app = FastAPI(
     title="WeKruit Matching API",
     version="0.1.0",
-    description="Job matching engine for WeKruit — scrapes, enriches, and ranks job listings against user profiles.",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # ---------------------------------------------------------------------------
@@ -57,12 +59,7 @@ def verify_api_key(api_key: str | None = Security(_api_key_header)) -> None:
 @app.get("/")
 def root() -> dict:
     """Health check / API info."""
-    return {
-        "service": "wekruit-matching",
-        "version": "0.1.0",
-        "docs": "/docs",
-        "endpoints": ["/match", "/feedback", "/jobs/stats"],
-    }
+    return {"status": "ok", "service": "wekruit-matching"}
 
 
 # ---------------------------------------------------------------------------
@@ -118,11 +115,11 @@ def feedback(body: FeedbackRequest, _: None = Depends(verify_api_key)) -> dict:
 class JobXMatchRequest(BaseModel):
     """Request shape expected by VALET's JobXClient."""
     candidate: dict  # CandidateProfile — skills, experience, education, etc.
-    top_n: int = 20
-    min_cosine_score: float = 0.3
-    excludeJobIds: list[str] = []
+    top_n: int = Field(default=20, ge=1, le=100)
+    min_cosine_score: float = Field(default=0.3, ge=0.0, le=1.0)
+    excludeJobIds: list[str] = Field(default_factory=list, max_length=500)
     preferredCountryCode: str | None = None
-    top_k: int = 100
+    top_k: int = Field(default=100, ge=1, le=500)
     enable_llm_rerank: bool = False
 
 

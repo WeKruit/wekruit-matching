@@ -16,15 +16,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    database_url: str = Field(
-        ...,
-        description="PostgreSQL connection string (psycopg3 format: postgresql+psycopg://...)",
-    )
-    anthropic_api_key: str = Field(..., description="Anthropic API key for LLM enrichment")
-    openai_api_key: str = Field(..., description="OpenAI API key for embedding generation")
-    github_token: str = Field(..., description="GitHub PAT for authenticated raw file fetches")
-    log_level: str = Field("INFO", description="Logging level: DEBUG, INFO, WARNING, ERROR")
-    api_secret_key: str = Field(..., description="Secret key for X-API-Key header authentication on all protected endpoints")
+    database_url: str = Field(...)
+    anthropic_api_key: str = Field(..., repr=False)
+    openai_api_key: str = Field(..., repr=False)
+    github_token: str = Field(..., repr=False)
+    log_level: str = Field("INFO")
+    api_secret_key: str = Field(..., repr=False)
 
 
 @lru_cache(maxsize=1)
