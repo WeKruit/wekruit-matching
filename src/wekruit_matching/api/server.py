@@ -14,10 +14,14 @@ matches the API_SECRET_KEY environment variable (read via Settings).
 """
 import hmac
 
-from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
 from loguru import logger
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.responses import JSONResponse
 
 from wekruit_matching.config import get_settings
 from wekruit_matching.matching.matcher import get_matches
@@ -26,6 +30,8 @@ from wekruit_matching.models.user_profile import UserProfile
 from wekruit_matching.models.feedback import ReactionType
 from wekruit_matching.db.connection import get_connection
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="WeKruit Matching API",
     version="0.1.0",
@@ -33,6 +39,12 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
 
 # ---------------------------------------------------------------------------
 # API key authentication
@@ -77,7 +89,8 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.post("/match")
-def match(profile: UserProfile, _: None = Depends(verify_api_key)) -> dict:
+@limiter.limit("60/minute")
+def match(request: Request, profile: UserProfile, _: None = Depends(verify_api_key)) -> dict:
     """Return a ranked list of job matches for the given user profile.
 
     Body: UserProfile JSON (user_id required; all other fields optional).
@@ -124,7 +137,8 @@ class JobXMatchRequest(BaseModel):
 
 
 @app.post("/api/v1/matching/recommendations")
-def jobx_recommendations(body: JobXMatchRequest, _: None = Depends(verify_api_key)) -> dict:
+@limiter.limit("60/minute")
+def jobx_recommendations(request: Request, body: JobXMatchRequest, _: None = Depends(verify_api_key)) -> dict:
     """JobX-compatible matching endpoint for VALET integration.
 
     Translates VALET's CandidateProfile into our UserProfile, runs matching,

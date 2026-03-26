@@ -32,11 +32,11 @@ from wekruit_matching.models.user_profile import UserProfile
 WEIGHTS: dict[str, float] = {
     "title_similarity": 0.30,
     "skills_overlap": 0.25,
-    "industry_match": 0.15,
-    "company_size_match": 0.10,
+    "industry_match": 0.10,
+    "company_size_match": 0.05,
     "location_fit": 0.10,
-    "recency": 0.05,
-    "feedback_boost": 0.05,
+    "recency": 0.10,
+    "feedback_boost": 0.10,
 }
 
 

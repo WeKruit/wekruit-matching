@@ -206,6 +206,17 @@ def get_matches(
             )
 
         # ------------------------------------------------------------------
+        # Step 2.5: Exclude already-interacted jobs (liked/disliked/applied)
+        # ------------------------------------------------------------------
+        dismissed_cursor = active_conn.execute(
+            "SELECT job_id FROM feedback WHERE user_id = %s",
+            (profile.user_id,),
+        )
+        dismissed_ids = {row["job_id"] for row in dismissed_cursor.fetchall()}
+        if dismissed_ids:
+            ann_candidates = [j for j in ann_candidates if j["job_id"] not in dismissed_ids]
+
+        # ------------------------------------------------------------------
         # Step 3: Hard filters (pure Python — no DB call)
         # ------------------------------------------------------------------
         filtered = apply_hard_filters(ann_candidates, profile)
