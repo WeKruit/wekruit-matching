@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 06-scoring-engine-01-PLAN.md
-last_updated: "2026-03-26T03:02:14.403Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 06-scoring-engine-02-PLAN.md
+last_updated: "2026-03-26T03:06:42.224Z"
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Plan: 2 of 2
 | Phase 04-embeddings P02 | 2 | 2 tasks | 3 files |
 | Phase 05-hard-filters P01 | 3 | 2 tasks | 3 files |
 | Phase 06-scoring-engine P01 | 2 | 2 tasks | 2 files |
+| Phase 06-scoring-engine P02 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,9 @@ Recent decisions affecting current work:
 - [Phase 06-scoring-engine]: score_location_fit reuses _job_location_buckets/_preferred_buckets from filters.py — no location normalization duplication
 - [Phase 06-scoring-engine]: feedback_boost cold-start default is 0.5 per MTCH-13 — neutral signal for unknown companies
 - [Phase 06-scoring-engine]: scorer.py signal functions are pure: only primitive inputs, no DB handles or ORM models passed in
+- [Phase 06-scoring-engine]: ANN candidate limit is top_n * 4 — balances recall vs Python-side filter cost
+- [Phase 06-scoring-engine]: affinity_embedding bypass: skip embed_text entirely when Phase 7 affinity vector is present — zero OpenAI calls per get_matches when affinity exists
+- [Phase 06-scoring-engine]: conn injection pattern: if conn is not None use it, else get_connection() — matches embed_text client injection for test-injectability
 
 ### Pending Todos
 
@@ -110,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T03:02:14.401Z
-Stopped at: Completed 06-scoring-engine-01-PLAN.md
+Last session: 2026-03-26T03:06:42.222Z
+Stopped at: Completed 06-scoring-engine-02-PLAN.md
 Resume file: None

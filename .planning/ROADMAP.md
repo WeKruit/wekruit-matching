@@ -112,7 +112,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — scorer.py: 7 signal functions, WEIGHTS, score_job() — pure Python TDD, no DB
-- [ ] 06-02-PLAN.md — matcher.py: ANN retrieval via pgvector, hard filters, scoring loop, get_matches() public API
+- [x] 06-02-PLAN.md — matcher.py: ANN retrieval via pgvector, hard filters, scoring loop, get_matches() public API
 
 ### Phase 7: Feedback Loop
 **Goal**: Users can record reactions to job matches and those reactions measurably shift future match rankings

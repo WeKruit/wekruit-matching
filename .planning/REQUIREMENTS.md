@@ -54,7 +54,7 @@
 - [x] **MTCH-09**: Recency scoring — newer posts rank higher (weight: 0.05)
 - [x] **MTCH-10**: Feedback boost scoring from past likes/dislikes (weight: 0.05)
 - [x] **MTCH-11**: Returns top-N ranked jobs with individual signal breakdown per match
-- [ ] **MTCH-12**: Library API entry point: `get_matches(profile, top_n=30) -> list[dict]`
+- [x] **MTCH-12**: Library API entry point: `get_matches(profile, top_n=30) -> list[dict]`
 - [x] **MTCH-13**: Cold-start mode for users with no feedback history (neutral feedback signal)
 
 ### Feedback
@@ -144,7 +144,7 @@
 | MTCH-09 | Phase 6 — Scoring Engine | Complete |
 | MTCH-10 | Phase 6 — Scoring Engine | Complete |
 | MTCH-11 | Phase 6 — Scoring Engine | Complete |
-| MTCH-12 | Phase 6 — Scoring Engine | Pending |
+| MTCH-12 | Phase 6 — Scoring Engine | Complete |
 | MTCH-13 | Phase 6 — Scoring Engine | Complete |
 | FDBK-01 | Phase 7 — Feedback Loop | Pending |
 | FDBK-02 | Phase 7 — Feedback Loop | Pending |
