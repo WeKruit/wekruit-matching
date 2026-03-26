@@ -7,14 +7,14 @@
 
 ### Foundation
 
-- [ ] **FOUND-01**: Project uses Python 3.12+ with uv for package management
+- [x] **FOUND-01**: Project uses Python 3.12+ with uv for package management
 - [ ] **FOUND-02**: Postgres database with pgvector extension is configured and accessible
 - [ ] **FOUND-03**: Database schema created with jobs, user_profiles, and feedback tables
 - [ ] **FOUND-04**: Jobs table includes vector(1536) column with HNSW index for cosine similarity
-- [ ] **FOUND-05**: Pydantic v2 models validate all data structures at boundaries
+- [x] **FOUND-05**: Pydantic v2 models validate all data structures at boundaries
 - [ ] **FOUND-06**: Database connection pool via psycopg3 (async-capable)
 - [ ] **FOUND-07**: Alembic migrations manage schema changes
-- [ ] **FOUND-08**: Environment config via pydantic-settings (.env support)
+- [x] **FOUND-08**: Environment config via pydantic-settings (.env support)
 
 ### Scraper
 
@@ -106,14 +106,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 — Foundation | Pending |
+| FOUND-01 | Phase 1 — Foundation | Complete |
 | FOUND-02 | Phase 1 — Foundation | Pending |
 | FOUND-03 | Phase 1 — Foundation | Pending |
 | FOUND-04 | Phase 1 — Foundation | Pending |
-| FOUND-05 | Phase 1 — Foundation | Pending |
+| FOUND-05 | Phase 1 — Foundation | Complete |
 | FOUND-06 | Phase 1 — Foundation | Pending |
 | FOUND-07 | Phase 1 — Foundation | Pending |
-| FOUND-08 | Phase 1 — Foundation | Pending |
+| FOUND-08 | Phase 1 — Foundation | Complete |
 | SCRP-01 | Phase 2 — Scraper | Pending |
 | SCRP-02 | Phase 2 — Scraper | Pending |
 | SCRP-03 | Phase 2 — Scraper | Pending |
