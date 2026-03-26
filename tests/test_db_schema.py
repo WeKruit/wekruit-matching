@@ -97,8 +97,10 @@ def test_insert_job_succeeds():
 def test_cosine_query_uses_index():
     """EXPLAIN ANALYZE on cosine similarity query must show Index Scan, not Seq Scan.
 
-    Inserts 15 dummy embeddings then runs a cosine similarity search.
-    With fewer than ~10 rows, pgvector may choose seq scan regardless — hence 15 rows.
+    Uses SET enable_seqscan = OFF to force the planner to use the HNSW index if it exists.
+    This is the standard pgvector testing pattern — the cost-based planner prefers seq scan
+    for small tables even when the HNSW index is correct, so we disable seq scan to verify
+    the index exists and is usable. Inserts 15 dummy rows so the index has data to scan.
     """
     import numpy as np
 
@@ -106,6 +108,9 @@ def test_cosine_query_uses_index():
         # Register vector type
         from pgvector.psycopg import register_vector
         register_vector(conn)
+
+        # Disable seq scan so the planner is forced to use the HNSW index
+        conn.execute("SET enable_seqscan = OFF")
 
         # Insert 15 dummy rows with random embeddings
         job_ids = []
@@ -120,7 +125,7 @@ def test_cosine_query_uses_index():
             """, (jid, "test", f"Corp {i}", f"Role {i}", embedding, "text-embedding-3-small"))
         conn.commit()
 
-        # Run EXPLAIN ANALYZE
+        # Run EXPLAIN ANALYZE with seq scan disabled
         query_vec = np.random.rand(1536).astype(np.float32)
         plan = conn.execute("""
             EXPLAIN ANALYZE
@@ -137,6 +142,6 @@ def test_cosine_query_uses_index():
         conn.commit()
 
     plan_text = " ".join(str(r) for r in plan)
-    assert "Seq Scan" not in plan_text, (
-        f"Query used Seq Scan instead of HNSW index. Plan:\n{plan_text}"
+    assert "Index Scan" in plan_text, (
+        f"Expected Index Scan (HNSW) in query plan. Plan:\n{plan_text}"
     )
