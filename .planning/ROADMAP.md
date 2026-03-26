@@ -12,7 +12,7 @@ Build a production-ready Python backend pipeline that pulls job listings from Si
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Project scaffolding, Postgres + pgvector schema, migrations, and environment config
+- [x] **Phase 1: Foundation** - Project scaffolding, Postgres + pgvector schema, migrations, and environment config (completed 2026-03-26)
 - [ ] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline
 - [ ] **Phase 3: LLM Enrichment** - Anthropic classification of industry, skills, company size, and sponsorship with cost controls
 - [ ] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index
@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Project scaffold, uv setup, pydantic models, and pydantic-settings config
-- [ ] 01-02-PLAN.md — psycopg3 connection pool, SQLAlchemy table definitions, alembic migrations, HNSW index
+- [x] 01-02-PLAN.md — psycopg3 connection pool, SQLAlchemy table definitions, alembic migrations, HNSW index
 
 ### Phase 2: Scraper
 **Goal**: Job listings are fetched from both SimplifyJobs repos, parsed correctly, and persisted to the database with stable IDs
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/2 | In Progress|  |
+| 1. Foundation | 2/2 | Complete   | 2026-03-26 |
 | 2. Scraper | 0/? | Not started | - |
 | 3. LLM Enrichment | 0/? | Not started | - |
 | 4. Embeddings | 0/? | Not started | - |

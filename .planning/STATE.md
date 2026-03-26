@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 01-foundation-01-PLAN.md
-last_updated: "2026-03-26T00:56:03.513Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 01-foundation-02-PLAN.md
+last_updated: "2026-03-26T01:02:47.015Z"
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -47,6 +47,7 @@ Plan: 2 of 2
 
 *Updated after each plan completion*
 | Phase 01-foundation P01 | 4 | 2 tasks | 14 files |
+| Phase 01-foundation P02 | 12 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Use _env_file=None in Settings tests for isolation from project .env file
 - [Phase 01-foundation]: Use datetime.now(UTC) via _utcnow() helper; utcnow() is deprecated in Python 3.12+
 - [Phase 01-foundation]: Negate .env.example in local .gitignore to override global ~/.gitignore_global .env.* pattern
+- [Phase 01-foundation]: psycopg[pool] extra required separately for ConnectionPool (psycopg_pool module)
+- [Phase 01-foundation]: HNSW index with vector_cosine_ops defined in migration via op.execute() — SQLAlchemy cannot express pgvector operator classes in Table() declarations
+- [Phase 01-foundation]: Use SET enable_seqscan=OFF in HNSW index tests — planner legitimately prefers seq scan for small tables; disable to verify index exists and is usable
 
 ### Pending Todos
 
@@ -74,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T00:56:03.511Z
-Stopped at: Completed 01-foundation-01-PLAN.md
+Last session: 2026-03-26T01:02:47.013Z
+Stopped at: Completed 01-foundation-02-PLAN.md
 Resume file: None
