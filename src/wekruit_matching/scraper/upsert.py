@@ -127,9 +127,9 @@ def mark_stale_jobs(
             SET status = 'inactive'
             WHERE source_repo = %(source_repo)s
               AND status = 'active'
-              AND job_id NOT IN %(seen_ids)s
+              AND NOT (job_id = ANY(%(seen_ids)s))
             """,
-            {"source_repo": source_repo, "seen_ids": tuple(seen_ids)},
+            {"source_repo": source_repo, "seen_ids": list(seen_ids)},
         )
     else:
         # Edge case: all jobs disappeared — mark all active as inactive

@@ -1,9 +1,12 @@
 """SimplifyJobs README parser.
 
-Parses SimplifyJobs GitHub README markdown tables into Job objects.
+Parses SimplifyJobs GitHub README HTML tables into Job objects.
 
-Handles three edge cases that break naive parsers:
-- HTML-embedded multi-location cells (<details><summary> blocks) — SCRP-03
+The SimplifyJobs repos use HTML <table> elements (not markdown pipe tables).
+Each category section (Software Engineering, Data Science, etc.) has its own table.
+
+Handles:
+- HTML table rows with <td> cells containing nested <strong>, <a>, <br> tags — SCRP-03
 - Closed listings (🔒 in Company column) excluded from output — SCRP-04
 - Continuation rows (↳) inheriting company from prior non-continuation row — SCRP-05
 
@@ -124,85 +127,118 @@ def _parse_company_name(cell: str) -> str:
     return normalize_company_name(name)
 
 
-def parse_readme(content: bytes, source_repo: str) -> list[Job]:
-    """Parse SimplifyJobs README markdown bytes into a list of Job objects.
+class _TableRowExtractor(HTMLParser):
+    """Extract rows from HTML <table> elements in SimplifyJobs READMEs.
 
-    Reads the markdown table line by line, skipping:
-    - The header row (Company, Role, Location, ...)
-    - The separator row (--- | --- | ...)
+    SimplifyJobs uses HTML tables (not markdown pipe tables).
+    Each category section has its own <table> with <thead> and <tbody>.
+
+    Row format:
+        <tr>
+          <td>🔥 <strong><a href="...">Company</a></strong></td>
+          <td>Role Title 🎓</td>
+          <td>City, State<br>City2, State2</td>
+          <td><div align="center"><a href="apply_url">...</a></td>
+          <td>0d</td>
+        </tr>
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rows: list[list[str]] = []
+        self._in_tbody = False
+        self._in_tr = False
+        self._in_td = False
+        self._in_thead = False
+        self._current_row: list[str] = []
+        self._current_cell: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        tag = tag.lower()
+        if tag == "thead":
+            self._in_thead = True
+        elif tag == "tbody":
+            self._in_tbody = True
+        elif tag == "tr" and self._in_tbody:
+            self._in_tr = True
+            self._current_row = []
+        elif tag == "td" and self._in_tr:
+            self._in_td = True
+            self._current_cell = []
+        elif tag == "br" and self._in_td:
+            self._current_cell.append(", ")
+        elif tag == "a" and self._in_td:
+            # Preserve href for URL extraction
+            for attr_name, attr_val in attrs:
+                if attr_name == "href" and attr_val:
+                    self._current_cell.append(f'<a href="{attr_val}">')
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if tag == "thead":
+            self._in_thead = False
+        elif tag == "tbody":
+            self._in_tbody = False
+        elif tag == "tr" and self._in_tr:
+            self._in_tr = False
+            if self._current_row:
+                self.rows.append(self._current_row)
+        elif tag == "td" and self._in_td:
+            self._in_td = False
+            self._current_row.append("".join(self._current_cell))
+        elif tag == "a" and self._in_td:
+            self._current_cell.append("</a>")
+
+    def handle_data(self, data: str) -> None:
+        if self._in_td:
+            self._current_cell.append(data)
+
+
+def parse_readme(content: bytes, source_repo: str) -> list[Job]:
+    """Parse SimplifyJobs README HTML tables into a list of Job objects.
+
+    SimplifyJobs repos use HTML <table> elements organized by category
+    (Software Engineering, Data Science, etc.). Each table has rows with
+    5 columns: Company, Role, Location, Application, Age.
+
+    Skips:
     - Closed listings (🔒 in Company column) — per SCRP-04
     - Rows that produce an empty company name after normalization
 
     Handles:
-    - HTML-embedded multi-location cells (<details>/<summary>) — per SCRP-03
+    - HTML cells with nested tags (<strong>, <a>, <br>) — per SCRP-03
     - Continuation rows (↳) inheriting company from the most recent
       non-continuation row — per SCRP-05
 
     Args:
-        content: Raw bytes of the README markdown file.
-        source_repo: Repository slug (e.g., "Summer2026-Internships" or
-            "New-Grad-Positions"). Stored verbatim in Job.source_repo.
+        content: Raw bytes of the README file.
+        source_repo: Repository slug (e.g., "Summer2026-Internships").
 
     Returns:
         List of Job objects with job_id, content_hash, and source_repo
-        populated. All jobs have status=ACTIVE — the upsert layer handles
-        staleness detection.
+        populated. All jobs have status=ACTIVE.
     """
     text = content.decode("utf-8", errors="replace")
-    lines = text.splitlines()
+
+    # Extract all <tr> rows from <tbody> sections
+    extractor = _TableRowExtractor()
+    extractor.feed(text)
 
     jobs: list[Job] = []
-    last_company: str = ""  # Tracks company name for ↳ continuation rows
-    in_table: bool = False
-    header_seen: bool = False
-    separator_seen: bool = False
+    last_company: str = ""
+    seen_ids: set[str] = set()
 
-    for line in lines:
-        stripped = line.strip()
-
-        # Lines not starting with | are not part of a table
-        if not stripped.startswith("|"):
-            # Reset table state — each table is independent
-            in_table = False
-            header_seen = False
-            separator_seen = False
-            continue
-
-        # Split on | and strip whitespace from each cell.
-        # "| col1 | col2 |" splits as ['', ' col1 ', ' col2 ', '']
-        # We drop the leading and trailing empty strings from boundary pipes.
-        raw_cells = stripped.split("|")
-        cells = [c.strip() for c in raw_cells[1:-1]]
-
-        if not cells:
-            continue
-
-        # Detect header row: contains "Company" or "Role" (case-insensitive)
-        if any(c.lower() in ("company", "role", "location") for c in cells):
-            in_table = True
-            header_seen = True
-            separator_seen = False
-            continue
-
-        # Detect separator row: all non-empty cells match "---" pattern
-        if header_seen and all(re.match(r"-+", c) for c in cells if c):
-            separator_seen = True
-            continue
-
-        # Only process rows inside a fully initialized table
-        if not (in_table and header_seen and separator_seen):
-            continue
-
-        # Need at least 3 cells: company, role, location (link and date are optional)
+    for cells in extractor.rows:
+        # Need at least 3 cells: company, role, location
         if len(cells) < 3:
-            logger.debug("Skipping row with fewer than 3 cells: {}", stripped[:80])
+            logger.debug("Skipping row with fewer than 3 cells")
             continue
 
         company_cell = cells[0]
         role_cell = cells[1]
         location_cell = cells[2]
         link_cell = cells[3] if len(cells) > 3 else ""
-        date_cell = cells[4] if len(cells) > 4 else None
+        date_cell = cells[4].strip() if len(cells) > 4 else None
 
         # Skip closed listings (🔒 in company column) — per SCRP-04
         if _is_closed(company_cell):
@@ -219,18 +255,22 @@ def parse_readme(content: bytes, source_repo: str) -> list[Job]:
         if not company_name:
             logger.warning(
                 "Empty company name after normalization, skipping row: {}",
-                stripped[:80],
+                company_cell[:80],
             )
             continue
 
-        # Clean role title — strip markdown link syntax if present
-        role_title = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", role_cell).strip()
+        # Clean role title — strip any remaining HTML-like artifacts and emoji badges
+        role_title = _strip_html(role_cell).strip()
+        # Remove trailing emoji badges like 🎓
+        role_title = re.sub(r"\s*[\U0001F393\U0001F525\U0001F6C2\U0001F1FA\U0001F1F8]+\s*$", "", role_title).strip()
 
-        # Strip HTML from location if it contains HTML tags
-        location_raw = (
-            _strip_html(location_cell) if "<" in location_cell else location_cell.strip()
-        )
+        # Location: already has <br> converted to ", " by the extractor
+        location_raw = location_cell.strip().strip(", ")
+        # Clean any residual HTML from location
+        if "<" in location_raw:
+            location_raw = _strip_html(location_raw)
 
+        # Extract apply URL from link cell
         primary_url = _extract_url(link_cell) if link_cell else None
 
         job_id = generate_job_id(
@@ -238,6 +278,12 @@ def parse_readme(content: bytes, source_repo: str) -> list[Job]:
             role_title=role_title,
             primary_url=primary_url or "",
         )
+
+        # Deduplicate within this parse run
+        if job_id in seen_ids:
+            continue
+        seen_ids.add(job_id)
+
         content_hash = compute_content_hash(
             company_name=company_name,
             role_title=role_title,
