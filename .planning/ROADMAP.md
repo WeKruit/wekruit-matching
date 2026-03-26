@@ -137,7 +137,11 @@ Plans:
   2. The cron scripts for scraper (6 AM ET) and enrichment (6:30 AM ET) can be installed with a single `crontab -e` entry and run without errors on subsequent triggers
   3. `from wekruit_matching import get_matches, record_feedback` works in a fresh Python environment with only the package installed — no HTTP server required
   4. `.env.example` documents every required environment variable with a description — a developer can set up the project from zero using only that file and the README
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — E2E pipeline script and library import smoke test
+- [ ] 08-02-PLAN.md — Cron wrapper scripts, installer, .env.example update, and README
 
 ## Progress
 
@@ -153,4 +157,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
 | 6. Scoring Engine | 2/2 | Complete   | 2026-03-26 |
 | 7. Feedback Loop | 1/1 | Complete   | 2026-03-26 |
-| 8. Integration & Operations | 0/? | Not started | - |
+| 8. Integration & Operations | 0/2 | Not started | - |
