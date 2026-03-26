@@ -240,9 +240,8 @@ def parse_readme(content: bytes, source_repo: str) -> list[Job]:
         link_cell = cells[3] if len(cells) > 3 else ""
         date_cell = cells[4].strip() if len(cells) > 4 else None
 
-        # Skip closed listings (🔒 in company column) — per SCRP-04
-        if _is_closed(company_cell):
-            logger.debug("Skipping closed listing: {}", company_cell[:60])
+        # Skip closed listings (🔒 in company OR link column) — per SCRP-04
+        if _is_closed(company_cell) or _is_closed(link_cell):
             continue
 
         # Handle continuation rows (↳) — per SCRP-05

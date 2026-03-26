@@ -17,4 +17,7 @@ echo "=== $(date) Starting daily update ===" >> "$LOG"
 # 3. Embed newly enriched jobs (skips already embedded)
 .venv/bin/python -m wekruit_matching.embedding.run >> "$LOG" 2>&1
 
+# 4. Purge inactive jobs older than 14 days
+.venv/bin/python -m wekruit_matching.scraper.cleanup >> "$LOG" 2>&1
+
 echo "=== $(date) Daily update complete ===" >> "$LOG"
