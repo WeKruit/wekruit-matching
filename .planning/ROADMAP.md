@@ -123,7 +123,10 @@ Plans:
   2. Calling the feedback function with a dislike reaction inserts a record in the feedback table and adds the job's company to the user's disliked_companies list
   3. After liking 3 jobs from the same industry, that industry ranks higher in subsequent `get_matches` results for that user compared to a fresh profile with identical explicit preferences
   4. The user's affinity embedding updates after each like — calling `get_matches` after a like returns a different (shifted) ranking compared to before the like
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 07-01-PLAN.md — feedback/handler.py: record_feedback(), liked/disliked_companies update, affinity embedding blend, package re-export
 
 ### Phase 8: Integration & Operations
 **Goal**: The full pipeline runs end-to-end, can be scheduled via cron, and is importable as a Python library by any consumer
@@ -148,6 +151,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
 | 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
 | 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
-| 6. Scoring Engine | 1/2 | In Progress|  |
-| 7. Feedback Loop | 0/? | Not started | - |
+| 6. Scoring Engine | 2/2 | Complete   | 2026-03-26 |
+| 7. Feedback Loop | 0/1 | Not started | - |
 | 8. Integration & Operations | 0/? | Not started | - |
