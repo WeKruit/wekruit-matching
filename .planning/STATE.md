@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 02-scraper-01-PLAN.md
-last_updated: "2026-03-26T01:19:15.149Z"
+stopped_at: Completed 02-scraper-02-PLAN.md
+last_updated: "2026-03-26T01:23:50.690Z"
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 02 (Scraper) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: 2 of 3
 | Phase 01-foundation P01 | 4 | 2 tasks | 14 files |
 | Phase 01-foundation P02 | 12 | 2 tasks | 11 files |
 | Phase 02-scraper P01 | 2 | 2 tasks | 5 files |
+| Phase 02-scraper P02 | 5 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 02-scraper]: No tenacity for fetcher retry — inline loop is cleaner for 3-attempt backoff and avoids tenacity wrapping errors in test output
 - [Phase 02-scraper]: unicodedata.category() for emoji stripping — future-proof vs hardcoded emoji set, handles new Unicode emoji without code changes
 - [Phase 02-scraper]: compute_content_hash does NOT normalize company_name — normalization is for ID stability only; content hash should detect actual text mutations
+- [Phase 02-scraper]: Line-based markdown table extraction over mistune AST — SimplifyJobs format is well-defined; split on | is simpler and more reliable for this specific structure
+- [Phase 02-scraper]: stdlib html.parser.HTMLParser for HTML stripping — no additional dependency; handles all HTML patterns in SimplifyJobs README cells correctly
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T01:19:15.147Z
-Stopped at: Completed 02-scraper-01-PLAN.md
+Last session: 2026-03-26T01:23:50.688Z
+Stopped at: Completed 02-scraper-02-PLAN.md
 Resume file: None
