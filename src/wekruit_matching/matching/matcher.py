@@ -232,9 +232,13 @@ def get_matches(
         )
 
         # ------------------------------------------------------------------
-        # Step 6: Return top_n
+        # Step 6: Return top_n (strip embedding to avoid serialization issues)
         # ------------------------------------------------------------------
-        return scored[:top_n]
+        results = scored[:top_n]
+        for r in results:
+            r.pop("embedding", None)
+            r.pop("embedding_model", None)
+        return results
 
     if conn is not None:
         return _run(conn)
