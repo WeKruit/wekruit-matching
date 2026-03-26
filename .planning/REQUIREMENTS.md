@@ -67,11 +67,11 @@
 
 ### Integration
 
-- [ ] **INTG-01**: End-to-end test script: scrape → enrich → match against test profile
-- [ ] **INTG-02**: Cron-ready scraper script (daily 6 AM ET)
-- [ ] **INTG-03**: Cron-ready enrichment script (daily 6:30 AM ET)
-- [ ] **INTG-04**: All components importable as Python library (no HTTP server required)
-- [ ] **INTG-05**: .env.example with all required environment variables documented
+- [x] **INTG-01**: End-to-end test script: scrape → enrich → match against test profile
+- [x] **INTG-02**: Cron-ready scraper script (daily 6 AM ET)
+- [x] **INTG-03**: Cron-ready enrichment script (daily 6:30 AM ET)
+- [x] **INTG-04**: All components importable as Python library (no HTTP server required)
+- [x] **INTG-05**: .env.example with all required environment variables documented
 
 ## v2 Requirements
 
@@ -151,11 +151,11 @@
 | FDBK-03 | Phase 7 — Feedback Loop | Complete |
 | FDBK-04 | Phase 7 — Feedback Loop | Complete |
 | FDBK-05 | Phase 7 — Feedback Loop | Complete |
-| INTG-01 | Phase 8 — Integration & Operations | Pending |
-| INTG-02 | Phase 8 — Integration & Operations | Pending |
-| INTG-03 | Phase 8 — Integration & Operations | Pending |
-| INTG-04 | Phase 8 — Integration & Operations | Pending |
-| INTG-05 | Phase 8 — Integration & Operations | Pending |
+| INTG-01 | Phase 8 — Integration & Operations | Complete |
+| INTG-02 | Phase 8 — Integration & Operations | Complete |
+| INTG-03 | Phase 8 — Integration & Operations | Complete |
+| INTG-04 | Phase 8 — Integration & Operations | Complete |
+| INTG-05 | Phase 8 — Integration & Operations | Complete |
 
 **Coverage:**
 - v1 requirements: 46 total

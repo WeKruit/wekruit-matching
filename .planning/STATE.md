@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 07-feedback-loop-01-PLAN.md
-last_updated: "2026-03-26T03:21:30.720Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 08-integration-operations-02-PLAN.md
+last_updated: "2026-03-26T03:33:57.590Z"
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 8
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Given a user profile, return the most relevant job listings ranked by fit
-**Current focus:** Phase 07 — Feedback Loop
+**Current focus:** Phase 08 — Integration & Operations
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (Integration & Operations) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -59,6 +59,8 @@ Plan: Not started
 | Phase 06-scoring-engine P01 | 2 | 2 tasks | 2 files |
 | Phase 06-scoring-engine P02 | 3 | 2 tasks | 3 files |
 | Phase 07-feedback-loop P01 | 200 | 2 tasks | 4 files |
+| Phase 08-integration-operations P01 | 2 | 2 tasks | 3 files |
+| Phase 08-integration-operations P02 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -106,6 +108,10 @@ Recent decisions affecting current work:
 - [Phase 07-feedback-loop]: ON CONFLICT DO NOTHING on feedback INSERT — idempotent re-recording without raising (ix_feedback_user_job index)
 - [Phase 07-feedback-loop]: 70/30 affinity blend: 0.7 * existing + 0.3 * new_signal, normalize with 1e-9 epsilon; first like sets affinity directly (OpenAI embeddings are already unit-norm)
 - [Phase 07-feedback-loop]: register_vector patched in tests — matches matcher.py test pattern; production code calls register_vector(conn) correctly
+- [Phase 08-integration-operations]: e2e_test.py wraps entire pipeline in try/except with sys.exit(1) on failure — caller gets clear success/failure signal
+- [Phase 08-integration-operations]: TDD smoke tests are purely introspective — no DB required, runs in CI without infrastructure
+- [Phase 08-integration-operations]: Cron scripts load .env at runtime — cron does not inherit shell environment, so source .env at start of each wrapper script
+- [Phase 08-integration-operations]: install_cron.sh uses grep -qF for idempotent cron detection — avoids duplicating entries on re-run
 
 ### Pending Todos
 
@@ -118,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T03:18:21.211Z
-Stopped at: Completed 07-feedback-loop-01-PLAN.md
+Last session: 2026-03-26T03:33:57.588Z
+Stopped at: Completed 08-integration-operations-02-PLAN.md
 Resume file: None

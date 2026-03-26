@@ -140,8 +140,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — E2E pipeline script and library import smoke test
-- [ ] 08-02-PLAN.md — Cron wrapper scripts, installer, .env.example update, and README
+- [x] 08-01-PLAN.md — E2E pipeline script and library import smoke test
+- [x] 08-02-PLAN.md — Cron wrapper scripts, installer, .env.example update, and README
 
 ## Progress
 
