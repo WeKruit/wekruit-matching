@@ -43,9 +43,9 @@
 
 ### Matching
 
-- [ ] **MTCH-01**: Hard filter by job_type (intern / new_grad)
-- [ ] **MTCH-02**: Hard filter by sponsorship requirement
-- [ ] **MTCH-03**: Fuzzy location matching with normalization (SF/San Francisco, NYC/New York, Remote)
+- [x] **MTCH-01**: Hard filter by job_type (intern / new_grad)
+- [x] **MTCH-02**: Hard filter by sponsorship requirement
+- [x] **MTCH-03**: Fuzzy location matching with normalization (SF/San Francisco, NYC/New York, Remote)
 - [ ] **MTCH-04**: Title similarity scoring via embedding cosine similarity (weight: 0.30)
 - [ ] **MTCH-05**: Skills overlap scoring — user skills vs job required skills (weight: 0.25)
 - [ ] **MTCH-06**: Industry match scoring (weight: 0.15)
@@ -133,9 +133,9 @@
 | ENRC-08 | Phase 4 — Embeddings | Complete |
 | ENRC-09 | Phase 3 — LLM Enrichment | Complete |
 | ENRC-10 | Phase 3 — LLM Enrichment | Complete |
-| MTCH-01 | Phase 5 — Hard Filters | Pending |
-| MTCH-02 | Phase 5 — Hard Filters | Pending |
-| MTCH-03 | Phase 5 — Hard Filters | Pending |
+| MTCH-01 | Phase 5 — Hard Filters | Complete |
+| MTCH-02 | Phase 5 — Hard Filters | Complete |
+| MTCH-03 | Phase 5 — Hard Filters | Complete |
 | MTCH-04 | Phase 6 — Scoring Engine | Pending |
 | MTCH-05 | Phase 6 — Scoring Engine | Pending |
 | MTCH-06 | Phase 6 — Scoring Engine | Pending |

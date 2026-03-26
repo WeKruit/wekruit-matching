@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline (completed 2026-03-26)
 - [x] **Phase 3: LLM Enrichment** - Anthropic classification of industry, skills, company size, and sponsorship with cost controls (completed 2026-03-26)
 - [x] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index (completed 2026-03-26)
-- [ ] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization
+- [x] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization (completed 2026-03-26)
 - [ ] **Phase 6: Scoring Engine** - 7-signal weighted scoring, ranked results API, and cold-start handling
 - [ ] **Phase 7: Feedback Loop** - Like/dislike recording, affinity embedding updates, and preference propagation
 - [ ] **Phase 8: Integration & Operations** - End-to-end test, cron wiring, library packaging, and environment documentation
@@ -96,7 +96,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 05-01-PLAN.md — matching package, apply_hard_filters(), LOCATION_ALIASES, job_type/sponsorship/location filters, full unit tests
+- [x] 05-01-PLAN.md — matching package, apply_hard_filters(), LOCATION_ALIASES, job_type/sponsorship/location filters, full unit tests
 
 ### Phase 6: Scoring Engine
 **Goal**: Users can call `get_matches(profile, top_n=30)` and receive a ranked list of jobs with per-signal score breakdowns
@@ -143,7 +143,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
 | 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
-| 5. Hard Filters | 0/1 | Not started | - |
+| 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
 | 6. Scoring Engine | 0/? | Not started | - |
 | 7. Feedback Loop | 0/? | Not started | - |
 | 8. Integration & Operations | 0/? | Not started | - |
