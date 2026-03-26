@@ -109,6 +109,95 @@ def feedback(body: FeedbackRequest, _: None = Depends(verify_api_key)) -> dict:
     return {"status": "ok"}
 
 
+# ---------------------------------------------------------------------------
+# JobX-compatible endpoint (VALET integration)
+# POST /api/v1/matching/recommendations
+# Accepts CandidateProfile, returns MatchResponse in VALET's expected format
+# ---------------------------------------------------------------------------
+
+class JobXMatchRequest(BaseModel):
+    """Request shape expected by VALET's JobXClient."""
+    candidate: dict  # CandidateProfile — skills, experience, education, etc.
+    top_n: int = 20
+    min_cosine_score: float = 0.3
+    excludeJobIds: list[str] = []
+    preferredCountryCode: str | None = None
+    top_k: int = 100
+    enable_llm_rerank: bool = False
+
+
+@app.post("/api/v1/matching/recommendations")
+def jobx_recommendations(body: JobXMatchRequest, _: None = Depends(verify_api_key)) -> dict:
+    """JobX-compatible matching endpoint for VALET integration.
+
+    Translates VALET's CandidateProfile into our UserProfile, runs matching,
+    and returns results in VALET's expected MatchResponse format.
+    """
+    try:
+        candidate = body.candidate
+
+        # Build UserProfile from CandidateProfile
+        skills = candidate.get("skills", [])
+        skill_names = [s.get("name", s) if isinstance(s, dict) else str(s) for s in skills]
+
+        profile = UserProfile(
+            user_id=candidate.get("id", "jobx-anonymous"),
+            desired_titles=[candidate.get("target_role", "Software Engineer")],
+            skills=skill_names,
+            location_prefs=[body.preferredCountryCode] if body.preferredCountryCode else [],
+            job_type="intern",  # Default; VALET can override
+        )
+
+        matches = get_matches(profile, top_n=body.top_n)
+
+        # Transform to VALET's MatchResultItem format
+        results = []
+        for m in matches:
+            if m.get("job_id") in body.excludeJobIds:
+                continue
+            signals = m.get("signals", {})
+            results.append({
+                "job_id": m.get("job_id", ""),
+                "source": m.get("source_repo", ""),
+                "title": m.get("role_title", ""),
+                "apply_url": m.get("primary_url", ""),
+                "locations": [{"display_name": m.get("location_raw", ""), "is_primary": True}],
+                "department": None,
+                "team": None,
+                "employment_type": "internship" if "Intern" in m.get("source_repo", "") else "full_time",
+                "cosine_score": signals.get("title_similarity", 0),
+                "skill_overlap_score": signals.get("skills_overlap", 0),
+                "domain_match_score": signals.get("industry_match", 0),
+                "seniority_match_score": 0.5,
+                "experience_gap": 0,
+                "education_gap": 0,
+                "penalties": {},
+                "company": {
+                    "name": m.get("company_name", ""),
+                    "industry": m.get("industry", "unknown"),
+                    "size_category": m.get("company_size", "unknown"),
+                },
+                "combined_score": m.get("score", 0) / 100,  # Normalize 0-100 → 0-1
+            })
+
+        meta = {
+            "needs_sponsorship": profile.sponsorship_needed or False,
+            "user_total_years_experience": 0,
+            "user_degree_rank": 0,
+            "user_skill_count": len(skill_names),
+            "user_domain": candidate.get("domain", "software_engineering"),
+            "user_seniority": candidate.get("seniority", "entry"),
+            "top_k": body.top_k,
+            "top_n": body.top_n,
+            "results_returned": len(results),
+        }
+
+        return {"meta": meta, "results": results}
+    except Exception as e:
+        logger.exception("Unhandled error in POST /api/v1/matching/recommendations: {}", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
 @app.get("/jobs/stats")
 def jobs_stats(_: None = Depends(verify_api_key)) -> dict:
     """Return job counts grouped by source_repo and status.
