@@ -59,11 +59,11 @@
 
 ### Feedback
 
-- [ ] **FDBK-01**: Record like/dislike/applied reactions per user per job
-- [ ] **FDBK-02**: Like updates liked_companies list on user profile
-- [ ] **FDBK-03**: Dislike updates disliked_companies list on user profile
-- [ ] **FDBK-04**: Affinity embedding updated as weighted running average of liked job embeddings
-- [ ] **FDBK-05**: Feedback signal incorporated into matching score computation
+- [x] **FDBK-01**: Record like/dislike/applied reactions per user per job
+- [x] **FDBK-02**: Like updates liked_companies list on user profile
+- [x] **FDBK-03**: Dislike updates disliked_companies list on user profile
+- [x] **FDBK-04**: Affinity embedding updated as weighted running average of liked job embeddings
+- [x] **FDBK-05**: Feedback signal incorporated into matching score computation
 
 ### Integration
 
@@ -146,11 +146,11 @@
 | MTCH-11 | Phase 6 — Scoring Engine | Complete |
 | MTCH-12 | Phase 6 — Scoring Engine | Complete |
 | MTCH-13 | Phase 6 — Scoring Engine | Complete |
-| FDBK-01 | Phase 7 — Feedback Loop | Pending |
-| FDBK-02 | Phase 7 — Feedback Loop | Pending |
-| FDBK-03 | Phase 7 — Feedback Loop | Pending |
-| FDBK-04 | Phase 7 — Feedback Loop | Pending |
-| FDBK-05 | Phase 7 — Feedback Loop | Pending |
+| FDBK-01 | Phase 7 — Feedback Loop | Complete |
+| FDBK-02 | Phase 7 — Feedback Loop | Complete |
+| FDBK-03 | Phase 7 — Feedback Loop | Complete |
+| FDBK-04 | Phase 7 — Feedback Loop | Complete |
+| FDBK-05 | Phase 7 — Feedback Loop | Complete |
 | INTG-01 | Phase 8 — Integration & Operations | Pending |
 | INTG-02 | Phase 8 — Integration & Operations | Pending |
 | INTG-03 | Phase 8 — Integration & Operations | Pending |

@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index (completed 2026-03-26)
 - [x] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization (completed 2026-03-26)
 - [ ] **Phase 6: Scoring Engine** - 7-signal weighted scoring, ranked results API, and cold-start handling
-- [ ] **Phase 7: Feedback Loop** - Like/dislike recording, affinity embedding updates, and preference propagation
+- [x] **Phase 7: Feedback Loop** - Like/dislike recording, affinity embedding updates, and preference propagation (completed 2026-03-26)
 - [ ] **Phase 8: Integration & Operations** - End-to-end test, cron wiring, library packaging, and environment documentation
 
 ## Phase Details
@@ -126,7 +126,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 07-01-PLAN.md — feedback/handler.py: record_feedback(), liked/disliked_companies update, affinity embedding blend, package re-export
+- [x] 07-01-PLAN.md — feedback/handler.py: record_feedback(), liked/disliked_companies update, affinity embedding blend, package re-export
 
 ### Phase 8: Integration & Operations
 **Goal**: The full pipeline runs end-to-end, can be scheduled via cron, and is importable as a Python library by any consumer
@@ -152,5 +152,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
 | 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
 | 6. Scoring Engine | 2/2 | Complete   | 2026-03-26 |
-| 7. Feedback Loop | 0/1 | Not started | - |
+| 7. Feedback Loop | 1/1 | Complete   | 2026-03-26 |
 | 8. Integration & Operations | 0/? | Not started | - |
