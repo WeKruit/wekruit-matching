@@ -5,7 +5,7 @@ Passed directly to get_matches() by the caller — no HTTP server involved.
 """
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobType(str, Enum):
@@ -24,18 +24,23 @@ class CompanySizePreference(str, Enum):
 class UserProfile(BaseModel):
     """A user's job-matching preferences and accumulated feedback state."""
 
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
     user_id: str = Field(..., description="Caller-provided opaque user identifier")
 
-    # Explicit preferences
+    # Explicit preferences (aliases match VALET's MatchRequest field names)
     skills: list[str] = Field(default_factory=list, description="User's self-reported skills")
-    preferred_job_type: JobType = JobType.ANY
+    preferred_job_type: JobType = Field(JobType.ANY, alias="job_type")
     preferred_locations: list[str] = Field(
         default_factory=list,
+        alias="location_prefs",
         description="Preferred location strings (normalized at match time)",
     )
-    requires_sponsorship: bool = False
-    preferred_company_size: CompanySizePreference = CompanySizePreference.ANY
-    preferred_industries: list[str] = Field(default_factory=list)
+    requires_sponsorship: bool = Field(False, alias="sponsorship_needed")
+    preferred_company_size: CompanySizePreference = Field(
+        CompanySizePreference.ANY, alias="company_size_pref"
+    )
+    preferred_industries: list[str] = Field(default_factory=list, alias="industries")
 
     # Feedback state (updated by feedback handler in Phase 7)
     liked_companies: list[str] = Field(default_factory=list)

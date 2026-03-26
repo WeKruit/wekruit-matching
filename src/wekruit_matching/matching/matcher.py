@@ -88,6 +88,56 @@ def _fetch_ann_candidates(
     return result
 
 
+_JOB_TYPE_TO_REPO = {
+    "intern": "Summer2026-Internships",
+    "new_grad": "New-Grad-Positions",
+}
+
+
+def _fetch_recent_candidates(
+    conn: psycopg.Connection,
+    limit: int,
+    job_type: str = "any",
+) -> list[dict]:
+    """Fallback: fetch recent active jobs when embeddings are not available.
+
+    Applies job_type filter in SQL to avoid loading irrelevant rows.
+    Returns jobs ordered by last_seen_at descending (most recently updated first).
+    """
+    repo = _JOB_TYPE_TO_REPO.get(job_type)
+    if repo:
+        cursor = conn.execute(
+            """
+            SELECT
+                job_id, source_repo, company_name, role_title, primary_url,
+                location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
+                industry, company_size, required_skills, sponsorship,
+                embedding, embedding_model
+            FROM jobs
+            WHERE status = 'active' AND source_repo = %s
+            ORDER BY last_seen_at DESC NULLS LAST
+            LIMIT %s
+            """,
+            (repo, limit),
+        )
+    else:
+        cursor = conn.execute(
+            """
+            SELECT
+                job_id, source_repo, company_name, role_title, primary_url,
+                location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
+                industry, company_size, required_skills, sponsorship,
+                embedding, embedding_model
+            FROM jobs
+            WHERE status = 'active'
+            ORDER BY last_seen_at DESC NULLS LAST
+            LIMIT %s
+            """,
+            (limit,),
+        )
+    return [dict(row) for row in cursor.fetchall()]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -124,24 +174,36 @@ def get_matches(
         Sorted descending by "score". Length <= top_n.
     """
     # ------------------------------------------------------------------
-    # Step 1: Determine query embedding
+    # Step 1: Determine query embedding (fallback to None if unavailable)
     # ------------------------------------------------------------------
+    query_embedding: list[float] | None = None
     if profile.affinity_embedding is not None:
-        # Phase 7 hook: use affinity vector directly — no OpenAI call
-        query_embedding: list[float] = profile.affinity_embedding
+        query_embedding = profile.affinity_embedding
     else:
-        query_text = _compose_query_text(profile)
-        query_embedding = embed_text(query_text, client=openai_client)
+        try:
+            query_text = _compose_query_text(profile)
+            query_embedding = embed_text(query_text, client=openai_client)
+        except Exception as e:
+            logger.warning("Embedding failed, falling back to non-vector matching: {}", e)
 
     # ------------------------------------------------------------------
-    # Step 2: ANN retrieval — top_n * 4 candidates
+    # Step 2: ANN retrieval or recency fallback
     # ------------------------------------------------------------------
     ann_limit = top_n * 4
 
     def _run(active_conn: psycopg.Connection) -> list[dict]:
-        ann_candidates = _fetch_ann_candidates(
-            active_conn, query_embedding, ann_limit
-        )
+        if query_embedding is not None:
+            ann_candidates = _fetch_ann_candidates(
+                active_conn, query_embedding, ann_limit
+            )
+        else:
+            ann_candidates = []
+
+        # Fallback: if ANN returned nothing (no embeddings), fetch recent jobs
+        if not ann_candidates:
+            ann_candidates = _fetch_recent_candidates(
+                active_conn, ann_limit, profile.preferred_job_type.value
+            )
 
         # ------------------------------------------------------------------
         # Step 3: Hard filters (pure Python — no DB call)

@@ -142,10 +142,9 @@ def jobx_recommendations(body: JobXMatchRequest, _: None = Depends(verify_api_ke
 
         profile = UserProfile(
             user_id=candidate.get("id", "jobx-anonymous"),
-            desired_titles=[candidate.get("target_role", "Software Engineer")],
             skills=skill_names,
-            location_prefs=[body.preferredCountryCode] if body.preferredCountryCode else [],
-            job_type="intern",  # Default; VALET can override
+            preferred_locations=[body.preferredCountryCode] if body.preferredCountryCode else [],
+            preferred_job_type="any",
         )
 
         matches = get_matches(profile, top_n=body.top_n)
@@ -177,11 +176,11 @@ def jobx_recommendations(body: JobXMatchRequest, _: None = Depends(verify_api_ke
                     "industry": m.get("industry", "unknown"),
                     "size_category": m.get("company_size", "unknown"),
                 },
-                "combined_score": m.get("score", 0) / 100,  # Normalize 0-100 → 0-1
+                "combined_score": m.get("score", 0),
             })
 
         meta = {
-            "needs_sponsorship": profile.sponsorship_needed or False,
+            "needs_sponsorship": profile.requires_sponsorship,
             "user_total_years_experience": 0,
             "user_degree_rank": 0,
             "user_skill_count": len(skill_names),
