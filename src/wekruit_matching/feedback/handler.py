@@ -43,9 +43,11 @@ def record_feedback(
     """
     if conn is not None:
         _run(user_id, job_id, reaction, conn)
+        # Caller owns the connection — caller commits.
     else:
         with get_connection() as _conn:
             _run(user_id, job_id, reaction, _conn)
+            _conn.commit()  # We own this connection — commit before pool returns it.
 
 
 def _run(

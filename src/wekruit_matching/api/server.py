@@ -12,6 +12,8 @@ threadpool automatically), avoiding event-loop blocking.
 Authentication: all endpoints except GET / require an X-API-Key header that
 matches the API_SECRET_KEY environment variable (read via Settings).
 """
+import hmac
+
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from loguru import logger
@@ -44,7 +46,7 @@ def verify_api_key(api_key: str | None = Security(_api_key_header)) -> None:
     Applied to all endpoints except GET / (health check).
     """
     expected = get_settings().api_secret_key
-    if not api_key or api_key != expected:
+    if not api_key or not hmac.compare_digest(api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
