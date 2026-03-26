@@ -66,6 +66,11 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
                     THEN EXCLUDED.content_hash
                     ELSE jobs.content_hash
+                END,
+                enriched_at     = CASE
+                    WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                    THEN NULL
+                    ELSE jobs.enriched_at
                 END
             RETURNING
                 (xmax = 0) AS was_inserted,
