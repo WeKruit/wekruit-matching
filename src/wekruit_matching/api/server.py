@@ -18,7 +18,26 @@ from wekruit_matching.models.user_profile import UserProfile
 from wekruit_matching.models.feedback import ReactionType
 from wekruit_matching.db.connection import get_connection
 
-app = FastAPI(title="WeKruit Matching API", version="0.1.0")
+app = FastAPI(
+    title="WeKruit Matching API",
+    version="0.1.0",
+    description="Job matching engine for WeKruit — scrapes, enriches, and ranks job listings against user profiles.",
+)
+
+
+# ---------------------------------------------------------------------------
+# Root
+# ---------------------------------------------------------------------------
+
+@app.get("/")
+def root() -> dict:
+    """Health check / API info."""
+    return {
+        "service": "wekruit-matching",
+        "version": "0.1.0",
+        "docs": "/docs",
+        "endpoints": ["/match", "/feedback", "/jobs/stats"],
+    }
 
 
 # ---------------------------------------------------------------------------
