@@ -93,6 +93,8 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
         except Exception as exc:
             failed += 1
             logger.warning("Failed to embed job {}: {}", job.job_id[:8], exc)
+            # Roll back any partial writes so the connection is clean for the next job
+            conn.rollback()
             # Continue to next job — per-job isolation
 
     logger.info("Embedding complete: embedded={} failed={}", embedded, failed)

@@ -14,9 +14,10 @@ from typing import Optional
 
 import anthropic
 from pydantic import BaseModel, field_validator
+from loguru import logger
 from tenacity import (
     retry,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
@@ -138,14 +139,14 @@ def _should_retry(exc: BaseException) -> bool:
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=1, max=30),
-    retry=retry_if_exception_type((anthropic.RateLimitError, anthropic.APIStatusError)),
+    retry=retry_if_exception(_should_retry),
     reraise=True,
 )
 def _call_anthropic(client: anthropic.Anthropic, prompt: str) -> str:
     """Call the Anthropic API and return the raw text content.
 
-    Tenacity retries on RateLimitError and server-side APIStatusError (5xx).
-    Connection errors and client errors (4xx other than 429) propagate immediately.
+    Tenacity retries only on RateLimitError (429) and server-side 5xx errors.
+    Client errors (400/401/403) and connection errors propagate immediately.
     """
     response = client.messages.create(
         model="claude-haiku-4-5",
@@ -180,7 +181,13 @@ def classify_job(job: Job) -> EnrichmentResult:
                 cleaned = cleaned[:-3]
             cleaned = cleaned.strip()
         data = json.loads(cleaned)
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Classification failed for {company} ({role}): {error}",
+            company=job.company_name,
+            role=job.role_title,
+            error=e,
+        )
         return _safe_default()
 
     try:
@@ -201,5 +208,11 @@ def classify_job(job: Job) -> EnrichmentResult:
             required_skills=skills_normalized,
             sponsorship=sponsorship,
         )
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "Classification result validation failed for {company} ({role}): {error}",
+            company=job.company_name,
+            role=job.role_title,
+            error=e,
+        )
         return _safe_default()

@@ -67,6 +67,9 @@ def _run(
     # ------------------------------------------------------------------
     # Step 1: Insert feedback row (idempotent)
     # ------------------------------------------------------------------
+    # TODO(W8): ON CONFLICT DO NOTHING has no effect without a unique constraint on
+    # (user_id, job_id). A DB migration adding UNIQUE(user_id, job_id) to the feedback
+    # table is required to make duplicate-suppression work correctly.
     conn.execute(
         """
         INSERT INTO feedback (user_id, job_id, reaction, recorded_at)
@@ -106,6 +109,9 @@ def _run(
     # "applied" — feedback row inserted, no profile update needed
 
 
+_COMPANY_ARRAY_CAP = 100
+
+
 def _handle_like(
     user_id: str,
     company_name: str,
@@ -113,15 +119,23 @@ def _handle_like(
     conn: psycopg.Connection,
 ) -> None:
     """Append company to liked_companies and update affinity_embedding."""
-    # a. Append company_name to liked_companies
+    # a. Append company_name to liked_companies, capped at _COMPANY_ARRAY_CAP entries.
+    # If the array already has _COMPANY_ARRAY_CAP entries, drop the oldest before appending.
     conn.execute(
         """
         UPDATE user_profiles
-        SET liked_companies = array_append(liked_companies, %s),
+        SET liked_companies = array_append(
+                CASE
+                    WHEN array_length(liked_companies, 1) >= %s
+                    THEN liked_companies[2:]
+                    ELSE liked_companies
+                END,
+                %s
+            ),
             updated_at = NOW()
         WHERE user_id = %s
         """,
-        (company_name, user_id),
+        (_COMPANY_ARRAY_CAP, company_name, user_id),
     )
 
     # b. Update affinity_embedding only if job has an embedding
@@ -164,13 +178,20 @@ def _handle_dislike(
     company_name: str,
     conn: psycopg.Connection,
 ) -> None:
-    """Append company to disliked_companies."""
+    """Append company to disliked_companies, capped at _COMPANY_ARRAY_CAP entries."""
     conn.execute(
         """
         UPDATE user_profiles
-        SET disliked_companies = array_append(disliked_companies, %s),
+        SET disliked_companies = array_append(
+                CASE
+                    WHEN array_length(disliked_companies, 1) >= %s
+                    THEN disliked_companies[2:]
+                    ELSE disliked_companies
+                END,
+                %s
+            ),
             updated_at = NOW()
         WHERE user_id = %s
         """,
-        (company_name, user_id),
+        (_COMPANY_ARRAY_CAP, company_name, user_id),
     )

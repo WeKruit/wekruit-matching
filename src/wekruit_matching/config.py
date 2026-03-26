@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(..., description="OpenAI API key for embedding generation")
     github_token: str = Field(..., description="GitHub PAT for authenticated raw file fetches")
     log_level: str = Field("INFO", description="Logging level: DEBUG, INFO, WARNING, ERROR")
+    api_secret_key: str = Field(..., description="Secret key for X-API-Key header authentication on all protected endpoints")
 
 
 @lru_cache(maxsize=1)

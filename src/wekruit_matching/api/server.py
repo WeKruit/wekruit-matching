@@ -8,10 +8,16 @@ Exposes three endpoints for VALET integration:
 All endpoints use synchronous (def) handlers so that psycopg3's synchronous
 ConnectionPool is called from a thread (FastAPI runs sync endpoints in a
 threadpool automatically), avoiding event-loop blocking.
+
+Authentication: all endpoints except GET / require an X-API-Key header that
+matches the API_SECRET_KEY environment variable (read via Settings).
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
+from loguru import logger
 from pydantic import BaseModel
 
+from wekruit_matching.config import get_settings
 from wekruit_matching.matching.matcher import get_matches
 from wekruit_matching.feedback.handler import record_feedback
 from wekruit_matching.models.user_profile import UserProfile
@@ -23,6 +29,23 @@ app = FastAPI(
     version="0.1.0",
     description="Job matching engine for WeKruit — scrapes, enriches, and ranks job listings against user profiles.",
 )
+
+# ---------------------------------------------------------------------------
+# API key authentication
+# ---------------------------------------------------------------------------
+
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def verify_api_key(api_key: str | None = Security(_api_key_header)) -> None:
+    """Dependency that validates the X-API-Key header against Settings.api_secret_key.
+
+    Raises HTTP 401 if the header is missing or does not match.
+    Applied to all endpoints except GET / (health check).
+    """
+    expected = get_settings().api_secret_key
+    if not api_key or api_key != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +78,7 @@ class FeedbackRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.post("/match")
-def match(profile: UserProfile) -> dict:
+def match(profile: UserProfile, _: None = Depends(verify_api_key)) -> dict:
     """Return a ranked list of job matches for the given user profile.
 
     Body: UserProfile JSON (user_id required; all other fields optional).
@@ -64,12 +87,13 @@ def match(profile: UserProfile) -> dict:
     try:
         matches = get_matches(profile)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Unhandled error in POST /match: {}", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
     return {"matches": matches}
 
 
 @app.post("/feedback")
-def feedback(body: FeedbackRequest) -> dict:
+def feedback(body: FeedbackRequest, _: None = Depends(verify_api_key)) -> dict:
     """Record a user reaction to a job listing and update their profile state.
 
     Body: {user_id, job_id, reaction} where reaction is "like" | "dislike" | "applied".
@@ -78,12 +102,13 @@ def feedback(body: FeedbackRequest) -> dict:
     try:
         record_feedback(body.user_id, body.job_id, body.reaction)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Unhandled error in POST /feedback: {}", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
     return {"status": "ok"}
 
 
 @app.get("/jobs/stats")
-def jobs_stats() -> dict:
+def jobs_stats(_: None = Depends(verify_api_key)) -> dict:
     """Return job counts grouped by source_repo and status.
 
     Response: {"stats": [{"source_repo": str, "status": str, "count": int}, ...]}
@@ -108,5 +133,6 @@ def jobs_stats() -> dict:
                 for row in rows
             ]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Unhandled error in GET /jobs/stats: {}", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
     return {"stats": stats}
