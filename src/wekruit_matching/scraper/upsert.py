@@ -51,11 +51,15 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
             INSERT INTO jobs (
                 job_id, source_repo, company_name, role_title,
                 primary_url, location_raw, date_posted_raw,
-                status, first_seen_at, last_seen_at, content_hash
+                status, first_seen_at, last_seen_at, content_hash,
+                industry, company_size, required_skills, sponsorship,
+                enriched_at
             ) VALUES (
                 %(job_id)s, %(source_repo)s, %(company_name)s, %(role_title)s,
                 %(primary_url)s, %(location_raw)s, %(date_posted_raw)s,
-                'active', %(now)s, %(now)s, %(content_hash)s
+                'active', %(now)s, %(now)s, %(content_hash)s,
+                %(industry)s, %(company_size)s, %(required_skills)s, %(sponsorship)s,
+                %(enriched_at)s
             )
             ON CONFLICT (job_id) DO UPDATE SET
                 location_raw    = EXCLUDED.location_raw,
@@ -86,6 +90,11 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                 "location_raw": job.location_raw,
                 "date_posted_raw": job.date_posted_raw,
                 "content_hash": job.content_hash,
+                "industry": job.industry,
+                "company_size": job.company_size,
+                "required_skills": job.required_skills or [],
+                "sponsorship": job.sponsorship,
+                "enriched_at": now if job.industry else None,
                 "now": now,
             },
         )

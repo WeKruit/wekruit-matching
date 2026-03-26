@@ -1,7 +1,7 @@
-"""SimplifyJobs scraper orchestrator.
+"""Multi-source scraper orchestrator.
 
-Fetches both SimplifyJobs README files, parses them into Job records,
-upserts to Postgres, and marks disappeared listings as inactive.
+Fetches jobs from SimplifyJobs (GitHub) and JobRight.ai, upserts to
+Postgres, and marks disappeared listings as inactive.
 
 Standalone CLI usage:
     uv run python -m wekruit_matching.scraper.run
@@ -16,62 +16,71 @@ from loguru import logger
 
 from wekruit_matching.db.connection import get_connection
 from wekruit_matching.scraper.fetcher import REPO_INTERNSHIPS, REPO_NEW_GRAD, fetch_readme
+from wekruit_matching.scraper.jobright import scrape_jobright
 from wekruit_matching.scraper.parser import parse_readme
 from wekruit_matching.scraper.upsert import mark_stale_jobs, upsert_jobs
 
 
-REPOS = [REPO_INTERNSHIPS, REPO_NEW_GRAD]
+SIMPLIFY_REPOS = [REPO_INTERNSHIPS, REPO_NEW_GRAD]
+JOBRIGHT_REPOS = ["jobright-intern", "jobright-newgrad"]
 
 
 def scrape_all() -> dict[str, dict]:
-    """Fetch, parse, and upsert all SimplifyJobs listings.
+    """Fetch, parse, and upsert all job listings from all sources.
 
-    Fetches both Summer2026-Internships and New-Grad-Positions READMEs,
-    parses each into Job objects, upserts to the jobs table, and marks
-    any previously-seen jobs that did not appear in the latest scrape
-    as inactive (per-repo scoped, never deletes rows).
+    Sources:
+    1. SimplifyJobs GitHub READMEs (Summer2026-Internships, New-Grad-Positions)
+    2. JobRight.ai (intern-list.com, newgrad-jobs.com) — 10 categories each
 
-    Returns per-repo stats:
-        {
-          "Summer2026-Internships": {"inserted": N, "updated": N, "unchanged": N, "stale": N},
-          "New-Grad-Positions": {"inserted": N, "updated": N, "unchanged": N, "stale": N},
-        }
+    Returns per-source stats dict.
     """
     all_stats: dict[str, dict] = {}
 
     with get_connection() as conn:
-        for repo_slug in REPOS:
-            logger.info("Scraping repo: {}", repo_slug)
+        # --- SimplifyJobs ---
+        for repo_slug in SIMPLIFY_REPOS:
+            logger.info("Scraping SimplifyJobs repo: {}", repo_slug)
+            try:
+                content = fetch_readme(repo_slug)
+                jobs = parse_readme(content, repo_slug)
+                logger.info("Parsed {} active jobs from {}", len(jobs), repo_slug)
 
-            # Fetch
-            content = fetch_readme(repo_slug)
-            logger.debug("Fetched {} bytes from {}", len(content), repo_slug)
+                if not jobs:
+                    all_stats[repo_slug] = {"inserted": 0, "updated": 0, "unchanged": 0, "stale": 0}
+                    continue
 
-            # Parse
-            jobs = parse_readme(content, repo_slug)
-            logger.info("Parsed {} active jobs from {}", len(jobs), repo_slug)
+                upsert_stats = upsert_jobs(jobs, conn)
+                seen_ids = {job.job_id for job in jobs}
+                stale_count = mark_stale_jobs(seen_ids, repo_slug, conn)
+                all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
+            except Exception as e:
+                logger.error("Failed to scrape {}: {}", repo_slug, e)
+                all_stats[repo_slug] = {"error": str(e)}
 
-            if not jobs:
-                logger.warning("No jobs parsed from {} — skipping upsert", repo_slug)
-                all_stats[repo_slug] = {"inserted": 0, "updated": 0, "unchanged": 0, "stale": 0}
-                continue
+        # --- JobRight.ai ---
+        logger.info("Scraping JobRight.ai (intern + newgrad)")
+        try:
+            jobright_jobs = scrape_jobright()
+            logger.info("Fetched {} unique jobs from JobRight", len(jobright_jobs))
 
-            # Upsert
-            upsert_stats = upsert_jobs(jobs, conn)
+            # Group by source_repo for upsert + stale marking
+            by_repo: dict[str, list] = {}
+            for job in jobright_jobs:
+                by_repo.setdefault(job.source_repo, []).append(job)
 
-            # Mark stale: any active job from this repo NOT in this scrape's ID set
-            seen_ids = {job.job_id for job in jobs}
-            stale_count = mark_stale_jobs(seen_ids, repo_slug, conn)
-
-            all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
-            logger.info(
-                "Repo {}: inserted={} updated={} unchanged={} stale={}",
-                repo_slug,
-                upsert_stats["inserted"],
-                upsert_stats["updated"],
-                upsert_stats["unchanged"],
-                stale_count,
-            )
+            for repo_slug, jobs in by_repo.items():
+                upsert_stats = upsert_jobs(jobs, conn)
+                seen_ids = {job.job_id for job in jobs}
+                stale_count = mark_stale_jobs(seen_ids, repo_slug, conn)
+                all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
+                logger.info(
+                    "JobRight {}: inserted={} updated={} unchanged={} stale={}",
+                    repo_slug, upsert_stats["inserted"], upsert_stats["updated"],
+                    upsert_stats["unchanged"], stale_count,
+                )
+        except Exception as e:
+            logger.error("Failed to scrape JobRight: {}", e)
+            all_stats["jobright"] = {"error": str(e)}
 
     return all_stats
 
@@ -80,6 +89,6 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(sys.stderr, level="INFO")
 
-    logger.info("Starting SimplifyJobs scraper run")
+    logger.info("Starting multi-source scraper run")
     stats = scrape_all()
     logger.info("Scrape complete. Stats: {}", stats)
