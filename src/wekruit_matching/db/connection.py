@@ -39,7 +39,7 @@ def get_pool() -> ConnectionPool:
     conninfo = _sqlalchemy_url_to_libpq(settings.database_url)
     pool = ConnectionPool(
         conninfo=conninfo,
-        min_size=5,
+        min_size=2,
         max_size=20,
         timeout=5.0,
         max_idle=300.0,
