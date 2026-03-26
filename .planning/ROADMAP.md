@@ -48,7 +48,12 @@ Plans:
   3. Re-running the scraper on unchanged data produces zero new inserts and zero content hash changes
   4. Jobs that disappeared from the README on a second scrape are marked inactive (not deleted)
   5. Running the scraper against a README snapshot containing HTML-embedded cells, continuation rows, and emoji company names produces correct stable IDs with no duplicates
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — GitHub authenticated fetcher (httpx + PAT) and stable ID/content hash utilities
+- [ ] 02-02-PLAN.md — README parser: HTML cell stripping, lock row filtering, continuation row inheritance
+- [ ] 02-03-PLAN.md — Upsert pipeline (ON CONFLICT DO UPDATE, stale marking) and scraper orchestrator
 
 ### Phase 3: LLM Enrichment
 **Goal**: Every unenriched job in the database is classified with industry, company size, required skills, and sponsorship likelihood — without re-enriching unchanged jobs
@@ -124,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
-| 2. Scraper | 0/? | Not started | - |
+| 2. Scraper | 0/3 | Not started | - |
 | 3. LLM Enrichment | 0/? | Not started | - |
 | 4. Embeddings | 0/? | Not started | - |
 | 5. Hard Filters | 0/? | Not started | - |
