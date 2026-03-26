@@ -172,7 +172,14 @@ def classify_job(job: Job) -> EnrichmentResult:
     client = _get_client()
     try:
         raw = _call_anthropic(client, prompt)
-        data = json.loads(raw)
+        # Strip markdown code fences if present (Claude sometimes wraps in ```json ... ```)
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+        data = json.loads(cleaned)
     except Exception:
         return _safe_default()
 
