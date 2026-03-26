@@ -16,10 +16,10 @@ def test_settings_loads_from_env(monkeypatch, tmp_path):
     importlib.reload(cfg_module)
     from wekruit_matching.config import Settings
 
-    s = Settings()
+    s = Settings(_env_file=None)  # disable .env file read — use monkeypatched env vars only
     assert s.database_url == "postgresql+psycopg://user:pass@localhost:5432/test"
     assert s.anthropic_api_key == "sk-ant-test"
-    assert s.log_level == "INFO"  # default
+    assert s.log_level == "INFO"  # default (LOG_LEVEL not set in monkeypatch)
 
 
 def test_settings_raises_on_missing_database_url(monkeypatch):
