@@ -12,7 +12,7 @@ Tests verify:
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -27,7 +27,7 @@ def _make_mock_conn(side_effects: list | None = None) -> MagicMock:
 
     conn.execute() returns a cursor MagicMock by default.
     If side_effects is provided, conn.execute side_effect is set so successive
-    calls return different cursors (used for SELECT → UPDATE sequences).
+    calls return different cursors (used for SELECT -> UPDATE sequences).
     """
     conn = MagicMock()
     if side_effects is not None:
@@ -67,7 +67,8 @@ class TestLikeInsertsFeedbackRow:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "like", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "like", conn=conn)
 
         # First execute call must contain INSERT INTO feedback
         first_call_sql = conn.execute.call_args_list[0][0][0]
@@ -90,7 +91,8 @@ class TestLikeAppendsToLikedCompanies:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "like", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "like", conn=conn)
 
         # Find the UPDATE liked_companies call
         all_calls = conn.execute.call_args_list
@@ -118,7 +120,8 @@ class TestDislikeAppendsToDislikedCompanies:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "dislike", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "dislike", conn=conn)
 
         all_calls = conn.execute.call_args_list
         disliked_call = next(
@@ -147,7 +150,8 @@ class TestFirstLikeSetsAffinityEmbedding:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "like", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "like", conn=conn)
 
         all_calls = conn.execute.call_args_list
         affinity_call = next(
@@ -181,7 +185,8 @@ class TestSubsequentLikeBlendsAffinity:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "like", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "like", conn=conn)
 
         # Expected: normalize(0.7 * [0]*1536 + 0.3 * [1]*1536) = normalize([0.3]*1536)
         blended = 0.7 * np.zeros(1536) + 0.3 * np.ones(1536)
@@ -215,7 +220,8 @@ class TestAppliedNoProfileUpdate:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "applied", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "applied", conn=conn)
 
         all_calls = conn.execute.call_args_list
         sqls = [c[0][0] for c in all_calls]
@@ -271,7 +277,8 @@ class TestNoEmbeddingLikeSkipsAffinityUpdate:
         ]
         conn = _make_mock_conn(side_effects)
 
-        record_feedback("u1", "job1", "like", conn=conn)
+        with patch("wekruit_matching.feedback.handler.register_vector"):
+            record_feedback("u1", "job1", "like", conn=conn)
 
         all_calls = conn.execute.call_args_list
         sqls = [c[0][0] for c in all_calls]
