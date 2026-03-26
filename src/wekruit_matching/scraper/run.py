@@ -16,7 +16,7 @@ from loguru import logger
 
 from wekruit_matching.db.connection import get_connection
 from wekruit_matching.scraper.fetcher import REPO_INTERNSHIPS, REPO_NEW_GRAD, fetch_readme
-from wekruit_matching.scraper.jobright import scrape_jobright
+from wekruit_matching.scraper.jobright_github import scrape_jobright_github
 from wekruit_matching.scraper.parser import parse_readme
 from wekruit_matching.scraper.upsert import mark_stale_jobs, upsert_jobs
 
@@ -57,10 +57,10 @@ def scrape_all() -> dict[str, dict]:
                 logger.error("Failed to scrape {}: {}", repo_slug, e)
                 all_stats[repo_slug] = {"error": str(e)}
 
-        # --- JobRight.ai ---
-        logger.info("Scraping JobRight.ai (intern + newgrad)")
+        # --- JobRight.ai (GitHub repos) ---
+        logger.info("Scraping JobRight GitHub repos (intern + newgrad)")
         try:
-            jobright_jobs = scrape_jobright()
+            jobright_jobs = scrape_jobright_github()
             logger.info("Fetched {} unique jobs from JobRight", len(jobright_jobs))
 
             # Group by source_repo for upsert + stale marking
