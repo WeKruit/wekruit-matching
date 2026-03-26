@@ -189,7 +189,9 @@ def apply_hard_filters(jobs: list[dict], profile: UserProfile) -> list[dict]:
 
     result = filter_by_job_type(jobs, profile.preferred_job_type)
     result = filter_by_sponsorship(result, profile.requires_sponsorship)
-    result = filter_by_location(result, profile.preferred_locations)
+    # Location is intentionally NOT a hard filter — it's a scoring signal.
+    # Users should see all relevant jobs; location preference boosts score
+    # via location_fit in scorer.py, but doesn't eliminate results.
 
     logger.debug("Hard filters: {} -> {} jobs", original_count, len(result))
     return result

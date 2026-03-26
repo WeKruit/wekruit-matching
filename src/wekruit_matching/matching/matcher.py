@@ -215,7 +215,7 @@ def get_matches(
         # ------------------------------------------------------------------
         scored: list[dict] = []
         for job in filtered:
-            score_result = score_job(job, profile, query_embedding)
+            score_result = score_job(job, profile, query_embedding or [])
             # Merge job fields + score/signals into one dict
             scored.append({**job, **score_result})
 
