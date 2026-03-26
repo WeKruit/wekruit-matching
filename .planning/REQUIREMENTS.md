@@ -30,16 +30,16 @@
 
 ### Enrichment
 
-- [ ] **ENRC-01**: LLM enrichment classifies industry (tech, fintech, healthtech, etc.)
-- [ ] **ENRC-02**: LLM enrichment estimates company size (startup, midsize, large)
-- [ ] **ENRC-03**: LLM enrichment extracts likely required skills
-- [ ] **ENRC-04**: LLM enrichment estimates visa sponsorship likelihood
-- [ ] **ENRC-05**: Content-hash gating: only enrich new or changed jobs (skip unchanged)
+- [x] **ENRC-01**: LLM enrichment classifies industry (tech, fintech, healthtech, etc.)
+- [x] **ENRC-02**: LLM enrichment estimates company size (startup, midsize, large)
+- [x] **ENRC-03**: LLM enrichment extracts likely required skills
+- [x] **ENRC-04**: LLM enrichment estimates visa sponsorship likelihood
+- [x] **ENRC-05**: Content-hash gating: only enrich new or changed jobs (skip unchanged)
 - [ ] **ENRC-06**: Embedding generation via OpenAI text-embedding-3-small for each job
 - [ ] **ENRC-07**: Embedding stored in pgvector column for ANN retrieval
 - [ ] **ENRC-08**: Enrichment stores embedding_model identifier for drift tracking
-- [ ] **ENRC-09**: Rate limiting and retry logic for Anthropic and OpenAI API calls
-- [ ] **ENRC-10**: Structured output validation (null/unknown as first-class values, not hallucinated guesses)
+- [x] **ENRC-09**: Rate limiting and retry logic for Anthropic and OpenAI API calls
+- [x] **ENRC-10**: Structured output validation (null/unknown as first-class values, not hallucinated guesses)
 
 ### Matching
 
@@ -123,16 +123,16 @@
 | SCRP-07 | Phase 2 — Scraper | Complete |
 | SCRP-08 | Phase 2 — Scraper | Complete |
 | SCRP-09 | Phase 2 — Scraper | Complete |
-| ENRC-01 | Phase 3 — LLM Enrichment | Pending |
-| ENRC-02 | Phase 3 — LLM Enrichment | Pending |
-| ENRC-03 | Phase 3 — LLM Enrichment | Pending |
-| ENRC-04 | Phase 3 — LLM Enrichment | Pending |
-| ENRC-05 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-01 | Phase 3 — LLM Enrichment | Complete |
+| ENRC-02 | Phase 3 — LLM Enrichment | Complete |
+| ENRC-03 | Phase 3 — LLM Enrichment | Complete |
+| ENRC-04 | Phase 3 — LLM Enrichment | Complete |
+| ENRC-05 | Phase 3 — LLM Enrichment | Complete |
 | ENRC-06 | Phase 4 — Embeddings | Pending |
 | ENRC-07 | Phase 4 — Embeddings | Pending |
 | ENRC-08 | Phase 4 — Embeddings | Pending |
-| ENRC-09 | Phase 3 — LLM Enrichment | Pending |
-| ENRC-10 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-09 | Phase 3 — LLM Enrichment | Complete |
+| ENRC-10 | Phase 3 — LLM Enrichment | Complete |
 | MTCH-01 | Phase 5 — Hard Filters | Pending |
 | MTCH-02 | Phase 5 — Hard Filters | Pending |
 | MTCH-03 | Phase 5 — Hard Filters | Pending |

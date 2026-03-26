@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 03-llm-enrichment-01-PLAN.md
-last_updated: "2026-03-26T02:16:21.425Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 03-llm-enrichment-02-PLAN.md
+last_updated: "2026-03-26T02:20:22.839Z"
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -52,6 +52,7 @@ Plan: 2 of 2
 | Phase 02-scraper P02 | 5 | 2 tasks | 4 files |
 | Phase 02-scraper P03 | 3 | 2 tasks | 3 files |
 | Phase 03-llm-enrichment P01 | 2 | 2 tasks | 3 files |
+| Phase 03-llm-enrichment P02 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 03-llm-enrichment]: _get_client() returns cached Anthropic client — test-injectable via patch without lru_cache invalidation issues
 - [Phase 03-llm-enrichment]: skills_in_vocab validator lowercases before KNOWN_SKILLS intersection — LLM may return mixed case; normalizing at validation time ensures DB consistency
 - [Phase 03-llm-enrichment]: classify_job never raises — catches all exceptions and returns safe default (all unknown/null); enrichment worker in Plan 02 handles safe defaults
+- [Phase 03-llm-enrichment]: commit after each successful job write (not batched) — partial batch progress is preserved on failure
+- [Phase 03-llm-enrichment]: enriched_at IS NULL is the sole worker gate — upsert.py CASE expression clears it on content_hash change
+- [Phase 03-llm-enrichment]: per-job failure isolation: classify_job exception increments failed counter without aborting the batch
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T02:16:21.423Z
-Stopped at: Completed 03-llm-enrichment-01-PLAN.md
+Last session: 2026-03-26T02:20:22.837Z
+Stopped at: Completed 03-llm-enrichment-02-PLAN.md
 Resume file: None
