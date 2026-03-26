@@ -67,6 +67,18 @@ def _run(
     register_vector(conn)
 
     # ------------------------------------------------------------------
+    # Step 0: Ensure user_profiles row exists (lazy creation for VALET users)
+    # ------------------------------------------------------------------
+    conn.execute(
+        """
+        INSERT INTO user_profiles (user_id, skills, liked_companies, disliked_companies, updated_at)
+        VALUES (%s, '{}', '{}', '{}', NOW())
+        ON CONFLICT (user_id) DO NOTHING
+        """,
+        (user_id,),
+    )
+
+    # ------------------------------------------------------------------
     # Step 1: Insert feedback row (idempotent)
     # ------------------------------------------------------------------
     # TODO(W8): ON CONFLICT DO NOTHING has no effect without a unique constraint on
