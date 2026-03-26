@@ -46,16 +46,16 @@
 - [x] **MTCH-01**: Hard filter by job_type (intern / new_grad)
 - [x] **MTCH-02**: Hard filter by sponsorship requirement
 - [x] **MTCH-03**: Fuzzy location matching with normalization (SF/San Francisco, NYC/New York, Remote)
-- [ ] **MTCH-04**: Title similarity scoring via embedding cosine similarity (weight: 0.30)
-- [ ] **MTCH-05**: Skills overlap scoring — user skills vs job required skills (weight: 0.25)
-- [ ] **MTCH-06**: Industry match scoring (weight: 0.15)
-- [ ] **MTCH-07**: Company size preference scoring (weight: 0.10)
-- [ ] **MTCH-08**: Location fit scoring (weight: 0.10)
-- [ ] **MTCH-09**: Recency scoring — newer posts rank higher (weight: 0.05)
-- [ ] **MTCH-10**: Feedback boost scoring from past likes/dislikes (weight: 0.05)
-- [ ] **MTCH-11**: Returns top-N ranked jobs with individual signal breakdown per match
+- [x] **MTCH-04**: Title similarity scoring via embedding cosine similarity (weight: 0.30)
+- [x] **MTCH-05**: Skills overlap scoring — user skills vs job required skills (weight: 0.25)
+- [x] **MTCH-06**: Industry match scoring (weight: 0.15)
+- [x] **MTCH-07**: Company size preference scoring (weight: 0.10)
+- [x] **MTCH-08**: Location fit scoring (weight: 0.10)
+- [x] **MTCH-09**: Recency scoring — newer posts rank higher (weight: 0.05)
+- [x] **MTCH-10**: Feedback boost scoring from past likes/dislikes (weight: 0.05)
+- [x] **MTCH-11**: Returns top-N ranked jobs with individual signal breakdown per match
 - [ ] **MTCH-12**: Library API entry point: `get_matches(profile, top_n=30) -> list[dict]`
-- [ ] **MTCH-13**: Cold-start mode for users with no feedback history (neutral feedback signal)
+- [x] **MTCH-13**: Cold-start mode for users with no feedback history (neutral feedback signal)
 
 ### Feedback
 
@@ -136,16 +136,16 @@
 | MTCH-01 | Phase 5 — Hard Filters | Complete |
 | MTCH-02 | Phase 5 — Hard Filters | Complete |
 | MTCH-03 | Phase 5 — Hard Filters | Complete |
-| MTCH-04 | Phase 6 — Scoring Engine | Pending |
-| MTCH-05 | Phase 6 — Scoring Engine | Pending |
-| MTCH-06 | Phase 6 — Scoring Engine | Pending |
-| MTCH-07 | Phase 6 — Scoring Engine | Pending |
-| MTCH-08 | Phase 6 — Scoring Engine | Pending |
-| MTCH-09 | Phase 6 — Scoring Engine | Pending |
-| MTCH-10 | Phase 6 — Scoring Engine | Pending |
-| MTCH-11 | Phase 6 — Scoring Engine | Pending |
+| MTCH-04 | Phase 6 — Scoring Engine | Complete |
+| MTCH-05 | Phase 6 — Scoring Engine | Complete |
+| MTCH-06 | Phase 6 — Scoring Engine | Complete |
+| MTCH-07 | Phase 6 — Scoring Engine | Complete |
+| MTCH-08 | Phase 6 — Scoring Engine | Complete |
+| MTCH-09 | Phase 6 — Scoring Engine | Complete |
+| MTCH-10 | Phase 6 — Scoring Engine | Complete |
+| MTCH-11 | Phase 6 — Scoring Engine | Complete |
 | MTCH-12 | Phase 6 — Scoring Engine | Pending |
-| MTCH-13 | Phase 6 — Scoring Engine | Pending |
+| MTCH-13 | Phase 6 — Scoring Engine | Complete |
 | FDBK-01 | Phase 7 — Feedback Loop | Pending |
 | FDBK-02 | Phase 7 — Feedback Loop | Pending |
 | FDBK-03 | Phase 7 — Feedback Loop | Pending |

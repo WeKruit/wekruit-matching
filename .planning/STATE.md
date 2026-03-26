@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 05-hard-filters-01-PLAN.md
-last_updated: "2026-03-26T02:53:17.381Z"
+status: Ready to execute
+stopped_at: Completed 06-scoring-engine-01-PLAN.md
+last_updated: "2026-03-26T03:02:14.403Z"
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Given a user profile, return the most relevant job listings ranked by fit
-**Current focus:** Phase 05 — Hard Filters
+**Current focus:** Phase 06 — Scoring Engine
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (Scoring Engine) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: Not started
 | Phase 04-embeddings P01 | 2 | 1 tasks | 3 files |
 | Phase 04-embeddings P02 | 2 | 2 tasks | 3 files |
 | Phase 05-hard-filters P01 | 3 | 2 tasks | 3 files |
+| Phase 06-scoring-engine P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 05-hard-filters]: Filter chain order: job_type -> sponsorship -> location; post-ANN retrieval (not SQL pre-filters)
 - [Phase 05-hard-filters]: LOCATION_ALIASES canonical buckets: SF, NYC, LA, Remote, Seattle, Austin, Boston, Chicago with common variants
 - [Phase 05-hard-filters]: remote-is-universal: location_raw=Remote matches any preference; preferred=Remote matches all jobs
+- [Phase 06-scoring-engine]: score_location_fit reuses _job_location_buckets/_preferred_buckets from filters.py — no location normalization duplication
+- [Phase 06-scoring-engine]: feedback_boost cold-start default is 0.5 per MTCH-13 — neutral signal for unknown companies
+- [Phase 06-scoring-engine]: scorer.py signal functions are pure: only primitive inputs, no DB handles or ORM models passed in
 
 ### Pending Todos
 
@@ -106,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T02:50:20.304Z
-Stopped at: Completed 05-hard-filters-01-PLAN.md
+Last session: 2026-03-26T03:02:14.401Z
+Stopped at: Completed 06-scoring-engine-01-PLAN.md
 Resume file: None
