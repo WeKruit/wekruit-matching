@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 03-llm-enrichment-02-PLAN.md
-last_updated: "2026-03-26T02:23:47.213Z"
+status: Ready to execute
+stopped_at: Completed 04-embeddings-01-PLAN.md
+last_updated: "2026-03-26T02:32:51.208Z"
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Given a user profile, return the most relevant job listings ranked by fit
-**Current focus:** Phase 03 — LLM Enrichment
+**Current focus:** Phase 04 — Embeddings
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 04 (Embeddings) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Plan: Not started
 | Phase 02-scraper P03 | 3 | 2 tasks | 3 files |
 | Phase 03-llm-enrichment P01 | 2 | 2 tasks | 3 files |
 | Phase 03-llm-enrichment P02 | 2 | 2 tasks | 4 files |
+| Phase 04-embeddings P01 | 2 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 03-llm-enrichment]: commit after each successful job write (not batched) — partial batch progress is preserved on failure
 - [Phase 03-llm-enrichment]: enriched_at IS NULL is the sole worker gate — upsert.py CASE expression clears it on content_hash change
 - [Phase 03-llm-enrichment]: per-job failure isolation: classify_job exception increments failed counter without aborting the batch
+- [Phase 04-embeddings]: Use retry_if_exception(_should_retry_openai) not retry_if_exception_type — restricts retries to 429 and 5xx only, 4xx pass through immediately
+- [Phase 04-embeddings]: embed_text accepts optional client param — test-injectable without needing lru_cache invalidation tricks
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T02:20:22.837Z
-Stopped at: Completed 03-llm-enrichment-02-PLAN.md
+Last session: 2026-03-26T02:32:51.206Z
+Stopped at: Completed 04-embeddings-01-PLAN.md
 Resume file: None

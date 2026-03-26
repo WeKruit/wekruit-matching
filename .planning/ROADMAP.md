@@ -82,7 +82,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — OpenAI embedder: embed_text(), compose_embedding_text(), EMBEDDING_MODEL, tenacity retry
+- [x] 04-01-PLAN.md — OpenAI embedder: embed_text(), compose_embedding_text(), EMBEDDING_MODEL, tenacity retry
 - [ ] 04-02-PLAN.md — Embedding worker: gating (embedded_at IS NULL AND enriched_at IS NOT NULL), DB writes, CLI entrypoint, HNSW index verification test
 
 ### Phase 5: Hard Filters
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
-| 4. Embeddings | 0/2 | Not started | - |
+| 4. Embeddings | 1/2 | In Progress|  |
 | 5. Hard Filters | 0/? | Not started | - |
 | 6. Scoring Engine | 0/? | Not started | - |
 | 7. Feedback Loop | 0/? | Not started | - |
