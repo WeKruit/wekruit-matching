@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Backend pipeline: scrapes job listings, enriches with LLM metadata, returns ranked matches against user profiles"
 requires-python = ">=3.12"
 dependencies = [
-    "psycopg[binary]>=3.1",
+    "psycopg[binary,pool]>=3.1",
     "pgvector>=0.4.2",
     "sqlalchemy>=2.0",
     "alembic>=1.18",
