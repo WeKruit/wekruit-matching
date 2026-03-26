@@ -18,6 +18,8 @@ dependencies = [
     "loguru>=0.7",
     "python-dateutil>=2.0",
     "mistune>=3.0",
+    "fastapi>=0.135.2",
+    "uvicorn>=0.42.0",
 ]
 
 [project.optional-dependencies]
