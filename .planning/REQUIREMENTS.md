@@ -106,56 +106,56 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
-| FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
-| FOUND-05 | Phase 1 | Pending |
-| FOUND-06 | Phase 1 | Pending |
-| FOUND-07 | Phase 1 | Pending |
-| FOUND-08 | Phase 1 | Pending |
-| SCRP-01 | Phase 2 | Pending |
-| SCRP-02 | Phase 2 | Pending |
-| SCRP-03 | Phase 2 | Pending |
-| SCRP-04 | Phase 2 | Pending |
-| SCRP-05 | Phase 2 | Pending |
-| SCRP-06 | Phase 2 | Pending |
-| SCRP-07 | Phase 2 | Pending |
-| SCRP-08 | Phase 2 | Pending |
-| SCRP-09 | Phase 2 | Pending |
-| ENRC-01 | Phase 3 | Pending |
-| ENRC-02 | Phase 3 | Pending |
-| ENRC-03 | Phase 3 | Pending |
-| ENRC-04 | Phase 3 | Pending |
-| ENRC-05 | Phase 3 | Pending |
-| ENRC-06 | Phase 4 | Pending |
-| ENRC-07 | Phase 4 | Pending |
-| ENRC-08 | Phase 4 | Pending |
-| ENRC-09 | Phase 3 | Pending |
-| ENRC-10 | Phase 3 | Pending |
-| MTCH-01 | Phase 5 | Pending |
-| MTCH-02 | Phase 5 | Pending |
-| MTCH-03 | Phase 5 | Pending |
-| MTCH-04 | Phase 6 | Pending |
-| MTCH-05 | Phase 6 | Pending |
-| MTCH-06 | Phase 6 | Pending |
-| MTCH-07 | Phase 6 | Pending |
-| MTCH-08 | Phase 6 | Pending |
-| MTCH-09 | Phase 6 | Pending |
-| MTCH-10 | Phase 6 | Pending |
-| MTCH-11 | Phase 6 | Pending |
-| MTCH-12 | Phase 6 | Pending |
-| MTCH-13 | Phase 6 | Pending |
-| FDBK-01 | Phase 7 | Pending |
-| FDBK-02 | Phase 7 | Pending |
-| FDBK-03 | Phase 7 | Pending |
-| FDBK-04 | Phase 7 | Pending |
-| FDBK-05 | Phase 7 | Pending |
-| INTG-01 | Phase 8 | Pending |
-| INTG-02 | Phase 8 | Pending |
-| INTG-03 | Phase 8 | Pending |
-| INTG-04 | Phase 8 | Pending |
-| INTG-05 | Phase 8 | Pending |
+| FOUND-01 | Phase 1 — Foundation | Pending |
+| FOUND-02 | Phase 1 — Foundation | Pending |
+| FOUND-03 | Phase 1 — Foundation | Pending |
+| FOUND-04 | Phase 1 — Foundation | Pending |
+| FOUND-05 | Phase 1 — Foundation | Pending |
+| FOUND-06 | Phase 1 — Foundation | Pending |
+| FOUND-07 | Phase 1 — Foundation | Pending |
+| FOUND-08 | Phase 1 — Foundation | Pending |
+| SCRP-01 | Phase 2 — Scraper | Pending |
+| SCRP-02 | Phase 2 — Scraper | Pending |
+| SCRP-03 | Phase 2 — Scraper | Pending |
+| SCRP-04 | Phase 2 — Scraper | Pending |
+| SCRP-05 | Phase 2 — Scraper | Pending |
+| SCRP-06 | Phase 2 — Scraper | Pending |
+| SCRP-07 | Phase 2 — Scraper | Pending |
+| SCRP-08 | Phase 2 — Scraper | Pending |
+| SCRP-09 | Phase 2 — Scraper | Pending |
+| ENRC-01 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-02 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-03 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-04 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-05 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-06 | Phase 4 — Embeddings | Pending |
+| ENRC-07 | Phase 4 — Embeddings | Pending |
+| ENRC-08 | Phase 4 — Embeddings | Pending |
+| ENRC-09 | Phase 3 — LLM Enrichment | Pending |
+| ENRC-10 | Phase 3 — LLM Enrichment | Pending |
+| MTCH-01 | Phase 5 — Hard Filters | Pending |
+| MTCH-02 | Phase 5 — Hard Filters | Pending |
+| MTCH-03 | Phase 5 — Hard Filters | Pending |
+| MTCH-04 | Phase 6 — Scoring Engine | Pending |
+| MTCH-05 | Phase 6 — Scoring Engine | Pending |
+| MTCH-06 | Phase 6 — Scoring Engine | Pending |
+| MTCH-07 | Phase 6 — Scoring Engine | Pending |
+| MTCH-08 | Phase 6 — Scoring Engine | Pending |
+| MTCH-09 | Phase 6 — Scoring Engine | Pending |
+| MTCH-10 | Phase 6 — Scoring Engine | Pending |
+| MTCH-11 | Phase 6 — Scoring Engine | Pending |
+| MTCH-12 | Phase 6 — Scoring Engine | Pending |
+| MTCH-13 | Phase 6 — Scoring Engine | Pending |
+| FDBK-01 | Phase 7 — Feedback Loop | Pending |
+| FDBK-02 | Phase 7 — Feedback Loop | Pending |
+| FDBK-03 | Phase 7 — Feedback Loop | Pending |
+| FDBK-04 | Phase 7 — Feedback Loop | Pending |
+| FDBK-05 | Phase 7 — Feedback Loop | Pending |
+| INTG-01 | Phase 8 — Integration & Operations | Pending |
+| INTG-02 | Phase 8 — Integration & Operations | Pending |
+| INTG-03 | Phase 8 — Integration & Operations | Pending |
+| INTG-04 | Phase 8 — Integration & Operations | Pending |
+| INTG-05 | Phase 8 — Integration & Operations | Pending |
 
 **Coverage:**
 - v1 requirements: 46 total
@@ -164,4 +164,4 @@
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 after roadmap creation*
