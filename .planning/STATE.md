@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 01-foundation-02-PLAN.md
-last_updated: "2026-03-26T01:06:47.949Z"
+status: Ready to execute
+stopped_at: Completed 02-scraper-01-PLAN.md
+last_updated: "2026-03-26T01:19:15.149Z"
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Given a user profile, return the most relevant job listings ranked by fit
-**Current focus:** Phase 01 — Foundation
+**Current focus:** Phase 02 — Scraper
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (Scraper) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Plan: Not started
 *Updated after each plan completion*
 | Phase 01-foundation P01 | 4 | 2 tasks | 14 files |
 | Phase 01-foundation P02 | 12 | 2 tasks | 11 files |
+| Phase 02-scraper P01 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,9 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: psycopg[pool] extra required separately for ConnectionPool (psycopg_pool module)
 - [Phase 01-foundation]: HNSW index with vector_cosine_ops defined in migration via op.execute() — SQLAlchemy cannot express pgvector operator classes in Table() declarations
 - [Phase 01-foundation]: Use SET enable_seqscan=OFF in HNSW index tests — planner legitimately prefers seq scan for small tables; disable to verify index exists and is usable
+- [Phase 02-scraper]: No tenacity for fetcher retry — inline loop is cleaner for 3-attempt backoff and avoids tenacity wrapping errors in test output
+- [Phase 02-scraper]: unicodedata.category() for emoji stripping — future-proof vs hardcoded emoji set, handles new Unicode emoji without code changes
+- [Phase 02-scraper]: compute_content_hash does NOT normalize company_name — normalization is for ID stability only; content hash should detect actual text mutations
 
 ### Pending Todos
 
@@ -78,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T01:02:47.013Z
-Stopped at: Completed 01-foundation-02-PLAN.md
+Last session: 2026-03-26T01:19:15.147Z
+Stopped at: Completed 02-scraper-01-PLAN.md
 Resume file: None

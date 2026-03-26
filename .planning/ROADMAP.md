@@ -51,7 +51,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — GitHub authenticated fetcher (httpx + PAT) and stable ID/content hash utilities
+- [x] 02-01-PLAN.md — GitHub authenticated fetcher (httpx + PAT) and stable ID/content hash utilities
 - [ ] 02-02-PLAN.md — README parser: HTML cell stripping, lock row filtering, continuation row inheritance
 - [ ] 02-03-PLAN.md — Upsert pipeline (ON CONFLICT DO UPDATE, stale marking) and scraper orchestrator
 
@@ -129,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
-| 2. Scraper | 0/3 | Not started | - |
+| 2. Scraper | 1/3 | In Progress|  |
 | 3. LLM Enrichment | 0/? | Not started | - |
 | 4. Embeddings | 0/? | Not started | - |
 | 5. Hard Filters | 0/? | Not started | - |
