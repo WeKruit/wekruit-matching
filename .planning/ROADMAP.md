@@ -107,8 +107,12 @@ Plans:
   2. Changing a profile's skills list visibly changes ranking — jobs matching the new skills rank higher
   3. A profile with no feedback history (cold-start) receives results without errors — the feedback_boost signal is neutral (0) and other signals drive ranking
   4. The scoring function applies title similarity at weight 0.30, skills overlap at 0.25, industry match at 0.15, company size at 0.10, location fit at 0.10, recency at 0.05, and feedback boost at 0.05 — weights sum to 1.00
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: no
+
+Plans:
+- [ ] 06-01-PLAN.md — scorer.py: 7 signal functions, WEIGHTS, score_job() — pure Python TDD, no DB
+- [ ] 06-02-PLAN.md — matcher.py: ANN retrieval via pgvector, hard filters, scoring loop, get_matches() public API
 
 ### Phase 7: Feedback Loop
 **Goal**: Users can record reactions to job matches and those reactions measurably shift future match rankings
@@ -144,6 +148,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
 | 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
 | 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
-| 6. Scoring Engine | 0/? | Not started | - |
+| 6. Scoring Engine | 0/2 | Not started | - |
 | 7. Feedback Loop | 0/? | Not started | - |
 | 8. Integration & Operations | 0/? | Not started | - |
