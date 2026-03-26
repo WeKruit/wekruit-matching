@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Project scaffolding, Postgres + pgvector schema, migrations, and environment config (completed 2026-03-26)
 - [x] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline (completed 2026-03-26)
 - [x] **Phase 3: LLM Enrichment** - Anthropic classification of industry, skills, company size, and sponsorship with cost controls (completed 2026-03-26)
-- [ ] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index
+- [x] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index (completed 2026-03-26)
 - [ ] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization
 - [ ] **Phase 6: Scoring Engine** - 7-signal weighted scoring, ranked results API, and cold-start handling
 - [ ] **Phase 7: Feedback Loop** - Like/dislike recording, affinity embedding updates, and preference propagation
@@ -83,7 +83,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — OpenAI embedder: embed_text(), compose_embedding_text(), EMBEDDING_MODEL, tenacity retry
-- [ ] 04-02-PLAN.md — Embedding worker: gating (embedded_at IS NULL AND enriched_at IS NOT NULL), DB writes, CLI entrypoint, HNSW index verification test
+- [x] 04-02-PLAN.md — Embedding worker: gating (embedded_at IS NULL AND enriched_at IS NOT NULL), DB writes, CLI entrypoint, HNSW index verification test
 
 ### Phase 5: Hard Filters
 **Goal**: Callers can constrain matches to specific job types, sponsorship requirements, and locations before scoring runs
@@ -139,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
 | 2. Scraper | 3/3 | Complete   | 2026-03-26 |
 | 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
-| 4. Embeddings | 1/2 | In Progress|  |
+| 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
 | 5. Hard Filters | 0/? | Not started | - |
 | 6. Scoring Engine | 0/? | Not started | - |
 | 7. Feedback Loop | 0/? | Not started | - |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 04-embeddings-01-PLAN.md
-last_updated: "2026-03-26T02:32:51.208Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 04-embeddings-02-PLAN.md
+last_updated: "2026-03-26T02:37:30.699Z"
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Plan: 2 of 2
 | Phase 03-llm-enrichment P01 | 2 | 2 tasks | 3 files |
 | Phase 03-llm-enrichment P02 | 2 | 2 tasks | 4 files |
 | Phase 04-embeddings P01 | 2 | 1 tasks | 3 files |
+| Phase 04-embeddings P02 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 03-llm-enrichment]: per-job failure isolation: classify_job exception increments failed counter without aborting the batch
 - [Phase 04-embeddings]: Use retry_if_exception(_should_retry_openai) not retry_if_exception_type — restricts retries to 429 and 5xx only, 4xx pass through immediately
 - [Phase 04-embeddings]: embed_text accepts optional client param — test-injectable without needing lru_cache invalidation tricks
+- [Phase 04-embeddings]: register_vector(conn) in embed_pending — per-connection registration belongs in the function that writes vector columns
+- [Phase 04-embeddings]: embed_pending mirrors enrich_pending exactly — same query/loop/commit/counters pattern for consistency
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T02:32:51.206Z
-Stopped at: Completed 04-embeddings-01-PLAN.md
+Last session: 2026-03-26T02:37:30.697Z
+Stopped at: Completed 04-embeddings-02-PLAN.md
 Resume file: None

@@ -36,7 +36,7 @@
 - [x] **ENRC-04**: LLM enrichment estimates visa sponsorship likelihood
 - [x] **ENRC-05**: Content-hash gating: only enrich new or changed jobs (skip unchanged)
 - [x] **ENRC-06**: Embedding generation via OpenAI text-embedding-3-small for each job
-- [ ] **ENRC-07**: Embedding stored in pgvector column for ANN retrieval
+- [x] **ENRC-07**: Embedding stored in pgvector column for ANN retrieval
 - [x] **ENRC-08**: Enrichment stores embedding_model identifier for drift tracking
 - [x] **ENRC-09**: Rate limiting and retry logic for Anthropic and OpenAI API calls
 - [x] **ENRC-10**: Structured output validation (null/unknown as first-class values, not hallucinated guesses)
@@ -129,7 +129,7 @@
 | ENRC-04 | Phase 3 — LLM Enrichment | Complete |
 | ENRC-05 | Phase 3 — LLM Enrichment | Complete |
 | ENRC-06 | Phase 4 — Embeddings | Complete |
-| ENRC-07 | Phase 4 — Embeddings | Pending |
+| ENRC-07 | Phase 4 — Embeddings | Complete |
 | ENRC-08 | Phase 4 — Embeddings | Complete |
 | ENRC-09 | Phase 3 — LLM Enrichment | Complete |
 | ENRC-10 | Phase 3 — LLM Enrichment | Complete |
