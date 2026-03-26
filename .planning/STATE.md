@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 02-scraper-02-PLAN.md
-last_updated: "2026-03-26T01:23:50.690Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 02-scraper-03-PLAN.md
+last_updated: "2026-03-26T01:28:48.621Z"
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -50,6 +50,7 @@ Plan: 3 of 3
 | Phase 01-foundation P02 | 12 | 2 tasks | 11 files |
 | Phase 02-scraper P01 | 2 | 2 tasks | 5 files |
 | Phase 02-scraper P02 | 5 | 2 tasks | 4 files |
+| Phase 02-scraper P03 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 02-scraper]: compute_content_hash does NOT normalize company_name — normalization is for ID stability only; content hash should detect actual text mutations
 - [Phase 02-scraper]: Line-based markdown table extraction over mistune AST — SimplifyJobs format is well-defined; split on | is simpler and more reliable for this specific structure
 - [Phase 02-scraper]: stdlib html.parser.HTMLParser for HTML stripping — no additional dependency; handles all HTML patterns in SimplifyJobs README cells correctly
+- [Phase 02-scraper]: CTE approach for old_hash capture in ON CONFLICT upsert — RETURNING sees post-update values so pre-upsert snapshot via CTE is required for accurate insert/update/unchanged classification
+- [Phase 02-scraper]: mark_stale_jobs uses separate query path for empty seen_ids — NOT IN () is SQL syntax error; empty set triggers WHERE source_repo = X AND status = 'active' without NOT IN
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-26T01:23:50.688Z
-Stopped at: Completed 02-scraper-02-PLAN.md
+Last session: 2026-03-26T01:28:48.619Z
+Stopped at: Completed 02-scraper-03-PLAN.md
 Resume file: None

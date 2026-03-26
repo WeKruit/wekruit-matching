@@ -20,12 +20,12 @@
 
 - [x] **SCRP-01**: Scraper fetches raw README from SimplifyJobs/Summer2026-Internships GitHub repo
 - [x] **SCRP-02**: Scraper fetches raw README from SimplifyJobs/New-Grad-Positions GitHub repo
-- [ ] **SCRP-03**: Parser correctly handles embedded HTML in markdown table cells (details/summary blocks)
-- [ ] **SCRP-04**: Parser skips closed listings (lock emoji rows)
-- [ ] **SCRP-05**: Parser handles continuation rows (arrow emoji for same-company listings)
+- [x] **SCRP-03**: Parser correctly handles embedded HTML in markdown table cells (details/summary blocks)
+- [x] **SCRP-04**: Parser skips closed listings (lock emoji rows)
+- [x] **SCRP-05**: Parser handles continuation rows (arrow emoji for same-company listings)
 - [x] **SCRP-06**: Stable ID generation with emoji normalization (strip decorative emoji before hashing)
 - [x] **SCRP-07**: GitHub fetch uses authenticated requests (PAT) to avoid rate limits
-- [ ] **SCRP-08**: Upsert logic: insert new jobs, update existing, mark stale as inactive
+- [x] **SCRP-08**: Upsert logic: insert new jobs, update existing, mark stale as inactive
 - [x] **SCRP-09**: Content hash per job to detect actual changes vs unchanged re-scrapes
 
 ### Enrichment
@@ -116,12 +116,12 @@
 | FOUND-08 | Phase 1 — Foundation | Complete |
 | SCRP-01 | Phase 2 — Scraper | Complete |
 | SCRP-02 | Phase 2 — Scraper | Complete |
-| SCRP-03 | Phase 2 — Scraper | Pending |
-| SCRP-04 | Phase 2 — Scraper | Pending |
-| SCRP-05 | Phase 2 — Scraper | Pending |
+| SCRP-03 | Phase 2 — Scraper | Complete |
+| SCRP-04 | Phase 2 — Scraper | Complete |
+| SCRP-05 | Phase 2 — Scraper | Complete |
 | SCRP-06 | Phase 2 — Scraper | Complete |
 | SCRP-07 | Phase 2 — Scraper | Complete |
-| SCRP-08 | Phase 2 — Scraper | Pending |
+| SCRP-08 | Phase 2 — Scraper | Complete |
 | SCRP-09 | Phase 2 — Scraper | Complete |
 | ENRC-01 | Phase 3 — LLM Enrichment | Pending |
 | ENRC-02 | Phase 3 — LLM Enrichment | Pending |

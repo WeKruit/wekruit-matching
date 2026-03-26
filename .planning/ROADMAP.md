@@ -13,7 +13,7 @@ Build a production-ready Python backend pipeline that pulls job listings from Si
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Project scaffolding, Postgres + pgvector schema, migrations, and environment config (completed 2026-03-26)
-- [ ] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline
+- [x] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline (completed 2026-03-26)
 - [ ] **Phase 3: LLM Enrichment** - Anthropic classification of industry, skills, company size, and sponsorship with cost controls
 - [ ] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index
 - [ ] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization
@@ -53,7 +53,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md — GitHub authenticated fetcher (httpx + PAT) and stable ID/content hash utilities
 - [x] 02-02-PLAN.md — README parser: HTML cell stripping, lock row filtering, continuation row inheritance
-- [ ] 02-03-PLAN.md — Upsert pipeline (ON CONFLICT DO UPDATE, stale marking) and scraper orchestrator
+- [x] 02-03-PLAN.md — Upsert pipeline (ON CONFLICT DO UPDATE, stale marking) and scraper orchestrator
 
 ### Phase 3: LLM Enrichment
 **Goal**: Every unenriched job in the database is classified with industry, company size, required skills, and sponsorship likelihood — without re-enriching unchanged jobs
@@ -129,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete   | 2026-03-26 |
-| 2. Scraper | 2/3 | In Progress|  |
+| 2. Scraper | 3/3 | Complete   | 2026-03-26 |
 | 3. LLM Enrichment | 0/? | Not started | - |
 | 4. Embeddings | 0/? | Not started | - |
 | 5. Hard Filters | 0/? | Not started | - |
