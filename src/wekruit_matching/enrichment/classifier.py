@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from typing import Optional
 
-import anthropic
-from pydantic import BaseModel, field_validator
 from loguru import logger
+from openai import APIStatusError, OpenAI, RateLimitError
+from pydantic import BaseModel, field_validator
 from tenacity import (
     retry,
     retry_if_exception,
@@ -25,15 +24,20 @@ from tenacity import (
 from wekruit_matching.config import get_settings
 from wekruit_matching.models.job import Job
 
-
 # ---------------------------------------------------------------------------
 # Controlled vocabularies
 # ---------------------------------------------------------------------------
 
 INDUSTRY_VOCAB: frozenset[str] = frozenset({
-    "tech", "fintech", "healthtech", "ecommerce", "enterprise_saas",
-    "ai_ml", "cybersecurity", "gaming", "social_media", "hardware",
-    "consulting", "other", "unknown",
+    "tech", "fintech", "healthtech", "healthcare", "ecommerce",
+    "enterprise_saas", "ai_ml", "cybersecurity", "gaming", "social_media",
+    "hardware", "consulting", "telecom", "automotive", "aerospace_defense",
+    "construction", "defense", "security", "manufacturing", "retail",
+    "media", "education", "government", "energy", "transportation",
+    "hospitality", "real_estate", "nonprofit", "legal", "pharma",
+    "banking", "finance", "insurance", "logistics", "food_service",
+    "agriculture", "mining", "utilities",
+    "other", "unknown",
 })
 
 COMPANY_SIZE_VOCAB: frozenset[str] = frozenset({"startup", "midsize", "large", "unknown"})
@@ -67,26 +71,36 @@ class EnrichmentResult(BaseModel):
     industry: str
     company_size: str
     required_skills: list[str]
-    sponsorship: Optional[bool] = None
+    sponsorship: bool | None = None
 
     @field_validator("industry")
     @classmethod
-    def industry_in_vocab(cls, v: str) -> str:
-        if v not in INDUSTRY_VOCAB:
-            raise ValueError(f"industry '{v}' not in controlled vocabulary {INDUSTRY_VOCAB}")
-        return v
+    def industry_normalized(cls, v: str) -> str:
+        """Lowercase, strip, default to 'unknown'. Accept any value."""
+        val = v.lower().strip().replace(" ", "_") if v else "unknown"
+        return val or "unknown"
 
     @field_validator("company_size")
     @classmethod
-    def company_size_in_vocab(cls, v: str) -> str:
-        if v not in COMPANY_SIZE_VOCAB:
-            raise ValueError(f"company_size '{v}' not in {COMPANY_SIZE_VOCAB}")
-        return v
+    def company_size_normalized(cls, v: str) -> str:
+        """Normalize to known sizes or 'unknown'."""
+        val = v.lower().strip() if v else "unknown"
+        if val not in ("startup", "midsize", "large", "unknown"):
+            return "unknown"
+        return val
 
     @field_validator("required_skills")
     @classmethod
-    def skills_in_vocab(cls, v: list[str]) -> list[str]:
-        return [s for s in v if s.lower() in KNOWN_SKILLS]
+    def skills_normalized(cls, v: list[str]) -> list[str]:
+        """Normalize skills to lowercase, deduplicate, cap at 15."""
+        seen: set[str] = set()
+        out: list[str] = []
+        for s in v:
+            key = s.lower().strip()
+            if key and key not in seen:
+                seen.add(key)
+                out.append(key)
+        return out[:15]
 
 
 def _safe_default() -> EnrichmentResult:
@@ -100,38 +114,44 @@ def _safe_default() -> EnrichmentResult:
 
 
 # ---------------------------------------------------------------------------
-# Anthropic client (cached, test-injectable via _get_client)
+# SiliconFlow client (Qwen3-8B — free tier, OpenAI-compatible)
 # ---------------------------------------------------------------------------
 
+_CLASSIFIER_MODEL = "Qwen/Qwen3-8B"
+_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+
 @lru_cache(maxsize=1)
-def _get_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
+def _get_client() -> OpenAI:
+    settings = get_settings()
+    return OpenAI(
+        api_key=settings.siliconflow_api_key,
+        base_url=_SILICONFLOW_BASE_URL,
+    )
 
 
 _SYSTEM_PROMPT = """\
-You are a job-listing classifier. Given a job listing, return ONLY a JSON object
-with these exact keys — no explanation, no markdown, no extra text:
+You are a job-listing classifier. Return ONLY valid JSON with these keys:
 
 {
-  "industry": "<one of: tech, fintech, healthtech, ecommerce, enterprise_saas, ai_ml, cybersecurity, gaming, social_media, hardware, consulting, other, unknown>",
-  "company_size": "<one of: startup, midsize, large, unknown>",
+  "industry": "<lowercase snake_case industry, e.g. tech, healthcare, retail, banking>",
+  "company_size": "<startup | midsize | large | unknown>",
   "skills_inferred": ["<skill1>", "<skill2>", ...],
   "likely_sponsors_visa": <true | false | null>
 }
 
 Rules:
-- Use "unknown" when there is insufficient signal — never guess.
-- For likely_sponsors_visa: true = explicitly offers, false = explicitly does not, null = no signal.
-- skills_inferred should list common technical skills implied by the role title and company type.
-- Output valid JSON only. No markdown code fences.
+- industry: use a short, specific label. Use "unknown" only when truly uncertain.
+- skills_inferred: list key skills for the role (technical, soft, or domain-specific). Max 8.
+- likely_sponsors_visa: true = explicitly offers, false = explicitly does not, null = no signal.
+- Output valid JSON only. No markdown, no explanation.
 """
 
 
 def _should_retry(exc: BaseException) -> bool:
     """Retry on rate-limit or server errors only."""
-    if isinstance(exc, anthropic.RateLimitError):
+    if isinstance(exc, RateLimitError):
         return True
-    if isinstance(exc, anthropic.APIStatusError) and exc.status_code >= 500:
+    if isinstance(exc, APIStatusError) and exc.status_code >= 500:
         return True
     return False
 
@@ -142,23 +162,26 @@ def _should_retry(exc: BaseException) -> bool:
     retry=retry_if_exception(_should_retry),
     reraise=True,
 )
-def _call_anthropic(client: anthropic.Anthropic, prompt: str) -> str:
-    """Call the Anthropic API and return the raw text content.
+def _call_llm(client: OpenAI, prompt: str) -> str:
+    """Call SiliconFlow Qwen3-8B and return the raw text content.
 
     Tenacity retries only on RateLimitError (429) and server-side 5xx errors.
-    Client errors (400/401/403) and connection errors propagate immediately.
+    Free tier: 1000 RPM, 50K TPM.
     """
-    response = client.messages.create(
-        model="claude-haiku-4-5",
+    response = client.chat.completions.create(
+        model=_CLASSIFIER_MODEL,
         max_tokens=512,
-        system=_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
     )
-    return response.content[0].text
+    return response.choices[0].message.content or ""
 
 
 def classify_job(job: Job) -> EnrichmentResult:
-    """Classify a single job listing using Claude Haiku.
+    """Classify a single job listing using GPT-5.4 Nano.
 
     Returns an EnrichmentResult with controlled-vocabulary fields.
     On any API or parse failure, returns _safe_default() — never raises.
@@ -170,10 +193,12 @@ def classify_job(job: Job) -> EnrichmentResult:
         f"Role: {job.role_title}\n"
         f"Location: {job.location_raw or 'unknown'}"
     )
+    if job.job_description:
+        prompt += f"\nJob Description: {job.job_description[:4000]}"
     client = _get_client()
     try:
-        raw = _call_anthropic(client, prompt)
-        # Strip markdown code fences if present (Claude sometimes wraps in ```json ... ```)
+        raw = _call_llm(client, prompt)
+        # Strip markdown code fences if present
         cleaned = raw.strip()
         if cleaned.startswith("```"):
             cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
