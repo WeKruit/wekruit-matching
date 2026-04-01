@@ -8,6 +8,112 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
+
+# ---------------------------------------------------------------------------
+# _FakeConn helpers for pure unit tests (no DB required)
+# ---------------------------------------------------------------------------
+
+class _FakeResult:
+    """Mimics psycopg cursor result with fetchall()."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeConn:
+    """Minimal fake psycopg3 connection that captures executed queries."""
+
+    def __init__(self, rows=None):
+        # rows returned by SELECT
+        self._rows = rows or []
+        self.executed = []  # list of (query, params) tuples
+
+    def execute(self, query, params=None):
+        self.executed.append((query, params))
+        return _FakeResult(self._rows)
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# ENRICH-01 gap-fill gate — unit tests (no DB needed, use _FakeConn)
+# ---------------------------------------------------------------------------
+
+def test_enrich_pending_where_clause_contains_gap_fill_condition():
+    """WHERE clause in enrich_pending must gate on missing JD or empty skills."""
+    from wekruit_matching.enrichment.worker import enrich_pending
+
+    conn = _FakeConn(rows=[])  # no rows — just check the query
+    enrich_pending(conn)
+
+    assert conn.executed, "enrich_pending must execute at least one query"
+    select_query = conn.executed[0][0]
+    # Must contain the ENRICH-01 gap-fill condition
+    assert "required_skills" in select_query, (
+        "WHERE clause must reference required_skills for ENRICH-01 gap-fill gate"
+    )
+
+
+def test_enrich_pending_where_clause_contains_null_jd_check():
+    """WHERE clause must include job_description IS NULL check."""
+    from wekruit_matching.enrichment.worker import enrich_pending
+
+    conn = _FakeConn(rows=[])
+    enrich_pending(conn)
+
+    select_query = conn.executed[0][0]
+    assert "job_description IS NULL" in select_query, (
+        "WHERE clause must include 'job_description IS NULL' for ENRICH-01"
+    )
+
+
+def test_enrich_pending_log_message_mentions_gap_fill(capfd):
+    """Log message must mention 'gap-fill' when jobs are found."""
+    from wekruit_matching.enrichment.worker import enrich_pending
+    from wekruit_matching.enrichment.classifier import EnrichmentResult
+    import io
+    from loguru import logger
+
+    # Provide a row that would be returned by the gap-fill query
+    fake_row = {
+        "job_id": "a" * 64,
+        "source_repo": "Summer2026-Internships",
+        "company_name": "TestCo",
+        "role_title": "SWE Intern",
+        "location_raw": "SF",
+        "content_hash": "b" * 64,
+        "job_description": None,
+        "required_skills": [],
+    }
+    conn = _FakeConn(rows=[fake_row])
+
+    log_messages = []
+
+    def sink(msg):
+        log_messages.append(str(msg))
+
+    logger.add(sink, level="INFO")
+    try:
+        with patch("wekruit_matching.enrichment.worker.classify_job") as mock_classify:
+            mock_classify.return_value = EnrichmentResult(
+                industry="tech", company_size="startup", required_skills=[], sponsorship=None
+            )
+            enrich_pending(conn)
+    finally:
+        logger.remove()
+
+    combined = " ".join(log_messages)
+    assert "gap-fill" in combined, (
+        f"Log message must mention 'gap-fill' when jobs are found. Got: {combined}"
+    )
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 skip_no_db = pytest.mark.skipif(
     not DATABASE_URL,
