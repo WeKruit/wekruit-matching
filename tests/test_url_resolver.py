@@ -233,15 +233,151 @@ def test_resolve_simplify_jobs_empty():
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_via_slug_registry_stub():
-    """resolve_via_slug_registry stub returns dict with 'resolved' key."""
+def test_resolve_via_slug_registry_returns_stats_dict():
+    """resolve_via_slug_registry returns a dict with resolved/skipped/errors keys."""
     from wekruit_matching.pipeline.url_resolver import resolve_via_slug_registry
 
     conn = MagicMock()
+    empty_cursor = MagicMock()
+    empty_cursor.fetchall.return_value = []
+    conn.execute.return_value = empty_cursor
+
     registry = MagicMock()
+    registry.lookup_all_ats.return_value = {}  # No matches — avoids network calls
 
     result = resolve_via_slug_registry(conn, registry)
 
     assert isinstance(result, dict), "Must return a dict"
-    assert "resolved" in result, "'resolved' key missing from stub result"
-    assert "skipped" in result, "'skipped' key missing from stub result"
+    assert "resolved" in result, "'resolved' key missing from result"
+    assert "skipped" in result, "'skipped' key missing from result"
+    assert "errors" in result, "'errors' key missing from result"
+
+
+# ---------------------------------------------------------------------------
+# Task 1 tests: _title_match helper
+# ---------------------------------------------------------------------------
+
+
+def test_title_match_intern_suffix():
+    """Exact prefix match — intern title matches posting with summer suffix."""
+    from wekruit_matching.pipeline.url_resolver import _title_match
+
+    assert _title_match("Software Engineer Intern", "Software Engineer Intern - Summer 2026") is True
+
+
+def test_title_match_senior_superset():
+    """Senior variation — 'Data Scientist' tokens all present in 'Senior Data Scientist'."""
+    from wekruit_matching.pipeline.url_resolver import _title_match
+
+    assert _title_match("Data Scientist", "Senior Data Scientist") is True
+
+
+def test_title_match_no_overlap():
+    """No token overlap — must return False."""
+    from wekruit_matching.pipeline.url_resolver import _title_match
+
+    assert _title_match("Marketing Manager", "Software Engineer") is False
+
+
+# ---------------------------------------------------------------------------
+# Task 1 tests: resolve_via_slug_registry — success path
+# ---------------------------------------------------------------------------
+
+
+def _make_jobright_conn(rows: list[dict]):
+    """Build a mock conn that returns jobright rows on SELECT then empty."""
+    conn = MagicMock()
+    select_cursor = MagicMock()
+    select_cursor.fetchall.return_value = rows
+    empty_cursor = MagicMock()
+    empty_cursor.fetchall.return_value = []
+    update_cursor = MagicMock()
+
+    call_count = {"n": 0}
+
+    def _execute_side_effect(query, params=None):
+        q = query.strip().upper()
+        if q.startswith("SELECT"):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return select_cursor
+            return empty_cursor
+        return update_cursor
+
+    conn.execute.side_effect = _execute_side_effect
+    conn.commit = MagicMock()
+    return conn
+
+
+def test_resolve_via_slug_registry_match_writes_ats_apply_url(monkeypatch):
+    """Registry matches Stripe → Greenhouse, title matches → ats_apply_url written."""
+    from unittest.mock import MagicMock, patch
+
+    from wekruit_matching.pipeline.url_resolver import resolve_via_slug_registry
+    from wekruit_matching.scraper.url_classifier import ATSTier
+
+    rows = [
+        {
+            "job_id": "jr-001",
+            "company_name": "Stripe",
+            "role_title": "Software Engineer Intern",
+            "primary_url": "https://jobright.ai/jobs/info/abc123",
+        }
+    ]
+    conn = _make_jobright_conn(rows)
+
+    registry = MagicMock()
+    registry.lookup_all_ats.return_value = {ATSTier.GREENHOUSE: "stripe"}
+
+    greenhouse_listings = [
+        ("Software Engineer Intern", "https://boards.greenhouse.io/stripe/jobs/999")
+    ]
+
+    with patch(
+        "wekruit_matching.pipeline.url_resolver._fetch_ats_listings",
+        return_value=greenhouse_listings,
+    ):
+        stats = resolve_via_slug_registry(conn, registry)
+
+    assert stats["resolved"] == 1, f"Expected 1 resolved, got {stats}"
+    assert stats["skipped"] == 0, f"Expected 0 skipped, got {stats}"
+
+    # ats_apply_url must have been written
+    all_calls = conn.execute.call_args_list
+    update_calls = [c for c in all_calls if "UPDATE" in str(c).upper()]
+    assert update_calls, "No UPDATE executed for resolved job"
+    found = any(
+        (args[1] if len(args) > 1 else c.kwargs.get("params", {})).get("url")
+        == "https://boards.greenhouse.io/stripe/jobs/999"
+        for c in update_calls
+        for args in [c.args]
+    )
+    assert found, f"Expected ats_apply_url to be written. Calls: {all_calls}"
+
+
+def test_resolve_via_slug_registry_no_registry_match():
+    """No registry match → job is skipped, nothing written."""
+    from wekruit_matching.pipeline.url_resolver import resolve_via_slug_registry
+
+    rows = [
+        {
+            "job_id": "jr-002",
+            "company_name": "UnknownCo",
+            "role_title": "PM",
+            "primary_url": "https://jobright.ai/jobs/info/xyz",
+        }
+    ]
+    conn = _make_jobright_conn(rows)
+
+    registry = MagicMock()
+    registry.lookup_all_ats.return_value = {}  # No match
+
+    stats = resolve_via_slug_registry(conn, registry)
+
+    assert stats["skipped"] == 1, f"Expected 1 skipped, got {stats}"
+    assert stats["resolved"] == 0, f"Expected 0 resolved, got {stats}"
+
+    # No UPDATE should be issued
+    all_calls = conn.execute.call_args_list
+    update_calls = [c for c in all_calls if "UPDATE" in str(c).upper()]
+    assert not update_calls, f"Unexpected UPDATE for skipped job: {update_calls}"
