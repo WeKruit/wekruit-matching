@@ -1,94 +1,87 @@
 # Requirements: WeKruit Matching Engine
 
-**Defined:** 2026-03-31
-**Core Value:** People monitoring the WeKruit job corpus can immediately understand what jobs exist, what changed, and whether the pipeline is healthy.
+**Defined:** 2026-03-31  
+**Current milestone:** v1.2 Job Data Pipeline  
+**Archived milestone:** v1.1 shipped — see [.planning/milestones/v1.1-REQUIREMENTS.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/milestones/v1.1-REQUIREMENTS.md)
 
-## v1 Requirements
+## v1.2 Requirements — Job Data Pipeline
 
-### Console Foundation
+### Pipeline Infrastructure
 
-- [ ] **CONS-01**: User can move between Jobs, Stale, Stats, and Pipeline from a shared page shell with a clear current-page title and context.
-- [ ] **CONS-02**: User sees a consistent WeKruit visual system across all internal pages instead of page-specific hard-coded styling.
-- [ ] **CONS-03**: UI structure supports both internal and future external surface modes without requiring a page-by-page rewrite.
+- [ ] **PIPE2-01**: The system tracks JD fetch attempts and sources per job so previously-attempted fetches are never re-run on subsequent cron cycles, preventing Firecrawl credit re-spend.
+- [ ] **PIPE2-02**: An alembic migration adds `jd_fetch_source`, `jd_fetch_attempted_at`, and `ats_content_hash` columns with a partial index that the enrichment queue query uses directly.
+- [ ] **PIPE2-03**: The daily pipeline executes ATS JD enrichment as Stage 2b between the existing JobRight enricher (Stage 2a) and LLM metadata classifier (Stage 2c), with zero changes to `cron_scraper.sh` or `enrich_from_jobright.py`.
 
-### Accessibility
+### Source Parsers
 
-- [ ] **A11Y-01**: Keyboard user can identify and operate primary navigation, filters, job links, and pagination controls with visible focus states.
-- [ ] **A11Y-02**: Each page exposes valid heading hierarchy, landmarks, and labeled form controls.
-- [ ] **A11Y-03**: Status information is communicated with text and structure, not color alone.
+- [ ] **PARSE-01**: The system fetches full job description HTML from Greenhouse board API (`?content=true`) and returns a normalized plain-text description with salary, department, and location fields mapped to the canonical JD schema.
+- [ ] **PARSE-02**: The system fetches structured job data from Lever Postings API and maps `lists` (requirements, responsibilities, benefits), `descriptionPlain`, `salaryRange`, and `workplaceType` to the canonical JD schema.
+- [ ] **PARSE-03**: The system fetches Ashby job postings with `includeCompensation=true` and maps compensation, employment type, and description to the canonical JD schema.
+- [ ] **PARSE-04**: The system fetches Workday job descriptions via the CXS POST API (`/wday/cxs/{tenant}/{site}/jobs`) with a two-step tenant/site discovery step and Firecrawl fallback for Cloudflare-protected tenants.
+- [ ] **PARSE-05**: All ATS-sourced text passes through a normalization step (html.unescape + NFKC unicode normalization + zero-width character strip) before being written to the database.
 
-### Jobs Browsing
+### URL Resolution
 
-- [ ] **JOBS-01**: User can filter jobs by status, source, industry, and text search from one coherent filter region.
-- [ ] **JOBS-02**: User can browse jobs and stale listings on narrow viewports without relying on horizontal-scroll-only access to core information.
-- [ ] **JOBS-03**: User can understand job freshness and processing state at a glance, including active/inactive state, sponsorship, and enrichment/embedding status.
-- [ ] **JOBS-04**: User can paginate through filtered job results without losing filter context.
+- [ ] **RESOLVE-01**: The URL classifier routes each job URL to the correct fetch tier (Greenhouse / Lever / Ashby free API, Workday CXS, or Firecrawl) using regex matching with no I/O.
+- [ ] **RESOLVE-02**: The system uses Firecrawl `/scrape` in markdown mode (1 credit) as the first-pass strategy for Workday and unknown career pages, escalating to Firecrawl `/extract` (5 credits) only when the heuristic detects no JD content in the scraped markdown.
+- [ ] **RESOLVE-03**: The system uses Firecrawl `/search` to discover employer ATS URLs when a SimplifyJobs URL is missing, broken, or redirects to a job aggregator.
+- [ ] **RESOLVE-04**: All Firecrawl calls are wrapped with an asyncio-level timeout (independent of the SDK `timeout` parameter) to prevent indefinite hangs caused by the known SDK timeout unit bug.
 
-### Stats and Pipeline
+### Enrichment
 
-- [ ] **STAT-01**: User can understand inventory health from the stats page at a glance through clear summary hierarchy.
-- [ ] **STAT-02**: User can scan source, industry, and recent intake sections on desktop and narrow viewports with consistent layout rules.
-- [ ] **PIPE-01**: User can understand pending enrichment, pending embedding, and latest pipeline activity from the pipeline page without reading raw operational jargon.
-- [ ] **PIPE-02**: Pipeline timestamps, labels, and explanatory copy are understandable to future customer-facing users, not only internal operators.
+- [ ] **ENRICH-01**: Fetched `description_plain` is stored per job and passed to the existing LLM metadata classifier (SiliconFlow Qwen3-8B), replacing title-only input with full JD text for enrichment quality improvement.
+- [ ] **ENRICH-02**: Each job receives a `data_quality_score` (0-100: completeness 50 pts + recency 25 pts + description length 15 pts + salary presence 10 pts) computed at fetch time and stored for downstream filtering.
 
-### Responsive Quality
+### Dashboard Observability
 
-- [ ] **RESP-01**: Primary interactive controls meet touch-friendly target sizing expectations across supported viewports.
-- [ ] **RESP-02**: Shared layout spacing and grouping remain usable on narrow screens across Jobs, Stats, and Pipeline.
+- [ ] **DASH-01**: The pipeline page shows counts of jobs with and without JD text, segmented by ATS fetch source, so operators can see enrichment coverage at a glance.
+- [ ] **DASH-02**: The pipeline page exposes the JD enrichment queue depth (jobs with `jd_fetch_attempted_at IS NULL`) and the count of failed fetch attempts.
+- [ ] **DASH-03**: Operators receive an email digest after each enrichment run reporting jobs processed, credits consumed, failure counts by ATS type, and any Firecrawl errors.
+- [ ] **DASH-04**: The pipeline page shows the latest `data_quality_score` distribution (e.g., jobs scoring below 50) so operators can identify systematic enrichment gaps.
 
-## v2 Requirements
+### Testing
+
+- [ ] **TEST-01**: The URL classifier has unit tests covering all ATS routing patterns including edge cases (subdomain variants, URL parameter variations, redirects).
+- [ ] **TEST-02**: End-to-end pipeline tests run against the latest 1K jobs (not the full 47K backfill) and assert that Greenhouse, Lever, and Ashby paths each produce at least one successfully enriched job with non-empty `description_plain`.
+
+## Future Requirements
 
 ### External Surface
 
 - **EXT-01**: External mode presents the jobs console with customer-facing copy, framing, and chrome distinct from internal mode.
 - **EXT-02**: User can switch or route between internal and external console presentations without duplicating page logic.
 
-### Advanced Browsing
+### Pipeline Evolution
 
-- **BROW-01**: User can sort jobs by freshness, company, or processing completeness.
-- **BROW-02**: User can open richer job-detail views without leaving the console.
-
-### Visualization
-
-- **VIZ-01**: Stats page includes chart-based visual summaries for intake and source composition.
-- **VIZ-02**: Pipeline page exposes trend and latency indicators beyond latest timestamps.
-
-## Out of Scope
-
-| Feature | Reason |
-|---------|--------|
-| Matching logic changes | This milestone is explicitly UI-only |
-| New recommender or ranking work | Owned outside this UI effort |
-| VALET / desktop / onboarding / billing changes | Different products and repos |
-| Authenticated customer accounts | Not required to establish the jobs-console UI foundation |
-| New data-source ingestion | Not necessary for the UI restructure |
+- **PIPE-EVO-01**: Tech stack extraction stored as a separate DB column for skills matching quality analysis.
+- **PIPE-EVO-02**: Additional ATS platforms supported (SmartRecruiters, Jobvite, BambooHR, Rippling) after URL distribution analysis.
+- **PIPE-EVO-03**: Salary filter enabled in matching engine once salary data coverage exceeds 30% of active jobs.
+- **PIPE-EVO-04**: Ghost posting detection after 2-3 weeks of pipeline history establishes a no-change baseline.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONS-01 | Phase 9 — Console Shell & Design Tokens | Pending |
-| CONS-02 | Phase 9 — Console Shell & Design Tokens | Pending |
-| CONS-03 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-| A11Y-01 | Phase 9 — Console Shell & Design Tokens | Pending |
-| A11Y-02 | Phase 9 — Console Shell & Design Tokens | Pending |
-| A11Y-03 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| JOBS-01 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| JOBS-02 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| JOBS-03 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| JOBS-04 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| STAT-01 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-| STAT-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-| PIPE-01 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-| PIPE-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-| RESP-01 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
-| RESP-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
-
-**Coverage:**
-- v1 requirements: 16 total
-- Mapped to phases: 16
-- Unmapped: 0 ✓
+| PIPE2-01 | Phase 14 — DB Schema & URL Classifier | Pending |
+| PIPE2-02 | Phase 14 — DB Schema & URL Classifier | Pending |
+| PARSE-01 | Phase 15 — Free ATS Parsers | Pending |
+| PARSE-02 | Phase 15 — Free ATS Parsers | Pending |
+| PARSE-03 | Phase 15 — Free ATS Parsers | Pending |
+| PARSE-04 | Phase 16 — URL Resolution & Firecrawl Integration | Pending |
+| PARSE-05 | Phase 15 — Free ATS Parsers | Pending |
+| RESOLVE-01 | Phase 14 — DB Schema & URL Classifier | Pending |
+| RESOLVE-02 | Phase 16 — URL Resolution & Firecrawl Integration | Pending |
+| RESOLVE-03 | Phase 16 — URL Resolution & Firecrawl Integration | Pending |
+| RESOLVE-04 | Phase 16 — URL Resolution & Firecrawl Integration | Pending |
+| ENRICH-01 | Phase 17 — Pipeline Orchestrator & Daily Integration | Pending |
+| ENRICH-02 | Phase 15 — Free ATS Parsers | Pending |
+| DASH-01 | Phase 18 — Observability, Email Digest & Testing | Pending |
+| DASH-02 | Phase 18 — Observability, Email Digest & Testing | Pending |
+| DASH-03 | Phase 18 — Observability, Email Digest & Testing | Pending |
+| DASH-04 | Phase 18 — Observability, Email Digest & Testing | Pending |
+| TEST-01 | Phase 14 — DB Schema & URL Classifier | Pending |
+| TEST-02 | Phase 18 — Observability, Email Digest & Testing | Pending |
+| PIPE2-03 | Phase 17 — Pipeline Orchestrator & Daily Integration | Pending |
 
 ---
-*Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after roadmap creation*
+*Last updated: 2026-03-31 after v1.1 milestone archive*
