@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Internal UI Foundation
-status: Defining requirements
-stopped_at: Milestone started
+status: Milestone initialized
+stopped_at: Roadmap approved
 last_updated: "2026-03-31T20:45:00-05:00"
 progress:
   total_phases: 3
@@ -19,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** People monitoring the WeKruit job corpus can immediately understand what jobs exist, what changed, and whether the pipeline is healthy.
-**Current focus:** Milestone v1.1 definition
+**Current focus:** Phase 9 — Console Shell & Design Tokens
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 9
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-31 — Milestone v1.1 started
+Status: Ready for phase planning
+Last activity: 2026-03-31 — Milestone v1.1 initialized and roadmap approved
 
 ## Performance Metrics
 
@@ -56,9 +56,9 @@ Last activity: 2026-03-31 — Milestone v1.1 started
 
 ### Pending Todos
 
-- Define milestone requirements
+- Plan Phase 9
 - Establish shared shell and design token strategy for the internal console
-- Create roadmap for phases 9-11
+- Fix foundational accessibility and responsive issues before page-specific polish
 
 ### Blockers/Concerns
 
@@ -68,5 +68,5 @@ Last activity: 2026-03-31 — Milestone v1.1 started
 ## Session Continuity
 
 Last activity: 2026-03-31 — Confirmed dual-surface UI milestone and synced design context
-Stopped at: Milestone started
+Stopped at: Roadmap approved
 Resume file: None

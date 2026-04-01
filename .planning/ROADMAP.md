@@ -2,159 +2,72 @@
 
 ## Overview
 
-Build a production-ready Python backend pipeline that pulls job listings from SimplifyJobs GitHub repos, enriches them with LLM-derived metadata and semantic embeddings, and returns ranked matches against user profiles via a weighted multi-signal scoring formula. The pipeline is delivered as a Python library — no HTTP server — so any caller (Discord bot, web app) can import and run it directly. Eight phases build the system bottom-up: database foundation, scraper, LLM enrichment, embedding generation, hard filter layer, scoring engine, feedback loop, and final integration wiring.
+Milestone v1.1 focuses on the internal jobs console rather than the matching engine itself. The goal is to turn the existing `/internal/jobs`, `/internal/stats`, and `/internal/pipeline` pages into a coherent WeKruit UI foundation: shared shell, accessible structure, responsive jobs browsing, and a brand-aligned information architecture that can later support both internal and customer-facing surface modes. This roadmap starts after the completed backend milestone, so phase numbering continues from Phase 8.
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Integer phases (9, 10, 11): Planned milestone work
+- Decimal phases (9.1, 9.2): Urgent insertions if needed
 
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Foundation** - Project scaffolding, Postgres + pgvector schema, migrations, and environment config (completed 2026-03-26)
-- [x] **Phase 2: Scraper** - GitHub README fetch, markdown parsing, stable ID generation, and upsert pipeline (completed 2026-03-26)
-- [x] **Phase 3: LLM Enrichment** - Anthropic classification of industry, skills, company size, and sponsorship with cost controls (completed 2026-03-26)
-- [x] **Phase 4: Embeddings** - OpenAI text-embedding-3-small generation, pgvector storage, and HNSW index (completed 2026-03-26)
-- [x] **Phase 5: Hard Filters** - Job type, sponsorship, and location pre-filtering with normalization (completed 2026-03-26)
-- [ ] **Phase 6: Scoring Engine** - 7-signal weighted scoring, ranked results API, and cold-start handling
-- [x] **Phase 7: Feedback Loop** - Like/dislike recording, affinity embedding updates, and preference propagation (completed 2026-03-26)
-- [ ] **Phase 8: Integration & Operations** - End-to-end test, cron wiring, library packaging, and environment documentation
+- [ ] **Phase 9: Console Shell & Design Tokens** - Shared shell, page hierarchy, semantic fixes, and reusable visual foundations for all internal pages
+- [ ] **Phase 10: Jobs Browsing UX Overhaul** - Responsive jobs/stale views, better status communication, and touch-friendly filtering/pagination
+- [ ] **Phase 11: Customer-Facing Readiness & Final Polish** - Stats/pipeline hierarchy, dual-surface readiness, and cross-page consistency polish
 
 ## Phase Details
 
-### Phase 1: Foundation
-**Goal**: The project is runnable and the database is ready to receive job data
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, FOUND-06, FOUND-07, FOUND-08
+### Phase 9: Console Shell & Design Tokens
+**Goal**: All internal pages share one WeKruit-aligned shell with clear titles, navigation, accessible structure, and reusable visual primitives instead of scattered hard-coded styles
+**Depends on**: Phase 8
+**Requirements**: CONS-01, CONS-02, A11Y-01, A11Y-02
 **Success Criteria** (what must be TRUE):
-  1. Running `uv sync` installs all dependencies and `python -c "import wekruit_matching"` succeeds
-  2. Running the migration command creates the jobs, user_profiles, and feedback tables with the vector(1536) column and HNSW index present
-  3. A test insert into the jobs table succeeds and EXPLAIN ANALYZE on a cosine similarity query shows index scan (not sequential scan)
-  4. All configuration is read from a `.env` file via pydantic-settings — the app raises a clear error if required vars are missing
-**Plans**: 2 plans
+  1. Jobs, Stale, Stats, and Pipeline all render inside one shared page shell with a current-page title, contextual summary region, and consistent navigation structure
+  2. Keyboard users can see and follow focus across nav, filters, links, and pagination; form controls have visible labels and page headings are semantically correct
+  3. Shared colors, spacing, and status treatments are defined from one internal token layer rather than repeated inline styles and one-off values
+  4. The shell and primitives are structured so later internal/external mode differences can be applied without cloning page markup
+**Plans**: TBD
+**UI hint**: yes
 
-Plans:
-- [x] 01-01-PLAN.md — Project scaffold, uv setup, pydantic models, and pydantic-settings config
-- [x] 01-02-PLAN.md — psycopg3 connection pool, SQLAlchemy table definitions, alembic migrations, HNSW index
-
-### Phase 2: Scraper
-**Goal**: Job listings are fetched from both SimplifyJobs repos, parsed correctly, and persisted to the database with stable IDs
-**Depends on**: Phase 1
-**Requirements**: SCRP-01, SCRP-02, SCRP-03, SCRP-04, SCRP-05, SCRP-06, SCRP-07, SCRP-08, SCRP-09
+### Phase 10: Jobs Browsing UX Overhaul
+**Goal**: Users can browse active and stale jobs from a clear, responsive interface that preserves operational density without collapsing into a desktop-only table
+**Depends on**: Phase 9
+**Requirements**: A11Y-03, JOBS-01, JOBS-02, JOBS-03, JOBS-04, RESP-01
 **Success Criteria** (what must be TRUE):
-  1. Running the scraper populates the jobs table with listings from both Summer2026-Internships and New-Grad-Positions repos
-  2. Closed listings (lock emoji rows) are not inserted — querying the jobs table for closed rows returns zero results
-  3. Re-running the scraper on unchanged data produces zero new inserts and zero content hash changes
-  4. Jobs that disappeared from the README on a second scrape are marked inactive (not deleted)
-  5. Running the scraper against a README snapshot containing HTML-embedded cells, continuation rows, and emoji company names produces correct stable IDs with no duplicates
-**Plans**: 3 plans
+  1. Jobs and Stale pages expose a coherent filter region for status, source, industry, and text search that works with keyboard and touch input
+  2. On narrow viewports, the jobs experience remains usable without depending on horizontal-scroll-only access to core job information
+  3. Each job row or card clearly communicates freshness and processing state, including active/inactive status, sponsorship, and enrichment/embedding progress, with text and not color alone
+  4. Pagination preserves the user's active filters and remains touch-friendly across supported viewport sizes
+**Plans**: TBD
+**UI hint**: yes
 
-Plans:
-- [x] 02-01-PLAN.md — GitHub authenticated fetcher (httpx + PAT) and stable ID/content hash utilities
-- [x] 02-02-PLAN.md — README parser: HTML cell stripping, lock row filtering, continuation row inheritance
-- [x] 02-03-PLAN.md — Upsert pipeline (ON CONFLICT DO UPDATE, stale marking) and scraper orchestrator
-
-### Phase 3: LLM Enrichment
-**Goal**: Every unenriched job in the database is classified with industry, company size, required skills, and sponsorship likelihood — without re-enriching unchanged jobs
-**Depends on**: Phase 2
-**Requirements**: ENRC-01, ENRC-02, ENRC-03, ENRC-04, ENRC-05, ENRC-09, ENRC-10
+### Phase 11: Customer-Facing Readiness & Final Polish
+**Goal**: Stats and Pipeline read as calm, product-quality informational pages and the whole console is structurally ready for later customer-facing mode work
+**Depends on**: Phase 10
+**Requirements**: CONS-03, STAT-01, STAT-02, PIPE-01, PIPE-02, RESP-02
 **Success Criteria** (what must be TRUE):
-  1. Running the enrichment worker classifies all unenriched jobs with industry, company_size, skills, and sponsorship fields populated
-  2. Re-running the enrichment worker on jobs with unchanged content hashes makes zero Anthropic API calls
-  3. Enrichment output contains no hallucinated values — skills lists and industry values are drawn from a controlled vocabulary; unknown/null is a valid first-class output
-  4. All Anthropic API calls retry with exponential backoff on 429/5xx responses; a single API failure does not abort the entire enrichment run
-**Plans**: 2 plans
-
-Plans:
-- [x] 03-01-PLAN.md — LLM classifier: EnrichmentResult model, controlled vocabularies, tenacity retry, classify_job()
-- [x] 03-02-PLAN.md — Enrichment worker: content-hash gating, per-job failure isolation, DB writes, CLI entrypoint
-
-### Phase 4: Embeddings
-**Goal**: Every enriched job has a semantic embedding stored in pgvector, with model provenance tracked for future drift detection
-**Depends on**: Phase 3
-**Requirements**: ENRC-06, ENRC-07, ENRC-08
-**Success Criteria** (what must be TRUE):
-  1. Running the embedding step populates the embedding column for all enriched jobs
-  2. Every embedding row has a non-null embedding_model value (e.g., "text-embedding-3-small")
-  3. A pgvector cosine similarity query against the jobs table returns results in ranked order and EXPLAIN ANALYZE confirms the HNSW index is used
-  4. Re-running the embedding step on jobs with unchanged content hashes makes zero OpenAI API calls
-**Plans**: 2 plans
-
-Plans:
-- [x] 04-01-PLAN.md — OpenAI embedder: embed_text(), compose_embedding_text(), EMBEDDING_MODEL, tenacity retry
-- [x] 04-02-PLAN.md — Embedding worker: gating (embedded_at IS NULL AND enriched_at IS NOT NULL), DB writes, CLI entrypoint, HNSW index verification test
-
-### Phase 5: Hard Filters
-**Goal**: Callers can constrain matches to specific job types, sponsorship requirements, and locations before scoring runs
-**Depends on**: Phase 4
-**Requirements**: MTCH-01, MTCH-02, MTCH-03
-**Success Criteria** (what must be TRUE):
-  1. Passing `job_type="intern"` in a profile returns only internship listings; passing `job_type="new_grad"` returns only new grad listings
-  2. Passing `requires_sponsorship=True` in a profile excludes all jobs where sponsorship is classified as False or unknown
-  3. Passing `location="SF"` in a profile matches jobs tagged "San Francisco", "San Francisco, CA", and "SF, CA" — the alias map normalizes them to the same bucket
-**Plans**: 1 plan
-
-Plans:
-- [x] 05-01-PLAN.md — matching package, apply_hard_filters(), LOCATION_ALIASES, job_type/sponsorship/location filters, full unit tests
-
-### Phase 6: Scoring Engine
-**Goal**: Users can call `get_matches(profile, top_n=30)` and receive a ranked list of jobs with per-signal score breakdowns
-**Depends on**: Phase 5
-**Requirements**: MTCH-04, MTCH-05, MTCH-06, MTCH-07, MTCH-08, MTCH-09, MTCH-10, MTCH-11, MTCH-12, MTCH-13
-**Success Criteria** (what must be TRUE):
-  1. Calling `get_matches(profile, top_n=30)` returns a list of up to 30 job dicts, each with a `score` and a `signals` breakdown showing individual component scores
-  2. Changing a profile's skills list visibly changes ranking — jobs matching the new skills rank higher
-  3. A profile with no feedback history (cold-start) receives results without errors — the feedback_boost signal is neutral (0) and other signals drive ranking
-  4. The scoring function applies title similarity at weight 0.30, skills overlap at 0.25, industry match at 0.15, company size at 0.10, location fit at 0.10, recency at 0.05, and feedback boost at 0.05 — weights sum to 1.00
-**Plans**: 2 plans
-**UI hint**: no
-
-Plans:
-- [x] 06-01-PLAN.md — scorer.py: 7 signal functions, WEIGHTS, score_job() — pure Python TDD, no DB
-- [x] 06-02-PLAN.md — matcher.py: ANN retrieval via pgvector, hard filters, scoring loop, get_matches() public API
-
-### Phase 7: Feedback Loop
-**Goal**: Users can record reactions to job matches and those reactions measurably shift future match rankings
-**Depends on**: Phase 6
-**Requirements**: FDBK-01, FDBK-02, FDBK-03, FDBK-04, FDBK-05
-**Success Criteria** (what must be TRUE):
-  1. Calling the feedback function with a like reaction inserts a record in the feedback table and adds the job's company to the user's liked_companies list
-  2. Calling the feedback function with a dislike reaction inserts a record in the feedback table and adds the job's company to the user's disliked_companies list
-  3. After liking 3 jobs from the same industry, that industry ranks higher in subsequent `get_matches` results for that user compared to a fresh profile with identical explicit preferences
-  4. The user's affinity embedding updates after each like — calling `get_matches` after a like returns a different (shifted) ranking compared to before the like
-**Plans**: 1 plan
-
-Plans:
-- [x] 07-01-PLAN.md — feedback/handler.py: record_feedback(), liked/disliked_companies update, affinity embedding blend, package re-export
-
-### Phase 8: Integration & Operations
-**Goal**: The full pipeline runs end-to-end, can be scheduled via cron, and is importable as a Python library by any consumer
-**Depends on**: Phase 7
-**Requirements**: INTG-01, INTG-02, INTG-03, INTG-04, INTG-05
-**Success Criteria** (what must be TRUE):
-  1. Running the end-to-end test script completes the full pipeline — scrape, enrich, embed, match, feedback — against real SimplifyJobs data and prints ranked results without manual intervention
-  2. The cron scripts for scraper (6 AM ET) and enrichment (6:30 AM ET) can be installed with a single `crontab -e` entry and run without errors on subsequent triggers
-  3. `from wekruit_matching import get_matches, record_feedback` works in a fresh Python environment with only the package installed — no HTTP server required
-  4. `.env.example` documents every required environment variable with a description — a developer can set up the project from zero using only that file and the README
-**Plans**: 2 plans
-
-Plans:
-- [x] 08-01-PLAN.md — E2E pipeline script and library import smoke test
-- [x] 08-02-PLAN.md — Cron wrapper scripts, installer, .env.example update, and README
+  1. Stats page communicates headline inventory metrics first, then source, industry, and intake details in a consistent hierarchy on desktop and narrow viewports
+  2. Pipeline page communicates pending work and recent activity in language that future customer-facing users can understand, not only internal operators
+  3. Shared layout, spacing, and section rules are consistent across Jobs, Stats, and Pipeline, with no page reverting to ad hoc one-off styling
+  4. The console has explicit structural support for internal and external surface modes, even if only internal mode is shipped first
+**Plans**: TBD
+**UI hint**: yes
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+Completed backend milestone: 1 → 8
+Current UI milestone: 9 → 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/2 | Complete   | 2026-03-26 |
-| 2. Scraper | 3/3 | Complete   | 2026-03-26 |
-| 3. LLM Enrichment | 2/2 | Complete   | 2026-03-26 |
-| 4. Embeddings | 2/2 | Complete   | 2026-03-26 |
-| 5. Hard Filters | 1/1 | Complete   | 2026-03-26 |
-| 6. Scoring Engine | 2/2 | Complete   | 2026-03-26 |
-| 7. Feedback Loop | 1/1 | Complete   | 2026-03-26 |
-| 8. Integration & Operations | 0/2 | Not started | - |
+| 1. Foundation | 2/2 | Complete | 2026-03-26 |
+| 2. Scraper | 3/3 | Complete | 2026-03-26 |
+| 3. LLM Enrichment | 2/2 | Complete | 2026-03-26 |
+| 4. Embeddings | 2/2 | Complete | 2026-03-26 |
+| 5. Hard Filters | 1/1 | Complete | 2026-03-26 |
+| 6. Scoring Engine | 2/2 | Complete | 2026-03-26 |
+| 7. Feedback Loop | 1/1 | Complete | 2026-03-26 |
+| 8. Integration & Operations | 2/2 | Complete | 2026-03-26 |
+| 9. Console Shell & Design Tokens | 0/TBD | Not started | - |
+| 10. Jobs Browsing UX Overhaul | 0/TBD | Not started | - |
+| 11. Customer-Facing Readiness & Final Polish | 0/TBD | Not started | - |
