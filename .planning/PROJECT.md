@@ -2,81 +2,86 @@
 
 ## What This Is
 
-A standalone backend that scrapes intern and new grad job listings from SimplifyJobs GitHub repos, stores them in a database with LLM-enriched metadata and embeddings, and returns ranked job matches based on user profiles. No frontend — any client (Discord bot, web app, API) can consume the matching API.
+A Python service that scrapes, enriches, stores, and serves intern and new-grad job data for WeKruit. It already powers the job corpus and operational APIs, and now includes an internal web UI for browsing jobs, inspecting stale listings, and monitoring pipeline health. This milestone evolves that UI into a structured jobs console that is strong enough to support both internal operators and a future customer-facing surface.
 
 ## Core Value
 
-Given a user profile with skills, preferences, and career goals, return the most relevant job listings ranked by fit — so users don't waste time scrolling through hundreds of irrelevant posts.
+People monitoring the WeKruit job corpus can immediately understand what jobs exist, what changed, and whether the pipeline is healthy.
+
+## Current Milestone: v1.1 Internal UI Foundation — Dual-Surface Jobs Console
+
+**Goal:** Turn the current internal HTML pages into a coherent WeKruit jobs console with strong hierarchy, accessibility, responsive behavior, and a foundation that can support both internal and future customer-facing modes.
+
+**Target features:**
+- Shared page shell across Jobs, Stale, Stats, and Pipeline
+- Tokenized visual system aligned to WeKruit brand instead of scattered hard-coded styles
+- Accessibility fixes for headings, labels, focus states, and semantic status communication
+- Responsive layouts that work on narrow viewports without relying on table-only horizontal scrolling
+- Information architecture that reads as a product surface, not a temporary internal tool
+- Structural support for internal and external surface modes under one design system
 
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Daily scrape, enrich, and embed pipeline populates the jobs corpus — v1.0 Phases 1-8
+- ✓ Jobs lifecycle supports active and inactive/stale listings — v1.0 Phase 2
+- ✓ Matching and stats endpoints expose job inventory data to consumers — v1.0 shipped backend
+- ✓ Internal HTML pages exist for jobs, stale jobs, stats, and pipeline health — baseline shipped before v1.1
 
 ### Active
 
-- [ ] Scraper pulls job listings from SimplifyJobs GitHub README tables (intern + new grad)
-- [ ] Scraper handles closed listings (skip rows with lock emoji)
-- [ ] Scraper generates stable IDs for deduplication
-- [ ] LLM enrichment classifies industry, company size, skills, sponsorship per job
-- [ ] Embedding generation for semantic matching (text-embedding-3-small)
-- [ ] Database stores jobs with enriched metadata and vector embeddings
-- [ ] Upsert logic: insert new, update existing, mark stale as inactive
-- [ ] User profile schema with preferences, skills, experience, feedback history
-- [ ] Matching engine scores jobs using weighted multi-signal scoring (title similarity, skills overlap, industry, company size, location, recency, feedback boost)
-- [ ] Hard filters: job type, sponsorship requirement, location preferences
-- [ ] Fuzzy location matching with normalization (SF/San Francisco, NYC/New York, etc.)
-- [ ] Feedback loop: like/dislike updates user preferences and affinity embedding
-- [ ] Cron-ready scraper and enrichment scripts
-- [ ] End-to-end test script demonstrating full pipeline
+- [ ] Shared jobs-console shell across Jobs, Stale, Stats, and Pipeline
+- [ ] WeKruit-aligned tokenized visual system for internal UI
+- [ ] Keyboard-accessible navigation, filters, pagination, and page structure
+- [ ] Responsive jobs browsing experience for desktop and narrow viewports
+- [ ] Clear status language for freshness, sponsorship, enrichment, and embedding state
+- [ ] Stats and pipeline pages with customer-facing-ready hierarchy and clarity
+- [ ] Structural support for separate internal and external surface modes without rebuilding the UI
 
 ### Out of Scope
 
-- Discord bot integration — separate spec exists, deferred
-- Daily digest delivery (DM formatting)
-- Resume parsing
-- Web dashboard
-- Email notifications
-- User authentication — caller provides user profile directly
+- Matching logic changes — this milestone is UI-only
+- New ranking signals or recommender behavior — separate product already owns matching evolution
+- VALET, desktop, onboarding, or billing work — outside this repo and milestone
+- Full authentication / customer account model for the jobs console — not required for the current UI overhaul
+- New data sources or pipeline architecture changes — defer unless the UI work uncovers a blocking issue
 
 ## Context
 
-- **Data sources:** SimplifyJobs/Summer2026-Internships and SimplifyJobs/New-Grad-Positions GitHub repos (raw README markdown tables)
-- **Additional web sources:** intern-list.com and newgrad-jobs.com (same underlying data)
-- **Target users:** WeKruit's user base — students and new grads looking for tech jobs
-- **Noah's directive:** "Give me something I can use" — ship a working backend, not a prototype
-- **Enrichment approach:** LLM (Claude/OpenAI) classifies metadata not in the table; embeddings via text-embedding-3-small
-- **Matching weights:** title_similarity 0.30, skills_overlap 0.25, industry_match 0.15, company_size_match 0.10, location_fit 0.10, recency 0.05, feedback_boost 0.05
+- **Current UI implementation:** All internal pages are rendered from `src/wekruit_matching/api/internal_ui.py` with one large inline CSS string and server-rendered HTML responses.
+- **Current pages:** `/internal/jobs`, `/internal/jobs?status=inactive`, `/internal/stats`, `/internal/pipeline`
+- **Design references:** `wekruit.com`, `WeKruit/wekruit-outbound` `DESIGN.md`, and VALET's established espresso / ivory / amber brand system
+- **Audit baseline:** The current UI scored poorly in accessibility, responsive design, and theming due to missing semantics, fixed table-oriented layouts, and hard-coded styles
+- **Surface strategy:** One WeKruit design system with two modes — denser operator console for internal use and lighter customer-facing presentation later
 
 ## Constraints
 
-- **Stack**: Python 3.12+, Postgres with pgvector, httpx, numpy
-- **LLM APIs**: Anthropic (enrichment) + OpenAI (embeddings)
-- **No frontend**: Pure backend — API/library interface only
-- **Database**: Postgres with pgvector extension for vector similarity search
-- **Cost**: Minimize LLM calls — only enrich new/changed jobs, cache embeddings
+- **Tech stack**: FastAPI HTML responses in Python — UI work must fit the existing server-rendered architecture
+- **Scope**: UI-only milestone — avoid mixing in matching-engine logic changes
+- **Brand**: Must align to WeKruit design system references — no generic blue SaaS styling
+- **Accessibility**: Customer-facing direction requires WCAG AA-minded structure and interaction patterns
+- **Responsiveness**: Core workflows must remain usable on narrow viewports, not only on desktop admin screens
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Scrape GitHub README instead of websites | Structured markdown, no browser needed, stable format | -- Pending |
-| Postgres + pgvector over standalone vector DB | Simpler stack, one DB for structured + vector data | -- Pending |
-| Weighted multi-signal scoring over pure embedding similarity | Captures explicit preferences (location, sponsorship) that embeddings miss | -- Pending |
-| text-embedding-3-small over larger models | Good quality/cost ratio for job matching use case | -- Pending |
-| No auth layer | Engine is a library — auth belongs in the frontend layer | -- Pending |
+| Evolve the internal UI instead of replacing it with a separate app | Existing pages already provide the right operational data and routes; the problem is presentation, not product fit | — Pending |
+| Build one design system with internal and external modes | The UI must serve operators now but be strong enough for customer-facing use later | — Pending |
+| Keep light mode as the primary experience | Matches WeKruit brand guidance and current sibling products | — Pending |
+| Prioritize shell, semantics, and responsive structure before visual polish | The audit shows systemic UI debt; polish without structure would be fragile | — Pending |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 **After each phase transition** (via `/gsd:transition`):
-1. Requirements invalidated? Move to Out of Scope with reason
-2. Requirements validated? Move to Validated with phase reference
-3. New requirements emerged? Add to Active
-4. Decisions to log? Add to Key Decisions
-5. "What This Is" still accurate? Update if drifted
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd:complete-milestone`):
 1. Full review of all sections
@@ -85,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after initialization*
+*Last updated: 2026-03-31 after milestone v1.1 initialization*
