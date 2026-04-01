@@ -7,6 +7,12 @@ primary_url directly to ats_apply_url when the URL is a known ATS link
 resolve_via_slug_registry() covers JobRight rows (RESOLVE-03): fuzzy-matches
 company_name against the 27K slug registry, then queries the ATS listings API
 by job title to find the real ats_apply_url. No auth required.
+
+resolve_via_serper() covers JobRight rows still missing after slug-registry
+(RESOLVE-04): posts a targeted Serper.dev search query for each job and
+extracts the first ATS result. Requires SERPER_API_KEY; gracefully skips when
+the key is empty. 2,500 free queries/month covers daily resolution of unmatched
+JobRight jobs.
 """
 from __future__ import annotations
 
@@ -351,3 +357,141 @@ def resolve_via_slug_registry(
         client.close()
 
     return {"resolved": resolved, "skipped": skipped, "errors": errors}
+
+
+# ---------------------------------------------------------------------------
+# RESOLVE-04: Serper.dev search fallback
+# ---------------------------------------------------------------------------
+
+# ATS hostnames to accept in Serper organic results
+_ATS_HOSTNAMES_FOR_SERPER = ("greenhouse.io", "lever.co", "ashbyhq.com")
+
+_SERPER_URL = "https://google.serper.dev/search"
+
+
+def _extract_serper_url(organic: list[dict]) -> str | None:
+    """Return the first organic result link that matches a known ATS hostname.
+
+    Args:
+        organic: List of organic search result dicts from Serper.dev response.
+
+    Returns:
+        The first link containing a known ATS hostname, or None if not found.
+    """
+    for result in organic:
+        link = result.get("link") or ""
+        if any(host in link for host in _ATS_HOSTNAMES_FOR_SERPER):
+            return link
+    return None
+
+
+def resolve_via_serper(
+    conn,
+    serper_api_key: str,
+    *,
+    batch_size: int = 500,
+) -> dict:
+    """Resolve JobRight jobs still missing ats_apply_url via Serper.dev search (RESOLVE-04).
+
+    For each active JobRight job without an ats_apply_url after the slug-registry
+    pass, issues a targeted Serper.dev search:
+      '"{role_title}" "{company_name}" site:greenhouse.io OR site:lever.co OR site:ashbyhq.com'
+
+    On finding a matching ATS URL in the organic results, writes it to
+    ats_apply_url and sets jd_fetch_source = 'serper'.
+
+    If serper_api_key is empty, returns immediately with queries_used=0 — no
+    crash, no DB access.
+
+    Rate limiting: 0.5s sleep between Serper API calls (free tier safety).
+
+    Args:
+        conn: Active psycopg3 connection (caller owns lifecycle/commit).
+        serper_api_key: Serper.dev API key. Empty string = skip gracefully.
+        batch_size: Max rows per DB round-trip (capped at 500).
+
+    Returns:
+        dict with keys: resolved, skipped, errors, queries_used.
+    """
+    if not serper_api_key:
+        return {"resolved": 0, "skipped": 0, "errors": 0, "queries_used": 0}
+
+    effective_batch_size = min(batch_size, 500)
+    resolved = skipped = errors = queries_used = 0
+
+    headers = {"X-API-KEY": serper_api_key, "Content-Type": "application/json"}
+
+    with httpx.Client(timeout=15.0) as client:
+        while True:
+            rows = conn.execute(
+                """
+                SELECT job_id, company_name, role_title
+                FROM jobs
+                WHERE status = 'active'
+                  AND source_repo LIKE 'jobright%%'
+                  AND ats_apply_url IS NULL
+                ORDER BY first_seen_at DESC
+                LIMIT %(limit)s
+                """,
+                {"limit": effective_batch_size},
+            ).fetchall()
+
+            if not rows:
+                break
+
+            batch_resolved = 0
+
+            for row in rows:
+                job_id: str = row["job_id"]
+                company_name: str = row["company_name"] or ""
+                role_title: str = row["role_title"] or ""
+
+                query = (
+                    f'"{role_title}" "{company_name}"'
+                    " site:greenhouse.io OR site:lever.co OR site:ashbyhq.com"
+                )
+
+                try:
+                    response = client.post(
+                        _SERPER_URL,
+                        json={"q": query, "num": 5},
+                        headers=headers,
+                    )
+                    queries_used += 1
+                    response.raise_for_status()
+                    data = response.json()
+                except httpx.HTTPError as exc:
+                    logger.warning(
+                        "url_resolver: serper request failed for job={} company={}: {}",
+                        job_id,
+                        company_name,
+                        exc,
+                    )
+                    errors += 1
+                    time.sleep(0.5)
+                    continue
+
+                organic = data.get("organic") or []
+                ats_url = _extract_serper_url(organic)
+
+                if ats_url:
+                    conn.execute(
+                        """
+                        UPDATE jobs
+                        SET ats_apply_url = %(url)s,
+                            jd_fetch_source = 'serper'
+                        WHERE job_id = %(job_id)s
+                        """,
+                        {"url": ats_url, "job_id": job_id},
+                    )
+                    resolved += 1
+                    batch_resolved += 1
+                else:
+                    skipped += 1
+
+                time.sleep(0.5)
+
+            if batch_resolved > 0:
+                conn.commit()
+
+    return {"resolved": resolved, "skipped": skipped, "errors": errors, "queries_used": queries_used}

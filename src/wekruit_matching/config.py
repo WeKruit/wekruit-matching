@@ -1,9 +1,10 @@
 """Application configuration via pydantic-settings.
 
-Reads from .env file at project root. Raises ValidationError at import time
-if required variables are missing — fail fast, not mid-execution.
+Reads from environment variables (set by ATM in production) or .env file locally.
+Raises ValidationError at import time if required variables are missing.
 """
 from functools import lru_cache
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -22,6 +23,21 @@ class Settings(BaseSettings):
     github_token: str = Field(..., repr=False)
     log_level: str = Field("INFO")
     api_secret_key: str = Field(..., repr=False)
+
+    # SiliconFlow (free-tier Qwen3-8B for enrichment classification)
+    siliconflow_api_key: str = Field(..., repr=False)
+
+    # Mailgun (optional — pipeline runs without it, just skips email)
+    mailgun_api_key: str = Field("", repr=False)
+    mailgun_domain: str = Field("wekruit.com")
+    pipeline_notify_email: str = Field("admin1@wekruit.com")
+
+    # Firecrawl (optional — daily pipeline skips this stage when unset)
+    firecrawl_api_key: str = Field("", repr=False)
+    firecrawl_base_url: str = Field("https://api.firecrawl.dev")
+
+    # Serper.dev (optional — URL resolution fallback, 2500 free queries/month)
+    serper_api_key: str = Field("", repr=False)
 
 
 @lru_cache(maxsize=1)
