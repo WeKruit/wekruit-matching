@@ -1,167 +1,94 @@
 # Requirements: WeKruit Matching Engine
 
-**Defined:** 2026-03-25
-**Core Value:** Given a user profile, return the most relevant job listings ranked by fit
+**Defined:** 2026-03-31
+**Core Value:** People monitoring the WeKruit job corpus can immediately understand what jobs exist, what changed, and whether the pipeline is healthy.
 
 ## v1 Requirements
 
-### Foundation
+### Console Foundation
 
-- [x] **FOUND-01**: Project uses Python 3.12+ with uv for package management
-- [x] **FOUND-02**: Postgres database with pgvector extension is configured and accessible
-- [x] **FOUND-03**: Database schema created with jobs, user_profiles, and feedback tables
-- [x] **FOUND-04**: Jobs table includes vector(1536) column with HNSW index for cosine similarity
-- [x] **FOUND-05**: Pydantic v2 models validate all data structures at boundaries
-- [x] **FOUND-06**: Database connection pool via psycopg3 (async-capable)
-- [x] **FOUND-07**: Alembic migrations manage schema changes
-- [x] **FOUND-08**: Environment config via pydantic-settings (.env support)
+- [ ] **CONS-01**: User can move between Jobs, Stale, Stats, and Pipeline from a shared page shell with a clear current-page title and context.
+- [ ] **CONS-02**: User sees a consistent WeKruit visual system across all internal pages instead of page-specific hard-coded styling.
+- [ ] **CONS-03**: UI structure supports both internal and future external surface modes without requiring a page-by-page rewrite.
 
-### Scraper
+### Accessibility
 
-- [x] **SCRP-01**: Scraper fetches raw README from SimplifyJobs/Summer2026-Internships GitHub repo
-- [x] **SCRP-02**: Scraper fetches raw README from SimplifyJobs/New-Grad-Positions GitHub repo
-- [x] **SCRP-03**: Parser correctly handles embedded HTML in markdown table cells (details/summary blocks)
-- [x] **SCRP-04**: Parser skips closed listings (lock emoji rows)
-- [x] **SCRP-05**: Parser handles continuation rows (arrow emoji for same-company listings)
-- [x] **SCRP-06**: Stable ID generation with emoji normalization (strip decorative emoji before hashing)
-- [x] **SCRP-07**: GitHub fetch uses authenticated requests (PAT) to avoid rate limits
-- [x] **SCRP-08**: Upsert logic: insert new jobs, update existing, mark stale as inactive
-- [x] **SCRP-09**: Content hash per job to detect actual changes vs unchanged re-scrapes
+- [ ] **A11Y-01**: Keyboard user can identify and operate primary navigation, filters, job links, and pagination controls with visible focus states.
+- [ ] **A11Y-02**: Each page exposes valid heading hierarchy, landmarks, and labeled form controls.
+- [ ] **A11Y-03**: Status information is communicated with text and structure, not color alone.
 
-### Enrichment
+### Jobs Browsing
 
-- [x] **ENRC-01**: LLM enrichment classifies industry (tech, fintech, healthtech, etc.)
-- [x] **ENRC-02**: LLM enrichment estimates company size (startup, midsize, large)
-- [x] **ENRC-03**: LLM enrichment extracts likely required skills
-- [x] **ENRC-04**: LLM enrichment estimates visa sponsorship likelihood
-- [x] **ENRC-05**: Content-hash gating: only enrich new or changed jobs (skip unchanged)
-- [x] **ENRC-06**: Embedding generation via OpenAI text-embedding-3-small for each job
-- [x] **ENRC-07**: Embedding stored in pgvector column for ANN retrieval
-- [x] **ENRC-08**: Enrichment stores embedding_model identifier for drift tracking
-- [x] **ENRC-09**: Rate limiting and retry logic for Anthropic and OpenAI API calls
-- [x] **ENRC-10**: Structured output validation (null/unknown as first-class values, not hallucinated guesses)
+- [ ] **JOBS-01**: User can filter jobs by status, source, industry, and text search from one coherent filter region.
+- [ ] **JOBS-02**: User can browse jobs and stale listings on narrow viewports without relying on horizontal-scroll-only access to core information.
+- [ ] **JOBS-03**: User can understand job freshness and processing state at a glance, including active/inactive state, sponsorship, and enrichment/embedding status.
+- [ ] **JOBS-04**: User can paginate through filtered job results without losing filter context.
 
-### Matching
+### Stats and Pipeline
 
-- [x] **MTCH-01**: Hard filter by job_type (intern / new_grad)
-- [x] **MTCH-02**: Hard filter by sponsorship requirement
-- [x] **MTCH-03**: Fuzzy location matching with normalization (SF/San Francisco, NYC/New York, Remote)
-- [x] **MTCH-04**: Title similarity scoring via embedding cosine similarity (weight: 0.30)
-- [x] **MTCH-05**: Skills overlap scoring — user skills vs job required skills (weight: 0.25)
-- [x] **MTCH-06**: Industry match scoring (weight: 0.15)
-- [x] **MTCH-07**: Company size preference scoring (weight: 0.10)
-- [x] **MTCH-08**: Location fit scoring (weight: 0.10)
-- [x] **MTCH-09**: Recency scoring — newer posts rank higher (weight: 0.05)
-- [x] **MTCH-10**: Feedback boost scoring from past likes/dislikes (weight: 0.05)
-- [x] **MTCH-11**: Returns top-N ranked jobs with individual signal breakdown per match
-- [x] **MTCH-12**: Library API entry point: `get_matches(profile, top_n=30) -> list[dict]`
-- [x] **MTCH-13**: Cold-start mode for users with no feedback history (neutral feedback signal)
+- [ ] **STAT-01**: User can understand inventory health from the stats page at a glance through clear summary hierarchy.
+- [ ] **STAT-02**: User can scan source, industry, and recent intake sections on desktop and narrow viewports with consistent layout rules.
+- [ ] **PIPE-01**: User can understand pending enrichment, pending embedding, and latest pipeline activity from the pipeline page without reading raw operational jargon.
+- [ ] **PIPE-02**: Pipeline timestamps, labels, and explanatory copy are understandable to future customer-facing users, not only internal operators.
 
-### Feedback
+### Responsive Quality
 
-- [x] **FDBK-01**: Record like/dislike/applied reactions per user per job
-- [x] **FDBK-02**: Like updates liked_companies list on user profile
-- [x] **FDBK-03**: Dislike updates disliked_companies list on user profile
-- [x] **FDBK-04**: Affinity embedding updated as weighted running average of liked job embeddings
-- [x] **FDBK-05**: Feedback signal incorporated into matching score computation
-
-### Integration
-
-- [x] **INTG-01**: End-to-end test script: scrape → enrich → match against test profile
-- [x] **INTG-02**: Cron-ready scraper script (daily 6 AM ET)
-- [x] **INTG-03**: Cron-ready enrichment script (daily 6:30 AM ET)
-- [x] **INTG-04**: All components importable as Python library (no HTTP server required)
-- [x] **INTG-05**: .env.example with all required environment variables documented
+- [ ] **RESP-01**: Primary interactive controls meet touch-friendly target sizing expectations across supported viewports.
+- [ ] **RESP-02**: Shared layout spacing and grouping remain usable on narrow screens across Jobs, Stats, and Pipeline.
 
 ## v2 Requirements
 
-### API Server
+### External Surface
 
-- **API-01**: FastAPI HTTP wrapper around matching engine
-- **API-02**: REST endpoints for match, feedback, profile CRUD
+- **EXT-01**: External mode presents the jobs console with customer-facing copy, framing, and chrome distinct from internal mode.
+- **EXT-02**: User can switch or route between internal and external console presentations without duplicating page logic.
 
-### Advanced Matching
+### Advanced Browsing
 
-- **ADV-01**: Feedback decay — older feedback has less weight
-- **ADV-02**: Diversity injection — prevent filter bubble in results
-- **ADV-03**: Collaborative filtering from aggregate user behavior
+- **BROW-01**: User can sort jobs by freshness, company, or processing completeness.
+- **BROW-02**: User can open richer job-detail views without leaving the console.
 
-### Data Sources
+### Visualization
 
-- **DATA-01**: Additional job sources beyond SimplifyJobs
-- **DATA-02**: Company metadata enrichment from external APIs (Crunchbase, LinkedIn)
+- **VIZ-01**: Stats page includes chart-based visual summaries for intake and source composition.
+- **VIZ-02**: Pipeline page exposes trend and latency indicators beyond latest timestamps.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Discord bot integration | Separate spec exists, deferred to own project |
-| Web dashboard | Frontend-agnostic engine — frontends consume the library |
-| Resume parsing | High complexity, tangential to core matching |
-| Email notifications | Delivery layer, not matching layer |
-| User authentication | Caller provides profile directly — auth belongs in frontend |
-| Real-time streaming scrape | Source data updates daily, streaming adds no value |
+| Matching logic changes | This milestone is explicitly UI-only |
+| New recommender or ranking work | Owned outside this UI effort |
+| VALET / desktop / onboarding / billing changes | Different products and repos |
+| Authenticated customer accounts | Not required to establish the jobs-console UI foundation |
+| New data-source ingestion | Not necessary for the UI restructure |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 — Foundation | Complete |
-| FOUND-02 | Phase 1 — Foundation | Complete |
-| FOUND-03 | Phase 1 — Foundation | Complete |
-| FOUND-04 | Phase 1 — Foundation | Complete |
-| FOUND-05 | Phase 1 — Foundation | Complete |
-| FOUND-06 | Phase 1 — Foundation | Complete |
-| FOUND-07 | Phase 1 — Foundation | Complete |
-| FOUND-08 | Phase 1 — Foundation | Complete |
-| SCRP-01 | Phase 2 — Scraper | Complete |
-| SCRP-02 | Phase 2 — Scraper | Complete |
-| SCRP-03 | Phase 2 — Scraper | Complete |
-| SCRP-04 | Phase 2 — Scraper | Complete |
-| SCRP-05 | Phase 2 — Scraper | Complete |
-| SCRP-06 | Phase 2 — Scraper | Complete |
-| SCRP-07 | Phase 2 — Scraper | Complete |
-| SCRP-08 | Phase 2 — Scraper | Complete |
-| SCRP-09 | Phase 2 — Scraper | Complete |
-| ENRC-01 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-02 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-03 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-04 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-05 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-06 | Phase 4 — Embeddings | Complete |
-| ENRC-07 | Phase 4 — Embeddings | Complete |
-| ENRC-08 | Phase 4 — Embeddings | Complete |
-| ENRC-09 | Phase 3 — LLM Enrichment | Complete |
-| ENRC-10 | Phase 3 — LLM Enrichment | Complete |
-| MTCH-01 | Phase 5 — Hard Filters | Complete |
-| MTCH-02 | Phase 5 — Hard Filters | Complete |
-| MTCH-03 | Phase 5 — Hard Filters | Complete |
-| MTCH-04 | Phase 6 — Scoring Engine | Complete |
-| MTCH-05 | Phase 6 — Scoring Engine | Complete |
-| MTCH-06 | Phase 6 — Scoring Engine | Complete |
-| MTCH-07 | Phase 6 — Scoring Engine | Complete |
-| MTCH-08 | Phase 6 — Scoring Engine | Complete |
-| MTCH-09 | Phase 6 — Scoring Engine | Complete |
-| MTCH-10 | Phase 6 — Scoring Engine | Complete |
-| MTCH-11 | Phase 6 — Scoring Engine | Complete |
-| MTCH-12 | Phase 6 — Scoring Engine | Complete |
-| MTCH-13 | Phase 6 — Scoring Engine | Complete |
-| FDBK-01 | Phase 7 — Feedback Loop | Complete |
-| FDBK-02 | Phase 7 — Feedback Loop | Complete |
-| FDBK-03 | Phase 7 — Feedback Loop | Complete |
-| FDBK-04 | Phase 7 — Feedback Loop | Complete |
-| FDBK-05 | Phase 7 — Feedback Loop | Complete |
-| INTG-01 | Phase 8 — Integration & Operations | Complete |
-| INTG-02 | Phase 8 — Integration & Operations | Complete |
-| INTG-03 | Phase 8 — Integration & Operations | Complete |
-| INTG-04 | Phase 8 — Integration & Operations | Complete |
-| INTG-05 | Phase 8 — Integration & Operations | Complete |
+| CONS-01 | Phase 9 — Console Shell & Design Tokens | Pending |
+| CONS-02 | Phase 9 — Console Shell & Design Tokens | Pending |
+| CONS-03 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
+| A11Y-01 | Phase 9 — Console Shell & Design Tokens | Pending |
+| A11Y-02 | Phase 9 — Console Shell & Design Tokens | Pending |
+| A11Y-03 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| JOBS-01 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| JOBS-02 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| JOBS-03 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| JOBS-04 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| STAT-01 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
+| STAT-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
+| PIPE-01 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
+| PIPE-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
+| RESP-01 | Phase 10 — Jobs Browsing UX Overhaul | Pending |
+| RESP-02 | Phase 11 — Customer-Facing Readiness & Final Polish | Pending |
 
 **Coverage:**
-- v1 requirements: 46 total
-- Mapped to phases: 46
-- Unmapped: 0
+- v1 requirements: 16 total
+- Mapped to phases: 16
+- Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after roadmap creation*
+*Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after milestone v1.1 definition*
