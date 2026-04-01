@@ -1,231 +1,200 @@
 # Project Research Summary
 
-**Project:** WeKruit Matching Engine
-**Domain:** Python job scraping + vector matching engine (backend API, no frontend)
-**Researched:** 2026-03-25
+**Project:** WeKruit Matching Engine — Job Data Collection Pipeline (Milestone: Firecrawl + ATS Scraping)
+**Domain:** Python job scraping pipeline with tiered ATS fetching, structured JD extraction, and vector matching
+**Researched:** 2026-03-31 (updated; original 2026-03-25)
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The WeKruit Matching Engine is a backend-only Python pipeline that scrapes internship and new-grad job listings from the SimplifyJobs GitHub repository, enriches them with LLM-derived metadata, generates semantic embeddings, and ranks them against user profiles via a weighted multi-signal scoring formula. The industry-standard architecture for this problem is a three-layer pipeline: an ingestion layer (scraper + enrichment worker), a storage layer (PostgreSQL + pgvector), and a matching layer (hard filters + ANN retrieval + weighted scoring). No open-source project combines all of these components in a single coherent backend — this engine addresses exactly that gap.
+The WeKruit Matching Engine has a working foundation from the original milestone (2026-03-25): GitHub README scraping from SimplifyJobs repos, LLM enrichment via SiliconFlow Qwen3-8B, OpenAI text-embedding-3-small embeddings, and 7-signal weighted matching against user profiles. The new milestone replaces title-only LLM enrichment with full job description text by following employer ATS URLs from the SimplifyJobs data. The correct approach is a tiered fetcher routing system: Greenhouse and Lever have free unauthenticated JSON APIs that return full JD content (zero cost, use httpx directly); Workday exposes an undocumented-but-stable CXS POST API for most tenants; and Firecrawl cloud handles the long tail of custom, JS-heavy, or bot-protected career pages. ATS URL classification happens before any fetch and determines which path is invoked — a router pattern, not optional middleware. The key cost control is to exhaust the free API paths first (covering ~55% of URLs) and use Firecrawl's scrape endpoint (1 credit) rather than its extract endpoint (5 credits) wherever possible, routing returned markdown into the existing LLM pipeline.
 
-The recommended approach keeps the data model simple: a single PostgreSQL instance with the pgvector extension stores both structured job metadata and 1536-dimensional embeddings from OpenAI's `text-embedding-3-small`. The scraper, enrichment worker, and matching engine are strict pipeline stages with no circular dependencies. The matching function is exposed as a Python library entry point (`from matching.api import match`), not an HTTP service, per the spec's no-frontend constraint. Callers (Discord bot, web app) import directly or wrap in their own HTTP layer. LLM enrichment cost is the central operational concern: a content-hash gate that skips re-enrichment of unchanged jobs is non-negotiable from day one, not a later optimization.
+The primary architectural decision is to add the new enrichment as completely separate modules — `url_classifier.py`, `ats_enricher.py`, `firecrawl_enricher.py`, and `run_jd_enrichment.py` — inserted as Stage 2b in the existing `daily.py` pipeline between the JobRight enricher (Stage 2a) and the LLM metadata classifier (Stage 2c). Two new DB columns (`jd_fetch_source`, `jd_fetch_attempted_at`) gate the incremental queue and prevent re-spending Firecrawl credits on already-attempted jobs. The existing `enrich_from_jobright.py` is preserved unchanged; the new stage targets a mutually exclusive WHERE clause (`primary_url NOT LIKE 'jobright.ai/%'`). The HNSW index pitfall — confirmed 100x slowdown on non-vector column updates per pgvector GitHub issue #875 — requires keeping JD text updates and embedding inserts as separate pipeline stages, which the proposed architecture already satisfies.
 
-The three critical risks are: (1) LLM enrichment cost explosion if the hash-gate is absent or incorrect — this can reach $600/month from a simple logic error; (2) pgvector silently falling back to sequential scan when the wrong distance operator is used, producing correct results at catastrophically wrong latency; and (3) SimplifyJobs README parsing failures on HTML-embedded multi-location cells and company-name emoji variations, which corrupt stable IDs and cause duplicate enrichment. All three are preventable at build time if addressed in the correct phase.
-
----
+The three critical risks for this milestone are: (1) Firecrawl's SDK has a known timeout unit bug (GitHub issue #1848) that passes milliseconds where the underlying HTTP library expects seconds, causing workers to hang indefinitely — always apply an asyncio-level timeout wrapper independent of the SDK parameter; (2) Supabase's authenticated role has an 8-second statement timeout that kills batches larger than ~500 rows — the pipeline already hit this in production on a 33K-row batch; (3) the existing `content_hash` gate must not be modified to include ATS-derived fields because the first ATS scrape would change every row's hash and trigger a full re-enrichment of 76K jobs — a separate `ats_content_hash` column is required. The initial ~23K-job backfill should use self-hosted Firecrawl via Docker Compose (no credit cost) rather than the $16/month cloud plan, then switch to the cloud for ongoing incremental daily work (50-200 new jobs/day, well within the Hobby plan).
 
 ## Key Findings
 
 ### Recommended Stack
 
-The spec's technology choices are validated without exception. Python 3.12+, PostgreSQL 16+, pgvector, httpx, the Anthropic SDK, and the OpenAI SDK are all correct. The one addition the spec omits is the Postgres adapter: **psycopg3** (the `psycopg` package, not `psycopg2`) is the correct 2026 choice — 3-5x better memory efficiency, native async support, and explicitly recommended by pgvector's own documentation for new projects. The project should be initialized with `uv`, not pip or poetry — `uv` is the 2025/2026 standard for new Python projects, providing lock files, Python version pinning, and 10-100x faster installs.
+The base stack from the original milestone is unchanged and confirmed: Python 3.12+, PostgreSQL 16+ with pgvector 0.8+, psycopg3, httpx, anthropic SDK, openai SDK, numpy, pydantic v2, alembic, tenacity, loguru, uv. The new milestone adds three libraries and one external service:
 
 **Core technologies:**
-- Python 3.12+: runtime — stable LTS with performance gains over prior versions; spec constraint
-- PostgreSQL 16+ + pgvector 0.8+: primary data store and vector index — eliminates a separate vector DB; single query combines structured filters and ANN
-- psycopg3 (psycopg package): Postgres adapter — spec omits this; psycopg2 is maintenance-only; psycopg3 is the correct new-project choice
-- httpx 0.28.1: HTTP client for GitHub scraping — sync+async in one library; replaces requests
-- anthropic 0.86.0: LLM enrichment — structured classification of industry, skills, sponsorship
-- openai 2.30.0: embedding generation — `text-embedding-3-small` at 1536 dims, best cost/quality ratio
-- numpy 1.26+: vector arithmetic — sufficient for per-user weighted scoring without scipy overhead
-- pydantic v2 + pydantic-settings: data validation and env config — Rust-backed, 5-50x faster than v1; pydantic-settings replaces python-dotenv
-- alembic 1.18.x: schema migrations — autogenerate tracks schema diffs during development
-- tenacity 8.x: retry with exponential backoff — required for all LLM API calls
-- uv: package manager — replaces pip + venv + requirements.txt
+- Python 3.12 + httpx 0.28.1: direct ATS JSON API calls (Greenhouse, Lever, Ashby) — free, synchronous, no scraping overhead; existing pattern from `enrich_from_jobright.py`
+- firecrawl-py 4.21.0 + Firecrawl Cloud Hobby ($16/month): JS-heavy ATS pages (Workday, iCIMS, custom career sites) — cloud required for proxy rotation and anti-bot protection; self-hosted lacks Fire-engine; use self-hosted only for the initial bulk backfill
+- beautifulsoup4 4.14.x + lxml 5.x: strip HTML from Greenhouse `content` and Workday `description` API response fields before passing to LLM — do not add Playwright or a full browser stack just to strip HTML tags
+- SiliconFlow Qwen3-8B (free tier): existing LLM enricher; now receives richer input (full JD text instead of title only); the 50 req/day free-tier cap without purchased credits forces batching 5 jobs/request; purchasing $10 in credits unlocks 1,000 req/day
+- PostgreSQL 16 + pgvector 0.8+, psycopg3: unchanged; two new columns added via alembic migration 0004 (`jd_fetch_source TEXT`, `jd_fetch_attempted_at TIMESTAMPTZ`)
 
-**What not to use:** psycopg2 (maintenance-only), requests (no async/HTTP2), LangChain (loses cost control), dedicated vector DBs (Pinecone/Qdrant — unnecessary at this scale), IVFFlat pgvector index (HNSW has better recall/latency tradeoff for incremental inserts).
+**Critical version note:** `firecrawl-py` has a known SDK timeout unit bug — always wrap calls with an asyncio-level timeout independent of the SDK's `timeout` parameter.
+
+**What not to add:** Playwright (only if Workday CXS API fails for a named tenant — defer by default; 200MB browser binary); Scrapy/crawlee (full crawl framework overhead for targeted ATS endpoint calls); Firecrawl for Greenhouse or Lever (both have free public JSON APIs — Firecrawl credits are wasted here).
+
+See `.planning/research/STACK.md` for full version matrix, ATS API endpoint specifications, and Firecrawl pricing tiers.
 
 ### Expected Features
 
-The feature dependency graph is strictly ordered: scraper produces jobs, enrichment adds metadata and embeddings, matching consumes enriched jobs, and feedback consumes matching results. Nothing in the feedback layer can be built before the scoring pipeline is stable.
+Feature research covers the new data collection pipeline milestone. Original milestone features (matching engine core) remain in force from the prior SUMMARY.md and are not repeated here.
 
-**Must have (table stakes) — v1:**
-- SimplifyJobs scraper (`listings.json`, Summer2026-Internships + New-Grad-Positions repos) — the entire data source
-- Stable ID generation (hash on normalized company + title + url) + upsert with staleness marking — without this the DB drifts from reality
-- LLM enrichment with content-hash gate — metadata needed for scoring; hash check is cost control, not optional
-- Embedding generation and pgvector storage — required for semantic signal in scoring
-- Location normalization (alias map for top-20 US tech hubs + Remote variants) — location_fit signal is meaningless without it
-- Fuzzy skill normalization — skills overlap has the highest weight (0.25)
-- Hard filter enforcement (sponsorship, job type, location exclusions) — must precede scoring
-- Weighted multi-signal scoring (title 0.30, skills 0.25, industry 0.15, company_size 0.10, location 0.10, recency 0.05, feedback_boost 0.05)
-- Ranked results API with per-signal score breakdown — what callers consume
-- Cron-ready CLI entrypoints — makes the system operational
+**Must have (table stakes):**
+- ATS platform detection from URL — routes each job to the correct fetch strategy (free API vs. Firecrawl scrape vs. Workday POST); everything downstream depends on this routing decision
+- Greenhouse API fetch (`?content=true`) — largest share of SimplifyJobs listings; free, zero credits; returns `title`, `location`, `content` (HTML JD), `departments`, salary via `?pay_transparency=true`
+- Lever API fetch — second most common ATS; native structured `lists` field separates requirements, responsibilities, and benefits as named arrays; `descriptionPlain` already stripped of HTML
+- Firecrawl `/scrape` in markdown mode for Workday + unknown platforms — covers the long tail at 1 credit/page
+- Incremental `content_hash` check before fetch — gates the expensive structured extraction step; prevents re-fetching unchanged JDs
+- Canonical JD schema mapping (ATS native fields to canonical schema) — unifies output across all ATS platforms into a single record shape
+- `description_plain` stored and passed to existing LLM enrichment pipeline — immediate, concrete improvement to enrichment quality
+- Retry with tenacity (exponential backoff, 3 attempts, 2-30s window) on fetch failures
+- `data_quality_score` computation (0-100: completeness 50pts + recency 25pts + description length 15pts + salary presence 10pts) — enables downstream filtering
 
-**Should have (differentiators) — v1.x after validation:**
-- Feedback loop (like/dislike) — requires at least one consumer sending real user interactions first
-- User affinity embedding (rolling weighted average of liked job embeddings) — only meaningful once feedback accumulates
-- Recency decay scoring (exponential decay, tunable lambda) — initial lambda may need adjustment based on observed result quality
-- Sponsorship classification (LLM-derived `true/false/unknown`) — high value for visa-dependent users
+**Should have (competitive differentiators):**
+- Firecrawl JSON mode structured extraction — extract `required_skills`, `preferred_skills`, `tech_stack`, `seniority_level`, `salary_min/max`, `remote_policy`, `visa_sponsorship` as typed fields from Workday/custom pages; costs 5 credits/page; only for pages where the API does not return structured fields natively
+- Salary normalization and `salary_confidence` flag (exact/extracted/inferred/missing) — Ashby has the best native salary coverage; Lever has `salaryRange`; Greenhouse has `pay_input_ranges` (state disclosure required)
+- Ashby API fetch (`includeCompensation=true`) — growing ATS adoption at Series A/B startups; better salary coverage than any other ATS
+- Visa sponsorship re-classification using full JD text — materially more accurate than title-only inference; patterns for "unable to sponsor", "H-1B", "OPT/CPT eligible" work best on full description
+- Firecrawl `/search` for employer URL discovery — when SimplifyJobs URL is broken/missing/redirecting to aggregator
 
 **Defer (v2+):**
-- Additional data sources beyond SimplifyJobs
-- Skill gap recommendations
-- Batch profile matching (N profiles x M jobs)
-- A/B weight testing framework
-- Resume parsing (caller's responsibility per spec)
-- Collaborative filtering, salary normalization, web dashboard
+- Tech stack extraction as a separate DB column — defer until skills matching quality is validated with `description_plain`
+- Additional ATS platforms (SmartRecruiters, Jobvite, BambooHR, Rippling) — defer until URL distribution analysis shows a gap
+- Salary filter in matching engine — defer until salary data coverage exceeds 30% of active jobs
+- Ghost posting detection — requires 2-3 weeks of pipeline history to establish a "no change" baseline (multiple scrape cycles)
+
+See `.planning/research/FEATURES.md` for the full canonical JD schema, data quality scoring formula, feature dependency graph, and competitor comparison.
 
 ### Architecture Approach
 
-The architecture is a strict three-layer pipeline with no cross-layer coupling: the ingestion layer (scraper + enrichment worker) writes to PostgreSQL, and the matching layer reads from PostgreSQL. Components within each layer communicate only through the shared DB — the scraper never calls enrichment directly, and the matching engine never invokes scraping or enrichment APIs. The matching function is a Python library entry point, not an HTTP server. All shared data models (Job, UserProfile, MatchResult) live in a `models/` package to prevent circular imports across the three layers.
+The new pipeline inserts as Stage 2b between the existing JobRight enrichment (Stage 2a) and the LLM metadata classifier (Stage 2c) in `daily.py`. It is additive — zero changes to `enrich_from_jobright.py`, `enrichment/worker.py`, or `embedding/worker.py`. The two enrichment stages use mutually exclusive DB queries: Stage 2a targets `primary_url LIKE 'jobright.ai/%'`; Stage 2b targets `primary_url NOT LIKE 'jobright.ai/%' AND jd_fetch_attempted_at IS NULL`. No job can be processed by both stages. Tiered routing routes each URL to the cheapest method that can succeed: Tier 0 (JobRight, $0) → Tier 1 (Greenhouse/Lever/Ashby free APIs, $0) → Tier 2 (Firecrawl /scrape, 1 credit) → Tier 3 (Firecrawl /extract, 5 credits). For the initial 23K-job backfill, use self-hosted Firecrawl (Docker Compose, no credit cost); for daily incremental work (50-200 jobs/day), use Firecrawl Cloud Hobby ($16/month).
 
 **Major components:**
-1. **Scraper** (`scraper/`) — fetches GitHub raw README, parses markdown tables (including HTML-embedded multi-location cells), generates stable IDs, upserts to DB; outputs normalized job records; knows nothing about enrichment
-2. **Enrichment Worker** (`enrichment/`) — reads unenriched jobs, calls Anthropic for classification and OpenAI for embeddings, writes enriched records; never touches user profiles; skips jobs whose content hash is unchanged
-3. **DB Layer** (`db/`) — connection pool, query helpers, upsert logic; single source of truth; never invokes business logic
-4. **Matching Engine** (`matching/`) — applies hard filters, runs pgvector ANN retrieval (top-100 candidates), applies 7-signal weighted scoring, returns ranked list; read-only against jobs table
-5. **Feedback Handler** (`feedback/`) — records like/dislike signals, nudges user affinity embedding via lerp, writes to user_profiles and feedback tables only
-6. **Models** (`models/`) — shared pydantic dataclasses for Job, UserProfile, MatchResult; imported by all components
+1. `url_classifier.py` — classify URL into routing tier via regex; pure string matching, no I/O; independently unit-testable before any DB or network work begins
+2. `ats_enricher.py` — Greenhouse, Lever, and Ashby JSON API fetchers; free path; uses httpx (existing); strips HTML via bs4/lxml; applies text normalization (html.unescape + NFKC + zero-width strip) before writing to DB
+3. `firecrawl_enricher.py` — Firecrawl /scrape first (1 credit); escalates to /extract (5 credits) only when `_has_jd_content()` heuristic returns false; handles Workday CXS POST API with Firecrawl fallback for Cloudflare-protected tenants
+4. `run_jd_enrichment.py` — orchestrator; queries the enrichment queue; dispatches to ats_enricher or firecrawl_enricher per URL tier; writes `jd_fetch_source` + `jd_fetch_attempted_at` on every attempt (success or failure); enforces 500-row batch commit chunks; applies per-domain rate limiting
+5. DB migration 0004 — adds `jd_fetch_source TEXT` and `jd_fetch_attempted_at TIMESTAMPTZ` with a partial index on `(status, jd_fetch_attempted_at) WHERE job_description IS NULL AND primary_url IS NOT NULL`
 
-**Key patterns:**
-- Two-stage match: hard filter (SQL WHERE) → ANN retrieval (pgvector) → weighted score; hard filters reduce N=2000 to ~400, ANN narrows to 100, scoring ranks the shortlist
-- Conditional enrichment: `WHERE enriched_at IS NULL` before any LLM call; hash-gate for re-enrichment
-- Feedback embedding shift: lerp by 0.05 toward liked job embedding, away from disliked; small factor prevents drift
+**Build order is strict:** DB migration → url_classifier → ats_enricher → firecrawl_enricher → run_jd_enrichment → daily.py modification → embedding text enrichment (optional, last).
+
+See `.planning/research/ARCHITECTURE.md` for the full system diagram, all 5 architecture patterns with code examples, credit budget breakdown, and anti-patterns.
 
 ### Critical Pitfalls
 
-1. **HTML in SimplifyJobs markdown table cells breaks naive parsers** — use `mistune` parser; post-process cells to strip HTML tags; track `↳` continuation rows to inherit parent company name; test against a live README snapshot that includes multi-location and continuation rows. If not caught in Phase 1, re-enrichment costs compound every duplicate record.
+1. **Firecrawl SDK timeout unit bug (Pitfall A1)** — SDK `timeout` parameter is passed as seconds to the underlying HTTP library, not milliseconds as documented; `timeout=60000` blocks for 16.6 hours. Always wrap Firecrawl calls with `asyncio.wait_for()` at the application level independent of the SDK. Set `ExitTimeout` in launchd plist. Reference: firecrawl/firecrawl GitHub issue #1848.
 
-2. **LLM enrichment cost explosion on every scrape run** — store a content hash of enrichable fields; only call Anthropic when hash changes; use Claude Haiku (not Sonnet/Opus) for classification; use Batch API for 50% cost reduction on bulk runs. At 2,000 jobs and $0.01/job, a missing hash check costs $600/month.
+2. **No attempt-tracking column re-spends credits on every cron run (Architecture Anti-Pattern 2)** — Without `jd_fetch_attempted_at`, a failed fetch (404, empty markdown, JS wall) re-spends Firecrawl credits on every daily run indefinitely. Write `jd_fetch_attempted_at = NOW()` and `jd_fetch_source = 'failed'` on every attempt, successful or not. The queue query filters `WHERE jd_fetch_attempted_at IS NULL`.
 
-3. **pgvector silently falls back to sequential scan** — standardize exclusively on cosine distance (`<=>`) with `vector_cosine_ops` index; never mix operators; apply hard SQL filters post-retrieval (not pre-), as pre-filters shrink the candidate set enough to trigger a planner-chosen sequential scan; verify index usage with `EXPLAIN ANALYZE` after every schema change.
+3. **Supabase 8-second statement timeout kills batches larger than ~500 rows (Pitfall A7)** — The pipeline already hit this in production on a 33K-row batch. Cap all upsert batches at 500 rows with commit after each chunk. For initial bulk backfill, use direct Postgres connection (port 5432 session mode) with `SET statement_timeout = 0` — the Supabase pooler ignores per-session timeout overrides.
 
-4. **Stable ID breaks on company name emoji variations** — normalize before hashing: strip all emoji, lowercase, strip punctuation, collapse whitespace; use `(normalized_company, normalized_role, primary_location)` as composite key; test against rows with FAANG emoji, lock emoji, and `↳` continuations. ID errors require expensive deduplication and re-enrichment to recover from.
+4. **HNSW index degrades 100x for non-vector column updates (Pitfall A10)** — Updating non-vector columns (`job_description`, `enriched_at`, `status`) on the HNSW-indexed jobs table is ~100x slower than without the index — confirmed pgvector GitHub issue #875. Never update `job_description` in the same transaction that touches the `embedding` column. The proposed architecture already separates Stage 2b (JD text updates) from Stage 3 (embedding inserts).
 
-5. **GitHub rate limiting on unauthenticated raw.githubusercontent.com fetches** — always authenticate with a GitHub PAT in the `Authorization: Bearer` header; add explicit 429 detection and exponential backoff; never deploy unauthenticated in production (GitHub announced stricter limits in May 2025 explicitly targeting raw file downloads).
+5. **ATS `content_hash` collision triggers full 76K-job re-enrichment (Pitfall A9)** — Adding `job_description` to the existing `content_hash` input changes every row's hash on first ATS scrape, triggering a full re-enrichment run. Add a separate `ats_content_hash` column (SHA-256 of `description_plain`) for tracking ATS-derived field changes. Never modify the existing `content_hash` logic.
 
----
+6. **New ATS module imports break the working GitHub scraper (Pitfall A12)** — Extending the existing scraper module with Firecrawl code risks breaking the working pipeline via import errors or connection pool conflicts when `firecrawl-py` is added. Implement ATS scraping as a completely separate script with its own entrypoint and launchd plist. The existing `cron_scraper.sh` must not be modified.
 
 ## Implications for Roadmap
 
-Architecture research identifies a clear build order with hard dependencies. The phase structure below follows that order directly.
+The build order is strict and flows from component dependencies. Each phase produces independently runnable, tested components before the next phase builds on them.
 
-### Phase 1: Foundation and Scraper
+### Phase 1: DB Schema + URL Classifier Foundation
 
-**Rationale:** Everything depends on having job data in the database. The DB schema must exist before the scraper writes to it, and stable ID generation must be correct before enrichment runs — a bad ID function means paying double enrichment cost for every duplicate. This phase has the highest density of critical pitfalls (3 of 5 top pitfalls are Phase 1 concerns).
+**Rationale:** Zero risk and zero external dependencies. The DB migration must exist before any code can write the new columns. The URL classifier is pure string matching with no I/O — it can be built and unit-tested before any HTTP calls are made. Both are hard prerequisites for every subsequent phase.
+**Delivers:** Alembic migration 0004 (`jd_fetch_source`, `jd_fetch_attempted_at` columns + partial index); `url_classifier.py` with full ATS routing table (greenhouse.io, lever.co, ashbyhq.com, myworkdayjobs patterns); unit test coverage for all URL patterns including edge cases
+**Addresses:** ATS platform detection (table stakes), incremental hash check gate infrastructure
+**Avoids:** Credit re-spend on previously-attempted jobs (Pitfall A anti-pattern 2); `ats_content_hash` vs `content_hash` collision (Pitfall A9) — add `ats_content_hash` column in this migration
 
-**Delivers:** PostgreSQL schema with pgvector extension, connection pool, migrations via alembic; SimplifyJobs scraper that correctly handles HTML-embedded multi-location cells, emoji normalization, and `↳` continuation rows; stable ID generation; upsert with staleness marking; cron-ready CLI entrypoint for scraping.
+### Phase 2: Free ATS JSON API Fetchers (Greenhouse + Lever + Ashby)
 
-**Addresses features:** SimplifyJobs scraping, stable ID generation, upsert with staleness marking, cron-ready entrypoint
+**Rationale:** Validates the ATS enrichment concept for $0 before any Firecrawl credits are spent. Greenhouse and Lever together cover the majority of SimplifyJobs URLs. This phase proves out the canonical JD schema mapping against real production data and establishes the text normalization utility that all subsequent phases must use.
+**Delivers:** `ats_enricher.py` with Greenhouse, Lever, and Ashby fetchers; bs4/lxml HTML stripping from `content`/`description` fields; text normalization utility (html.unescape + NFKC normalization + zero-width character strip); data quality score computation; canonical JD schema mapping for ATS native fields
+**Uses:** httpx (existing), beautifulsoup4 + lxml (new), psycopg3 (existing)
+**Implements:** ATS Enricher component (free tier of the routing table)
+**Avoids:** Encoding contamination of embedding input (Pitfall A13 — normalization utility built here becomes a required step for all subsequent ATS parsers); wasting Firecrawl credits on APIs that have free JSON endpoints
 
-**Avoids pitfalls:**
-- HTML in markdown cells (use mistune, test against live README snapshot)
-- Stable ID breaking on emoji (normalize before hashing)
-- Unauthenticated GitHub fetch rate limiting (PAT authentication from day one)
+### Phase 3: Firecrawl Integration (Workday + Unknown Career Pages)
 
-### Phase 2: Enrichment and Embeddings
+**Rationale:** Only after Phase 2 is validated with real production data should Firecrawl be introduced. By this point the canonical schema mapping is proven, the orchestration pattern is established, and the DB tracking columns exist. Self-host Firecrawl via Docker Compose for the initial 23K-job backfill to avoid ~$80 in cloud credits; switch to Firecrawl Cloud Hobby for ongoing incremental work.
+**Delivers:** `firecrawl_enricher.py` with scrape-first (1 credit) / extract-fallback (5 credits) chain; application-level asyncio timeout wrapper; `_has_jd_content()` heuristic; Workday CXS POST API path (httpx) with Firecrawl fallback for Cloudflare-protected tenants; Firecrawl `/search` URL discovery for missing/broken URLs; FIRECRAWL_API_KEY config field with graceful degradation when absent
+**Uses:** firecrawl-py 4.21.0
+**Implements:** Tiered Fetcher Routing (Pattern 1), Fallback Chain Within Firecrawl Tier (Pattern 3), Search Discovery (Pattern 4)
+**Avoids:** SDK timeout hang (Pitfall A1 — asyncio wrapper required); 5x credit multiplier from using extract everywhere (Pitfall A2 — scrape-first strategy); batch job stuck indefinitely (Pitfall A3 — job ID persistence + 90-min max age); Workday server suffix hardcoding (Pitfall A4 — two-step CXS endpoint discovery); Cloudflare blocking direct CXS calls (Pitfall A5 — Firecrawl fallback for enterprise Workday tenants)
 
-**Rationale:** Enrichment depends on Phase 1 producing raw job records. The content-hash gate and embedding model tracking columns must be designed before running any enrichment at scale — retrofitting them after the first bulk run wastes money and produces inconsistent data. The pgvector index operator class must be set correctly from the first embedding insert.
+### Phase 4: Pipeline Orchestrator + Daily Integration
 
-**Delivers:** LLM enrichment pipeline (Anthropic Claude Haiku) for industry, company size, skills, and sponsorship classification; content-hash gate that skips unchanged jobs; OpenAI `text-embedding-3-small` embedding generation with batching; `embedding_model` metadata column; HNSW index on embedding column with `vector_cosine_ops`; cron-ready CLI entrypoint for enrichment.
+**Rationale:** Final integration happens only after all fetcher components are independently tested. The orchestrator (`run_jd_enrichment.py`) wires everything together with per-domain throttling, error isolation, and chunked batch commits. The `daily.py` modification is the last change made — it is the highest-risk edit to the existing working pipeline and should be last.
+**Delivers:** `run_jd_enrichment.py` orchestrator with chunked batch processing (500 rows/transaction hard limit); per-domain rate limiting via `defaultdict(deque)` tracking last-access-time per domain; credit budget controls; updated `daily.py` inserting Stage 2b between Stage 2a and Stage 2c; `--dry-run` flag tested before enabling on production cron
+**Implements:** Credit-Aware Batch Processing with DB Tracking (Pattern 2)
+**Avoids:** Supabase statement timeout (Pitfall A7 — 500-row batch cap enforced in orchestrator); HNSW slowdown (Pitfall A10 — JD update stage inherently separate from embedding stage); module coupling breaking GitHub scraper (Pitfall A12 — separate module, separate entrypoint, `cron_scraper.sh` untouched)
 
-**Addresses features:** LLM enrichment with incremental hash check, embedding generation and pgvector storage, sponsorship classification
+### Phase 5: Embedding Quality Improvement (Optional Enhancement)
 
-**Uses stack:** anthropic SDK, openai SDK, pgvector, numpy, tenacity (retry), pydantic v2 for enrichment output validation
-
-**Avoids pitfalls:**
-- LLM enrichment cost explosion (content-hash gate, Haiku model, Batch API)
-- pgvector sequential scan (HNSW with `vector_cosine_ops`, verified with `EXPLAIN ANALYZE`)
-- Embedding drift (store `embedding_model` column from day one)
-- LLM hallucination (confidence scores, null/unknown sponsorship state, controlled skills vocabulary)
-
-### Phase 3: Matching Engine
-
-**Rationale:** Matching requires enriched jobs with embeddings from Phase 2. Location normalization and fuzzy skill matching must be built as part of the matching engine — they are scoring inputs, not scraper outputs. Hard filters must be applied post-retrieval (after pgvector ANN), not as SQL pre-filters, to preserve index usage.
-
-**Delivers:** Two-stage matching pipeline (hard filters → pgvector ANN top-100 → 7-signal weighted scoring); location normalization (alias map); fuzzy skill normalization; ranked results API with per-signal score breakdown; `match(user_profile) -> list[MatchResult]` library entry point callable by consumers.
-
-**Addresses features:** Hard filter enforcement, location normalization, fuzzy skill matching, weighted multi-signal scoring, ranked results API with signal breakdown
-
-**Avoids pitfalls:**
-- pgvector pre-filter sequential scan (apply hard filters post-ANN retrieval)
-- Cold start poor matches (detect new-user state; suppress feedback_boost; return deliberately broad top-K on first query)
-
-### Phase 4: Feedback Loop
-
-**Rationale:** Feedback requires the matching engine to be stable and producing results that consumers can react to. Diversity injection and feedback decay must be designed from the start of this phase — they are much harder to add after users have accumulated feedback histories.
-
-**Delivers:** Like/dislike feedback recording; affinity embedding shift (lerp by 0.05); feedback decay (time-weighted; recent signals outweigh old ones); diversity injection (at least 20% of top-K results outside established affinity cluster); user profile update pipeline.
-
-**Addresses features:** Feedback loop (like/dislike), user affinity embedding, recency decay scoring
-
-**Avoids pitfalls:**
-- Feedback filter bubble (diversity injection and feedback decay designed from day one)
-
-### Phase 5: Integration, Testing, and Cron Wiring
-
-**Rationale:** End-to-end validation closes all the "looks done but isn't" gaps identified in PITFALLS.md. Cron scheduling should use standalone scripts + system cron in production, not APScheduler in-process, per the spec's "cron-ready scripts" framing.
-
-**Delivers:** Full end-to-end pipeline smoke test (scrape → enrich → match → feedback cycle); all "looks done but isn't" checklist items verified; cron wiring (system cron or APScheduler for local dev); security review (no PAT in source, parameterized queries, rate-limit awareness on embedding API calls).
-
-**Addresses features:** Cron-ready entrypoints (both scraper and enrichment)
+**Rationale:** Once the pipeline has been running for 1-2 weeks and `job_description` is populated for a significant share of jobs, re-embedding with richer text input (title + company + skills + `job_description[:500]`) materially improves semantic match quality. Deferred until data quality can be validated and re-embedding cost estimated against actual token counts.
+**Delivers:** Updated `embedding/worker.py` text construction; re-embedding of jobs whose `job_description` changed since last embed; cost estimate validation before triggering bulk re-embed run
+**Avoids:** Embedding drift (Pitfall B6 — per-row `embedding_model` tracking already exists); unnecessary bulk re-embedding cost before data quality is confirmed
 
 ### Phase Ordering Rationale
 
-- Phase 1 before Phase 2: enrichment requires raw job records; ID correctness prevents double enrichment cost
-- Phase 2 before Phase 3: matching requires embeddings; pgvector index must exist before matching queries run
-- Phase 3 before Phase 4: feedback requires users to have seen match results; affinity embedding update requires job embeddings to exist
-- Phase 4 before Phase 5: integration tests require all pipeline components to exist
-- Location normalization and fuzzy skill matching are in Phase 3 (not Phase 1) because they are matching inputs, not storage inputs — job location is stored raw and normalized at query time
+- Foundation first: DB migration must precede all code that writes new columns; URL classifier must precede all fetchers that route by it.
+- Free paths before paid paths: ATS JSON APIs (Phase 2) validate the enrichment approach at zero cost and with official API documentation before committing to Firecrawl spend.
+- Isolated components before orchestration: build and test each fetcher in isolation (Phases 2-3) before the orchestrator (Phase 4) combines them — this isolates bugs to the component level.
+- Daily pipeline modification last: the existing working pipeline is the highest-value asset in the codebase; it should only be modified after all new components are independently validated.
+- This ordering exactly mirrors the ARCHITECTURE.md build order (Steps 1-7).
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 2:** LLM enrichment prompt engineering — the exact prompt structure for Claude Haiku to produce structured JSON (industry, company size, skills list, sponsorship) with confidence scores needs empirical tuning; hallucination rate on terse job listings is uncertain
-- **Phase 4:** Feedback decay function and diversity injection threshold — the lerp factor (0.05) and diversity floor (20%) are reasonable starting values from research but need calibration against real user behavior; no strong prior for this specific domain
+Phases needing deeper attention during planning:
+- **Phase 3 (Firecrawl / Workday):** Workday CXS API is MEDIUM confidence — undocumented, community-sourced. Test against at least 3 real Workday tenants (mix of enterprise and startup) before committing to the direct httpx approach. Budget Firecrawl fallback for enterprise Workday pages protected by Cloudflare Bot Management.
+- **Phase 3 (Firecrawl / Batch):** Firecrawl async batch job reliability is a known production issue (Pitfall A3). Design for the stuck-job case from day one — job ID persistence + 90-minute max-age timeout are mandatory, not optional.
+- **Phase 5 (Embeddings):** Measure re-embedding token cost before running against the full corpus — `job_description[:500]` adds ~125 tokens per job; confirm total cost against actual `description_plain` length distribution before triggering a bulk re-embed.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** SimplifyJobs scraping is well-documented; the parsing challenges are identified and solutions are known (mistune, emoji normalization, continuation row tracking)
-- **Phase 3:** Multi-signal weighted scoring is well-documented in recommender systems literature; weights (title 0.30, skills 0.25, etc.) are grounded in feature research
-- **Phase 5:** Standard integration testing and cron wiring patterns; no domain-specific unknowns
-
----
+Phases with standard patterns (skip additional research):
+- **Phase 1 (DB Migration + URL Classifier):** Alembic migration is well-documented; URL classifier is pure regex with no novel decisions.
+- **Phase 2 (ATS JSON APIs):** Greenhouse and Lever APIs have official documentation with HIGH confidence across all fields; Ashby is similarly well-documented.
+- **Phase 4 (Orchestrator):** Pattern established by the existing `enrich_from_jobright.py` and `pipeline/daily.py`; follow existing conventions.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All choices verified against PyPI, official docs, and multiple independent sources; psycopg3 recommendation verified directly from psycopg.org and pgvector-python docs |
-| Features | HIGH (core), MEDIUM (differentiators) | Core pipeline features verified against SimplifyJobs repo inspection and competitor analysis; feedback and affinity embedding design based on industry patterns, not prior WeKruit implementation |
-| Architecture | HIGH | Build order verified against hard dependency analysis; component boundaries validated against multiple production pipeline architecture references; pgvector patterns verified against official pgvector docs and Crunchy Data benchmarks |
-| Pitfalls | HIGH | Primary sources for all critical pitfalls: GitHub Changelog (rate limits), pgvector GitHub issues (index fallback), SimplifyJobs live README inspection (HTML cells, emoji), Anthropic docs (structured outputs limitations) |
+| Stack | HIGH | Base stack unchanged and confirmed. firecrawl-py, bs4, lxml verified against PyPI and official docs. SiliconFlow rate limits are MEDIUM — official docs confirm 1,000 RPM/50K TPM but the 50 req/day free-tier cap was sourced from rate-limits page + community sources |
+| Features | HIGH | Greenhouse, Lever, Ashby APIs verified against official documentation. Workday CXS API is MEDIUM (community-sourced, no official docs). Canonical JD schema and data quality scoring formula are well-reasoned heuristics — weights are MEDIUM confidence and should be tuned against real data |
+| Architecture | HIGH | Component boundaries, build order, and integration points derived from direct codebase analysis + official docs. Credit budget estimate (~9K credits for 23K jobs) is MEDIUM — URL distribution by ATS type is estimated from simplifyJobs patterns, not measured from actual `listings.json` |
+| Pitfalls | HIGH | A1 (SDK timeout bug) sourced from firecrawl GitHub issue #1848. A7 (Supabase timeout) confirmed by direct WeKruit production experience. A10 (HNSW non-vector slowdown) sourced from pgvector GitHub issue #875. Most new-milestone pitfalls from official issue trackers, not community speculation |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Enrichment prompt tuning:** The exact prompt structure for extracting structured metadata from terse SimplifyJobs listings (often just company name + role title) needs empirical testing; confidence scores requested from Claude may be poorly calibrated on short inputs. Address in Phase 2 with a batch of 50-100 real listings before running at scale.
-- **Weight calibration:** The multi-signal weights (title 0.30, skills 0.25, etc.) are grounded in feature research but have not been validated against real WeKruit user behavior. Treat as v1 defaults; plan to adjust based on observed match quality once a consumer is live.
-- **SimplifyJobs `listings.json` vs README:** FEATURES.md notes that `listings.json` is the correct data source (not raw README markdown). ARCHITECTURE.md shows the README as the source. Reconcile during Phase 1 implementation — if `listings.json` is available as a structured JSON feed, it eliminates the markdown parsing complexity from Pitfall 1 entirely. Inspect the repo before building the parser.
-- **Feedback loop timing:** FEATURES.md gates the feedback loop on "at least one consumer sending real user interactions." This creates a dependency on a downstream consumer being live. Ensure the matching engine is designed to handle zero feedback gracefully (cold-start path in Phase 3) so the feedback phase can be deferred without breaking Phase 3 functionality.
-
----
+- **Workday CXS API `wd_server` suffix variability:** The `wd{N}` server suffix is not derivable without fetching the company's career page first. The two-step discovery pattern is specified in ARCHITECTURE.md but needs validation against a representative sample of actual SimplifyJobs employer URLs before scaling.
+- **SiliconFlow 50 req/day free-tier cap:** At 200+ jobs/day enrichment volume, batching 5 jobs per LLM request must be implemented and tested before production runs. Alternatively, $10 in credits unlocks 1,000 req/day. Validate batching behavior and output quality (multi-job structured JSON extraction) before enabling.
+- **Firecrawl backfill cost:** Self-hosting Firecrawl for the initial 23K-job backfill requires Docker Compose setup on the matching server. Validate the self-hosted setup works (Redis + Postgres stack) and produces equivalent output quality before starting the backfill run.
+- **Ashby URL share in SimplifyJobs data:** Research notes Ashby adoption is growing but doesn't quantify what percentage of SimplifyJobs URLs are Ashby. Measure this from actual `listings.json` URL distribution before committing to Phase 2 implementation scope.
+- **`__NEXT_DATA__` migration risk (Pitfall A6):** The existing `enrich_from_jobright.py` uses `__NEXT_DATA__` extraction. If JobRight migrates from Next.js Pages Router to App Router, this will break silently. Add a presence assertion and fallback path — identified as a Phase 2/3 boundary risk.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- PyPI: anthropic 0.86.0, openai 2.30.0, httpx 0.28.1, pgvector 0.4.2, alembic 1.18.x — version and compatibility confirmed
-- psycopg.org/psycopg3 — "if you are starting a new project, you should probably start from psycopg3"
-- github.com/pgvector/pgvector-python — confirmed psycopg3 + SQLAlchemy 2.x compatibility
-- GitHub Changelog: "Updated rate limits for unauthenticated requests" (May 8, 2025) — https://github.blog/changelog/2025-05-08-updated-rate-limits-for-unauthenticated-requests/
-- pgvector GitHub issues #835, #72 — HNSW index fallback behavior and cosine distance semantics
-- SimplifyJobs Summer2026-Internships README (live inspection) — confirmed `listings.json` format, HTML cells, emoji usage
-- Crunchydata HNSW blog — HNSW preferred over IVFFlat for recall/latency tradeoff
-- Anthropic Docs: Structured outputs — format compliance vs factual accuracy distinction
-- OpenAI Docs: text-embedding-3-small specs — 1536 dims, 8192 token limit, batch API
+- Greenhouse Job Board API — `boards-api.greenhouse.io/v1/boards/{token}/jobs`; all query params and field names; https://developers.greenhouse.io/job-board.html
+- Lever postings-api GitHub README — full field listing including salaryRange, lists, workplaceType; https://github.com/lever/postings-api/blob/master/README.md
+- Ashby Job Postings API docs — endpoint URL, compensation fields, `includeCompensation` param; https://developers.ashbyhq.com/docs/public-job-posting-api
+- Firecrawl scrape/extract/search/batch endpoint docs — verified endpoints, credit costs, SDK usage; https://docs.firecrawl.dev
+- Firecrawl self-hosting guide — confirms Fire-engine (proxy/stealth) absent in self-hosted; https://docs.firecrawl.dev/contributing/self-host
+- Firecrawl pricing — 500 free lifetime credits, Hobby $16/3K credits/month, Standard $83/100K; https://www.firecrawl.dev/pricing
+- Firecrawl rate limits — Hobby: 100 RPM scrape, 50 RPM search, 15 RPM crawl; https://docs.firecrawl.dev/rate-limits
+- pgvector GitHub issue #875 — HNSW non-vector update performance degradation (100x); confirmed issue
+- firecrawl/firecrawl GitHub issue #1848 — SDK timeout unit bug
+- SiliconFlow rate limits and pricing — Qwen3-8B $0.06/M tokens; 1,000 RPM / 50K TPM; 50 req/day without credits; https://www.siliconflow.com/models/qwen3-8b
+- Existing codebase analysis — `enrich_from_jobright.py`, `pipeline/daily.py`, `db/tables.py`, `config.py`; HIGH confidence from direct code reading
 
 ### Secondary (MEDIUM confidence)
-- Eightfold AI engineering blog — multi-signal scoring: skill overlap, career trajectory, company similarity, recency
-- rabiuk/job-scraper (open-source) — reference SimplifyJobs scraper architecture for deduplication pattern
-- Crunchy Data: pgvector performance for developers — `maintenance_work_mem` and HNSW configuration
-- Multiple sources (BetterStack, Speakeasy, Oxylabs) — httpx vs requests vs aiohttp comparison
-- Multiple sources (Medium, Upsun, DataCamp) — uv vs pip vs poetry 2025
+- Workday CXS API pattern (`POST /wday/cxs/{tenant}/{site}/jobs`) — Apify actors + GitHub community crawlers (chuchro3/WebCrawler, blackfalcondata/workday-scraper); no official docs
+- OpenRouter free tier (20 RPM / 200 req/day, 29 free models) — https://openrouter.ai/collections/free-models; useful fallback if SiliconFlow proves unreliable
+- Firecrawl caching `maxAge` parameter — changelog; pricing pages change frequently, treat with caution
+- Data quality scoring formula — adapted from Clarity Scorecard completeness × recency methodology; weights are reasonable starting points, not empirically validated for job postings
 
-### Tertiary (LOW confidence, needs validation)
-- Feedback lerp factor (0.05) and diversity injection floor (20%) — reasonable starting values from recommender systems patterns but not validated for this specific domain
-- Enrichment cost estimate ($0.01/job) — order-of-magnitude correct but depends on actual prompt token count and Haiku pricing at time of implementation
+### Tertiary (LOW confidence — validate before relying on)
+- Workday `wd_server` suffix universality — community observation from scrapers; may vary more than documented; validate against real employer URLs before scaling
+- Ghost posting rate estimate (30-40%) — cited from job data normalization blog; not independently verified for the SimplifyJobs intern/new grad corpus specifically
 
 ---
-*Research completed: 2026-03-25*
+*Research completed: 2026-03-31*
 *Ready for roadmap: yes*

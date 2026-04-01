@@ -1,8 +1,103 @@
 # Feature Research
 
-**Domain:** Job scraping and matching engine (backend API, no frontend)
-**Researched:** 2026-03-25
-**Confidence:** HIGH (core pipeline), MEDIUM (differentiators), MEDIUM (anti-features)
+**Domain:** Job data collection pipeline (Firecrawl scraping, ATS parsing, structured JD extraction)
+**Researched:** 2026-03-31
+**Confidence:** HIGH (Firecrawl capabilities, ATS URL patterns), MEDIUM (data quality scoring heuristics), MEDIUM (competitor methodology)
+
+---
+
+## Context: Subsequent Milestone
+
+This document extends the original FEATURES.md (2026-03-25) which covered the matching engine core. This research covers the **new data collection milestone** only: fetching full job description pages via Firecrawl, parsing ATS-structured pages, extracting structured JD fields, and scoring data quality. The matching engine features from the original file remain in force and are not repeated here.
+
+**Existing capabilities (already built, not researched here):**
+- GitHub README scraping (SimplifyJobs repos)
+- LLM enrichment via Qwen3-8B (industry/skills from title only)
+- OpenAI embeddings + 7-signal weighted scoring
+- Internal admin UI at matching.wekruit.com/internal/*
+- Mailgun pipeline email notifications
+
+---
+
+## Firecrawl API Capabilities (Verified)
+
+Firecrawl provides four endpoints relevant to this milestone. All verified against official docs.
+
+| Endpoint | What It Does | Cost | When to Use |
+|----------|-------------|------|-------------|
+| `/scrape` | Fetches a single URL, returns markdown/JSON/HTML/screenshot | 1 credit base; +4 credits for JSON mode | Per-job ATS page fetch with structured extraction |
+| `/batch-scrape` | Async scrape of up to 5,000 URLs per job; returns job ID for polling | Same per-URL cost; expires after 24h | Bulk enrichment runs across many employer URLs |
+| `/search` | Web search + optional scrape of results in one call | Per-result scrape costs apply | Discovering employer career page URLs by company name |
+| `/extract` (v2 `/extract`) | Multi-URL or wildcard crawl with schema-guided LLM extraction | Per-URL + LLM processing | When employer URL is known but page structure is unpredictable |
+
+**JSON mode (on `/scrape`):** Pass `formats: ["json"]` with a JSON Schema (or Pydantic-compatible schema) and Firecrawl runs LLM extraction inline. Returns `data.json` matching the schema. Costs 4 additional credits per page. Use this for ATS pages where field layout is consistent but HTML structure varies.
+
+**Actions parameter:** Supports `click`, `write`, `press`, `wait`, `screenshot` actions before scraping. Enables scraping pages behind "Load More" buttons, modal dialogs, or login flows. Relevant for Workday (requires JavaScript-heavy navigation) and any custom career portal.
+
+**Batch scrape async pattern (Python SDK):**
+```python
+job = app.async_batch_scrape_urls(urls, params={"formats": ["json"], "jsonOptions": {"schema": schema}})
+# Poll via job.id
+status = app.get_batch_scrape_status(job.id)
+```
+Python SDK: `firecrawl-py` on PyPI. Confirmed supports batch async as of SDK 1.4.x.
+
+**Search + scrape combined:**
+```python
+results = app.search("Google software engineer internship site:jobs.lever.co", scrape_options={"formats": ["json"]})
+```
+Returns web search results with scraped content attached. Useful for discovering direct employer ATS URLs when only company + role name is known.
+
+---
+
+## ATS Platform Patterns (Verified)
+
+The following ATS platforms cover the majority of tech internship and new grad postings. URL patterns are stable and reliably identify the platform from a job URL alone.
+
+### Greenhouse
+- **URL pattern:** `boards.greenhouse.io/{company}` or `job-boards.greenhouse.io/{company}/jobs/{id}`
+- **Public API:** `GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs` — no auth required
+- **Fields from API (no scraping needed):** `id`, `title`, `location.name`, `absolute_url`, `updated_at`, `requisition_id`
+- **Optional params:** `?content=true` adds HTML job description; `?questions=true` adds application form fields; `?pay_transparency=true` adds `pay_input_ranges` (salary range)
+- **Departments/offices:** included when `?content=true`
+- **What's missing from API:** explicit skills list, seniority level, tech stack — must extract from `content` HTML via LLM
+- **Confidence:** HIGH — official Greenhouse Job Board API docs verified
+
+### Lever
+- **URL pattern:** `jobs.lever.co/{company}/{posting_id}` or `posting.lever.co/{company}`
+- **Public API:** `GET https://api.lever.co/v0/postings/{clientname}` — no auth required
+- **Fields from API:** `id`, `text` (title), `hostedUrl`, `applyUrl`, `description` (HTML), `descriptionPlain`, `lists` (requirements/benefits as structured arrays), `categories` (location, commitment, team, department), `salaryRange` (currency, interval, min, max), `workplaceType` (on-site/remote/hybrid), `country` (ISO 3166-1)
+- **Notable:** `lists` is the richest structural field — Lever separates requirements, responsibilities, and benefits as named arrays, not one blob. Parse these individually.
+- **What's missing:** explicit skills taxonomy, tech stack list — extract from `description` and `lists` via LLM
+- **Confidence:** HIGH — official Lever postings-api GitHub docs verified
+
+### Workday
+- **URL pattern:** `{tenant}.wd{N}.myworkdayjobs.com/{locale}/{site}` — N varies (1, 3, 5 etc. per company's data center)
+- **No public API:** must use undocumented internal API
+- **Jobs list:** `POST /wday/cxs/{tenant}/{site}/jobs` — body: `{"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""}`
+- **Job detail:** `GET /wday/cxs/{tenant}/{site}/job/{externalPath}`
+- **Available fields:** `jobId`, `title`, `locationsText`, `country`, `countryCode`, `employmentType`, `remoteType`, `jobReqId`, `description` (HTML), `applyUrl`
+- **Key complexity:** POST required for listing (not GET); tenant and data center number must be determined from company's actual careers page URL — cannot be inferred; JavaScript-heavy, may need Firecrawl actions
+- **Salary:** Sometimes available in description or as structured field depending on state disclosure laws
+- **Confidence:** MEDIUM — documented via community reverse-engineering (Apify actors, GitHub crawlers); no official API docs
+
+### Ashby
+- **URL pattern:** `jobs.ashbyhq.com/{company}` (growing adoption at Series A/B startups)
+- **Public API:** `GET https://api.ashbyhq.com/posting-api/job-board/{clientname}?includeCompensation=true`
+- **Fields:** `title`, `location`, `secondaryLocations`, `department`, `team`, `isRemote`, `workplaceType`, `descriptionHtml`, `descriptionPlain`, `publishedAt`, `employmentType`, `address`, `jobUrl`, `applyUrl`, `compensationTierSummary`, `scrapeableCompensationSalarySummary`
+- **Best compensation coverage:** Ashby's `includeCompensation=true` flag and `scrapeableCompensationSalarySummary` field provide better salary data than Greenhouse or Lever
+- **Confidence:** HIGH — official Ashby developer docs verified
+
+### Other ATS Platforms (Detected by URL, Lower Priority)
+
+| Platform | URL Pattern | Notes |
+|----------|-------------|-------|
+| SmartRecruiters | `careers.smartrecruiters.com/{company}` | Has public job listing API |
+| BambooHR | `{company}.bamboohr.com/careers` | No public API; scrape required |
+| Jobvite | `jobs.jobvite.com/{company}` | XML/JSON feed available at `/feeds/jobs.json` |
+| Rippling | `ats.rippling.com/{company}` | Newer; scraping only |
+| Taleo | `{company}.taleo.net` | Enterprise; complex, often requires JS |
+| iCIMS | `careers.icims.com/jobs/{company}` | Has partial XML feed |
 
 ---
 
@@ -10,138 +105,191 @@
 
 ### Table Stakes (Users Expect These)
 
-These are the non-negotiable features for a job scraping and matching backend. Any API consumer (Discord bot, web app) that plugs in expects these to work correctly. Missing any one of them makes the engine unreliable or useless.
+Features that any job data collection pipeline must have. Without these, the enriched data is either incomplete, stale, or unreliable for matching.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| SimplifyJobs GitHub scraping | The entire data source — without this there is no engine | MEDIUM | Parse `listings.json` (JSON, not raw README markdown), pull from Summer2026-Internships and New-Grad-Positions repos via raw GitHub URLs; httpx suffices, no browser needed |
-| Closed listings filter | Inactive jobs waste match slots and frustrate users | LOW | SimplifyJobs uses an `active` boolean field in `listings.json`; filter server-side, never surface closed rows |
-| Stable job ID generation | Deduplication requires consistent identity across scrape runs | LOW | Hash on `company_name + title + url`; SimplifyJobs also provides an `id` field that can be used as stable key |
-| Upsert with staleness marking | Jobs appear, change, and expire — the DB must reflect reality | MEDIUM | INSERT on new, UPDATE on changed fields, set `is_active = false` for IDs absent from latest scrape; use Postgres `ON CONFLICT DO UPDATE` |
-| LLM-based metadata enrichment | Structured metadata (industry, company size, sponsorship, skills) is not in the raw listing | HIGH | Batch enrichment via Anthropic Claude; only call LLM on new or changed jobs — never re-enrich unchanged rows (cost) |
-| Embedding generation per job | Semantic matching requires vector representation | LOW | `text-embedding-3-small` via OpenAI; store in pgvector column alongside structured data |
-| User profile schema | The engine needs a stable representation of who to match against | MEDIUM | Skills list, preferences (job type, location, company size, sponsorship required), experience level, career goals, feedback history |
-| Weighted multi-signal scoring | Matching must produce a ranked list ordered by fit, not random | HIGH | Blend: title_similarity (0.30), skills_overlap (0.25), industry_match (0.15), company_size_match (0.10), location_fit (0.10), recency (0.05), feedback_boost (0.05); each signal normalized 0–1 before weighting |
-| Hard filter enforcement | Some mismatches are dealbreakers, not soft penalties | LOW | Job type filter, sponsorship requirement, excluded locations; apply BEFORE scoring, not as a negative weight |
-| Location normalization | "SF", "San Francisco", "San Francisco, CA" must resolve to the same bucket | LOW | Alias map + normalization function; covers top-20 US tech hubs and Remote variants |
-| Ranked results API | Callers need an ordered list with scores, not a raw dump | LOW | Return list of `{job_id, score, breakdown}` sorted descending by composite score; include signal-level breakdown for debugging |
-| Cron-ready scrape entrypoint | Engine must refresh data on a schedule without manual intervention | LOW | Scraper and enrichment scripts must be callable as standalone CLI entrypoints with no side effects outside DB |
+| Employer URL resolution | SimplifyJobs provides a `url` field pointing to the actual ATS page; fetching it is required to get full JD content beyond title/company/location | LOW | The URL is already in `listings.json`; this is just "follow the link" — httpx for Greenhouse/Lever/Ashby APIs, Firecrawl for HTML-heavy pages |
+| ATS platform detection from URL | Must route each URL to the correct parser (API vs. scrape vs. Workday POST pattern) | LOW | Regex match on URL host: `boards.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `*.myworkdayjobs.com`; maintain a platform routing table |
+| Full job description extraction | Title + company + location alone are insufficient for skills matching; full JD text needed for LLM enrichment and embedding | MEDIUM | For Greenhouse/Lever/Ashby: use public API `?content=true`; for Workday + custom pages: Firecrawl `/scrape` with markdown format |
+| Structured field extraction (title, company, location, employment type, description) | Downstream matching requires structured fields, not a markdown blob | MEDIUM | Greenhouse/Lever/Ashby APIs return these natively; Workday + custom pages need Firecrawl JSON mode with schema |
+| Incremental fetch (only new/changed jobs) | Fetching all employer URLs on every run wastes Firecrawl credits and LLM budget | MEDIUM | Track `last_fetched_at` and `content_hash` per job; skip if hash unchanged. For ATS API platforms, compare `updated_at` field before fetching content |
+| Retry with backoff on fetch failures | Network failures and rate limits are guaranteed; silent drops break the pipeline | LOW | Use `tenacity` (already in stack) with exponential backoff + jitter; 3 retries, 2-30s window; log failures to separate table for manual review |
+| Deduplication across sources | Same job may appear in SimplifyJobs README AND via direct employer URL; must not create two records | MEDIUM | Canonical ID = hash of `(company_name_normalized + title_normalized + ats_platform + ats_job_id)`; ATS job IDs are stable within a platform |
 
 ### Differentiators (Competitive Advantage)
 
-These features are not found in generic job scrapers. They are what makes the engine useful specifically for WeKruit's use case — personalized matching for students and new grads against a curated, enriched dataset.
+Features that materially improve matching quality beyond what a naive scraper provides. These are what distinguish the WeKruit engine from raw SimplifyJobs data.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Feedback-driven preference update | Like/dislike signals improve future matches without re-onboarding the user | MEDIUM | On `like`: upweight matched signals and update user affinity embedding. On `dislike`: downweight. Store feedback as event log, compute aggregate in `feedback_boost` signal |
-| User affinity embedding | Captures implicit taste that explicit preferences miss | MEDIUM | Maintain per-user "ideal job" embedding as a rolling weighted average of liked job embeddings; cosine similarity with candidate jobs contributes to semantic signal |
-| Signal-level score breakdown | Callers can explain WHY a job was ranked high — critical for trust | LOW | Return per-signal scores alongside composite: `{title: 0.8, skills: 0.6, location: 1.0, ...}`; no added compute cost since signals are already computed |
-| Incremental enrichment (cost-aware) | Only enrich new/changed jobs — avoid burning LLM budget on re-processing | MEDIUM | Hash job content at scrape time, compare against stored hash in DB, skip enrichment if unchanged; target: <5% of jobs per day require re-enrichment |
-| Sponsorship classification | Students on visas need this as a hard filter — no other open-source scraper enriches it | MEDIUM | LLM prompt to classify `sponsorship_offered: true/false/unknown` from job text; "We are unable to sponsor" patterns are reliable negative signals |
-| Fuzzy skill matching | "React.js", "ReactJS", "React" must match as the same skill | LOW | Normalize skill tokens before overlap comparison: lowercase, strip punctuation, alias map for known variants (JS/JavaScript, ML/Machine Learning) |
-| Recency decay scoring | Fresh postings should rank above stale ones controlling for quality | LOW | Exponential decay: score = base_score * e^(-lambda * days_since_posted); lambda tunable, default 0.05 gives ~50% decay at 14 days |
+| Structured JD extraction via Firecrawl JSON mode | Extract skills, requirements, responsibilities, compensation as typed fields — not a text blob — which enables per-field matching signals | HIGH | Define Pydantic schema: `{required_skills: list[str], preferred_skills: list[str], responsibilities: list[str], min_experience_years: int, seniority: str, employment_type: str, salary_min: int, salary_max: int, salary_currency: str, remote_policy: str, visa_sponsorship: bool, tech_stack: list[str]}`; pass to Firecrawl `/scrape` JSON mode or Firecrawl `/extract`; Costs 4 credits/page above base |
+| Firecrawl `/search` for employer URL discovery | When SimplifyJobs has a company name but broken/missing URL, use Firecrawl search to find the ATS page directly | MEDIUM | Query: `"{company_name} {job_title} site:jobs.lever.co OR site:boards.greenhouse.io OR site:jobs.ashbyhq.com"`; attach `scrapeOptions` to pull structured data in same call; avoids a second round-trip |
+| Salary range extraction and normalization | Compensation data from Ashby (native), Lever (`salaryRange`), Greenhouse (`pay_input_ranges`), and Workday (description extraction) enables a salary filter that wasn't viable before | MEDIUM | Normalize: strip currency symbol, convert to annual ($80K/mo → $960K/yr is wrong; detect interval), store as `{min_usd_annual, max_usd_annual, currency, pay_period}`; flag as `salary_confidence: [exact, extracted, inferred, missing]` |
+| Data quality scoring per job record | Enables the matching engine to down-weight low-quality records (missing description, stale posting, incomplete fields) | MEDIUM | Score 0-100: completeness (50 pts) + recency (25 pts) + description length (15 pts) + salary presence (10 pts); store as `data_quality_score` column; use as a soft signal in matching or a hard filter threshold |
+| ATS-native structured fields over LLM inference | Greenhouse departments, Lever `lists` (requirements/benefits/responsibilities as separate arrays), Ashby compensation — these are already parsed by the ATS; using them is more reliable and cheaper than LLM extraction | LOW | For each ATS platform, map native API fields to the canonical schema first; only invoke LLM extraction for fields not natively available or for custom/unknown career pages |
+| Visa sponsorship signal from JD text | Students on visas need this as a hard filter; Workday and custom pages often mention it explicitly in the description | MEDIUM | Already flagged as differentiator in prior research; now expanded: with full JD text available (not just title), sponsorship detection accuracy improves significantly. Patterns: "unable to sponsor", "must be authorized to work", "H-1B", "OPT/CPT eligible" |
+| Tech stack extraction as separate field | Matching against a `tech_stack` list is more signal-dense than fuzzy skill matching on a combined description blob | HIGH | Firecrawl JSON mode schema includes `tech_stack: list[str]`; supplement with regex for known tech tokens (Python, React, Kubernetes, etc.) as a low-cost fallback for simple pages |
+| Ghost posting detection | Many listings remain open after position is filled; down-weighting or filtering these improves user experience | MEDIUM | Heuristics: `last_updated > 60 days`, no changes to description hash across 3 scrape cycles, posting date > 90 days ago with no activity; set `suspected_ghost: true` flag; do not hard-delete |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-These features get requested because they seem natural extensions, but each adds disproportionate complexity relative to value for this backend-only engine.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Resume parsing | "Match against my resume, not a profile" | Adds PDF/DOCX parsing, OCR edge cases, unstructured extraction complexity; resume format varies wildly; out of scope per PROJECT.md | Caller builds resume-to-profile conversion if needed; engine accepts normalized profile struct |
-| Real-time streaming scrape | "Give me jobs the second they're posted" | SimplifyJobs updates via GitHub Actions batch (~daily); polling faster than source update frequency adds load with zero benefit; GitHub rate limits unauthenticated requests | Cron daily scrape aligned to SimplifyJobs update cadence; expose `scraped_at` timestamp so callers know freshness |
-| User authentication and sessions | "The engine should manage user accounts" | Auth is a cross-cutting concern; every client (Discord bot, web app) has different auth needs; adding it here forces all consumers to use the same model | Engine is a library — caller passes `user_id` and profile directly; auth lives in the consumer layer per PROJECT.md |
-| Web dashboard / admin UI | "Show me all jobs in a table" | Frontend is explicitly out of scope; building it here couples concerns and doubles the project scope | Expose read endpoints; consumer builds the view |
-| Multi-source aggregation (LinkedIn, Indeed) | "Scrape more sources for more jobs" | Anti-bot measures, terms of service violations, browser automation overhead; SimplifyJobs is already curated and structured | Start with SimplifyJobs; design data model to be source-agnostic so additional sources can be added later without schema changes |
-| Salary filtering and normalization | "Filter by salary range" | SimplifyJobs listings rarely include salary; LLM inference on absent data is unreliable; adds a filter that returns empty results silently | Omit until a reliable salary signal exists in the source data |
-| Collaborative filtering ("users like you also applied to") | "Improve matching with social signals" | Requires user-level interaction graph; privacy concerns; cold start problem for new users; significant ML infrastructure | Feedback loop via per-user affinity embedding achieves personalization without requiring other users' data |
-| Keyword search endpoint | "Let me search by keyword" | Duplicate of what pgvector semantic search already does better; keyword search returns false positives (job contains the word but is irrelevant) | Use semantic embedding similarity search; expose it as the primary search mechanism |
+| Full site crawl of employer careers pages | "Get all jobs from Google's careers page" | Firecrawl `/crawl` on a large careers site can burn hundreds of credits and hit rate limits; most large employers (Google, Meta, Amazon) have anti-bot protections that block even Firecrawl's proxied requests; ToS risk | Use ATS public APIs (Greenhouse/Lever/Ashby) for structured listing retrieval; fall back to Firecrawl `/scrape` for individual known URLs only, not wildcard crawls |
+| Scraping LinkedIn or Indeed | "These have more jobs" | LinkedIn's anti-scraping is aggressive and legally contested; Indeed TOS prohibits scraping; both block standard scrapers and Firecrawl; account bans and legal risk are real | Stick to employer-direct ATS pages and SimplifyJobs as the aggregation layer; LinkedIn data is available via their official Jobs API (requires partnership) |
+| Storing full HTML or raw markdown of JD | "Keep everything for re-processing" | Full HTML/markdown is large (5-50KB per job), doubles storage cost, and rarely needed after structured extraction; re-processing from raw HTML is brittle as pages change | Store extracted structured fields + `description_plain` text only; re-fetch if needed (Firecrawl caches by default for 2 days via `maxAge` param) |
+| Real-time ATS polling (sub-hourly) | "Get jobs the moment they're posted" | SimplifyJobs (the upstream source) updates ~daily via GitHub Actions; polling employer ATS pages faster than that wastes Firecrawl credits; most ATS platforms throttle frequent clients | Align fetch cadence to SimplifyJobs update frequency; run enrichment pipeline after each successful GitHub scrape, not independently |
+| Paying for Firecrawl LLM extraction on every scrape | "Always use JSON mode for best quality" | JSON mode costs 5 credits/page (1 base + 4 JSON); for Greenhouse, Lever, Ashby jobs where the API already returns structured fields, this is waste | Only invoke Firecrawl JSON mode for Workday and custom/unknown career pages; use native ATS API fields everywhere else |
+| Generalizing to non-tech job postings | "Support all industries" | The current skill taxonomy, seniority detection, and tech stack patterns are calibrated for software engineering roles; generalization dilutes match quality for the target user base (students, new grads in tech) | Stay focused on tech roles; the SimplifyJobs source already scopes this appropriately |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[SimplifyJobs Scraper]
-    └──produces──> [Job Records in Postgres]
-                       ├──requires──> [Stable ID Generation]
-                       ├──requires──> [Upsert + Staleness Marking]
-                       ├──feeds──> [LLM Enrichment]
-                       │               └──produces──> [Structured Metadata]
-                       │               └──produces──> [Sponsorship Classification]
-                       └──feeds──> [Embedding Generation]
-                                       └──stores in──> [pgvector column]
+[SimplifyJobs GitHub Scraper] (existing)
+    └──produces──> [Job Records with URL field]
+                       └──feeds──> [ATS Platform Detection]
+                                       ├──routes to──> [Greenhouse API Fetch]
+                                       ├──routes to──> [Lever API Fetch]
+                                       ├──routes to──> [Ashby API Fetch]
+                                       ├──routes to──> [Workday POST Scrape]
+                                       └──routes to──> [Firecrawl Scrape (unknown/custom)]
 
-[User Profile Schema]
-    └──feeds──> [Weighted Multi-Signal Scoring]
-                    ├──requires──> [Job Records with Metadata]
-                    ├──requires──> [Hard Filter Enforcement]
-                    ├──requires──> [Location Normalization]
-                    ├──requires──> [Fuzzy Skill Matching]
-                    └──produces──> [Ranked Results API]
+[ATS Platform Detection]
+    └──requires──> [Employer URL] (from listings.json or search discovery)
 
-[Feedback Loop]
-    ├──requires──> [User Profile Schema]
-    ├──requires──> [Ranked Results API] (user must see results to like/dislike)
-    ├──updates──> [User Affinity Embedding]
-    └──feeds into──> [feedback_boost signal in scoring]
+[Firecrawl Search Discovery]
+    └──produces──> [Employer URL]
+    └──requires──> [Company Name + Job Title] (from existing scraper output)
 
-[User Affinity Embedding]
-    ├──requires──> [Embedding Generation] (job embeddings must exist)
-    └──enhances──> [Weighted Multi-Signal Scoring]
+[Full JD Fetch] (all routes above converge here)
+    └──produces──> [Raw JD Content (description_plain, structured_fields)]
+    └──feeds──> [Incremental Hash Check]
+                    └──gates──> [Structured JD Extraction]
+                                    └──requires──> [Firecrawl JSON Mode] (Workday/custom)
+                                    └──requires──> [ATS Native Fields Mapping] (GH/Lever/Ashby)
+                                    └──produces──> [Canonical JD Schema Record]
 
-[Incremental Enrichment]
-    ├──requires──> [SimplifyJobs Scraper]
-    └──gates──> [LLM Enrichment] (only runs when content hash changes)
+[Canonical JD Schema Record]
+    ├──feeds──> [Salary Normalization]
+    ├──feeds──> [Visa Sponsorship Detection] (enhanced with full text)
+    ├──feeds──> [Tech Stack Extraction]
+    ├──feeds──> [Data Quality Scoring]
+    └──feeds──> [LLM Enrichment Pipeline] (existing — now has richer input)
 
-[Cron-Ready Entrypoint]
-    ├──requires──> [SimplifyJobs Scraper]
-    ├──requires──> [LLM Enrichment]
-    └──requires──> [Embedding Generation]
+[Data Quality Scoring]
+    └──requires──> [Canonical JD Schema Record]
+    └──enhances──> [Weighted Multi-Signal Scoring] (existing — quality score as soft signal)
+
+[Ghost Posting Detection]
+    └──requires──> [Multiple scrape cycles] (needs historical hash comparison)
+    └──requires──> [Canonical JD Schema Record] (last_updated, date_posted)
 ```
 
 ### Dependency Notes
 
-- **Embedding Generation requires Job Records:** Embeddings are generated from enriched job text; run enrichment before embedding generation in the pipeline.
-- **Weighted Scoring requires Hard Filters first:** Apply hard filters (sponsorship, job type, location exclusions) before computing weighted scores to avoid scoring jobs that will be discarded anyway.
-- **Feedback Loop requires Ranked Results:** Users cannot express feedback without first seeing match results; feedback is a v1 feature but depends on the core scoring pipeline being stable first.
-- **Incremental Enrichment gates LLM Enrichment:** The content hash check is a guard — skip LLM call if hash unchanged. This must be implemented early or LLM costs will compound with each scrape run.
-- **Fuzzy Skill Matching requires normalization before scoring:** Skill normalization must run at both ingest time (for stored job skills) and query time (for user profile skills) to produce consistent overlap scores.
+- **ATS Platform Detection must run before any fetch:** The fetch strategy (API call vs. Firecrawl scrape vs. Workday POST) depends entirely on which ATS is detected. This is a router, not optional middleware.
+- **Firecrawl Search Discovery is a fallback, not primary:** Primary path is "follow URL from listings.json". Search discovery only activates when URL is missing, broken (4xx), or redirects to a homepage.
+- **Incremental hash check gates the expensive steps:** Structured JD extraction (Firecrawl JSON mode) and LLM enrichment should only run when content has changed. Hash the `description_plain` field; if unchanged, skip downstream.
+- **Data Quality Scoring requires the complete canonical record:** Score is computed after all extraction; cannot be computed mid-pipeline.
+- **Ghost Posting Detection requires multiple cycles:** Cannot be computed on first fetch; needs at least 2-3 scrape cycles to establish a "no change" pattern.
+
+---
+
+## Canonical JD Schema (Target Fields Per Job Record)
+
+These are the fields the extraction pipeline must produce. Confidence levels reflect how reliably each ATS surfaces the field.
+
+| Field | Type | Source | Confidence | Matching Value |
+|-------|------|--------|------------|----------------|
+| `title` | string | All ATS APIs + scrape | HIGH | P1 signal |
+| `company_name` | string | SimplifyJobs + ATS | HIGH | Dedup key |
+| `location` | string | All ATS APIs | HIGH | `location_fit` signal |
+| `remote_policy` | enum(onsite/remote/hybrid) | Lever `workplaceType`, Ashby `isRemote`, Workday `remoteType` | HIGH | Hard filter candidate |
+| `employment_type` | enum(fulltime/parttime/internship/contract) | All ATS APIs | HIGH | Hard filter |
+| `description_plain` | text | All sources with `?content=true` or Firecrawl markdown | HIGH | Base for LLM enrichment + embedding |
+| `required_skills` | list[str] | LLM extract from description + Lever `lists` | MEDIUM | `skills_overlap` signal |
+| `preferred_skills` | list[str] | LLM extract from description | MEDIUM | Soft scoring |
+| `tech_stack` | list[str] | Firecrawl JSON mode + regex fallback | MEDIUM | `skills_overlap` signal |
+| `seniority_level` | enum(intern/entry/mid/senior) | LLM extract from title + description | MEDIUM | Hard filter candidate |
+| `min_experience_years` | int | LLM extract from requirements | MEDIUM | Soft filter |
+| `salary_min_usd` | int | Lever `salaryRange`, Ashby `compensationTierSummary`, Greenhouse `pay_input_ranges` | LOW (inconsistent) | Future: salary filter |
+| `salary_max_usd` | int | Same as above | LOW (inconsistent) | Future: salary filter |
+| `salary_confidence` | enum(exact/extracted/inferred/missing) | Derived | HIGH (as metadata) | Data quality |
+| `visa_sponsorship` | enum(yes/no/unknown) | LLM classify from description_plain | MEDIUM | Hard filter |
+| `date_posted` | datetime | All ATS (Lever, Ashby `publishedAt`, Greenhouse `updated_at`) | HIGH | Recency signal |
+| `ats_platform` | enum | URL detection | HIGH | Routing / debug |
+| `ats_job_id` | string | Platform-native ID field | HIGH | Dedup key |
+| `data_quality_score` | int (0-100) | Computed: completeness + recency + desc_length + salary | HIGH (formula) | Down-weight low quality |
+| `last_fetched_at` | datetime | Pipeline metadata | HIGH | Freshness tracking |
+| `content_hash` | string | SHA-256 of description_plain | HIGH | Incremental check gate |
+
+---
+
+## Data Quality Scoring Formula
+
+Heuristic score for each job record. Stored as `data_quality_score` (0–100). Used as a soft down-weight in matching and as a hard filter threshold for admin review.
+
+```
+data_quality_score =
+  completeness_score (0-50)
+    + recency_score (0-25)
+    + description_length_score (0-15)
+    + salary_score (0-10)
+
+Where:
+  completeness_score  = 10 per present field: {title, company, location, employment_type, description_plain, seniority_level, remote_policy}
+                        (5 fields required for 50pts max; penalize missing)
+  recency_score       = 25 if posted <= 14 days ago
+                        15 if posted 15-30 days ago
+                        5  if posted 31-60 days ago
+                        0  if posted > 60 days ago or date_posted missing
+  description_length  = 15 if len(description_plain) > 500 chars
+                        8  if 200-500 chars
+                        0  if < 200 chars
+  salary_score        = 10 if salary_confidence == "exact"
+                        5  if salary_confidence == "extracted"
+                        0  if "inferred" or "missing"
+```
+
+**Confidence:** MEDIUM — formula is a heuristic; weights are reasonable starting points but should be tuned once real data is available.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v1)
+### Launch With (v1 — Job Data Collection Pipeline)
 
-Minimum viable — what's needed to produce a working ranked job list for a user profile.
+Minimum viable for the new data collection milestone. Goal: replace title-only LLM enrichment with full JD text, and add structured field extraction.
 
-- [ ] SimplifyJobs scraper (listings.json, both repos) — the data source, everything depends on this
-- [ ] Stable ID generation and upsert with staleness marking — without this the DB drifts from reality
-- [ ] LLM enrichment with incremental hash check — metadata needed for scoring; hash check needed for cost control
-- [ ] Embedding generation and pgvector storage — needed for semantic signal in scoring
-- [ ] Location normalization — without this location_fit signal is unreliable
-- [ ] Fuzzy skill normalization — skills overlap is the highest-weighted signal (0.25)
-- [ ] Hard filter enforcement (sponsorship, job type, location) — filters must precede scoring
-- [ ] Weighted multi-signal scoring engine — core value proposition
-- [ ] Ranked results API with signal breakdown — what callers consume
-- [ ] Cron-ready entrypoint — makes the system operational, not just a script
+- [ ] ATS platform detection from URL (route table for Greenhouse/Lever/Ashby/Workday/unknown) — everything else depends on this
+- [ ] Greenhouse API fetch (`?content=true`) — largest share of SimplifyJobs listings
+- [ ] Lever API fetch (native structured fields + description) — second most common
+- [ ] Firecrawl `/scrape` in markdown mode for Workday + unknown platforms — covers the long tail
+- [ ] Incremental hash check before fetch — cost control; prevents re-fetching unchanged JDs
+- [ ] Canonical JD schema mapping (ATS native fields → canonical schema) — unifies output across platforms
+- [ ] `description_plain` stored and passed to existing LLM enrichment pipeline — immediate improvement to enrichment quality
+- [ ] Retry with backoff on fetch failures — operational reliability
+- [ ] `data_quality_score` computation — enables downstream filtering
 
 ### Add After Validation (v1.x)
 
-Add these once the core matching pipeline is confirmed working and producing quality results.
+Add once core pipeline is running and producing quality descriptions.
 
-- [ ] Feedback loop (like/dislike) — trigger: at least one consumer (Discord bot) is sending real user interactions
-- [ ] User affinity embedding — trigger: feedback data exists; affinity embedding is only meaningful once likes/dislikes accumulate
-- [ ] Recency decay tuning — trigger: recency signal is live but initial lambda value may need adjustment based on observed result quality
+- [ ] Firecrawl JSON mode schema extraction (structured fields from description) — trigger: description_plain is flowing; now extract typed fields
+- [ ] Salary normalization and `salary_confidence` flag — trigger: enough platforms return salary to make it useful
+- [ ] Visa sponsorship re-classification using full description text — trigger: full JD text available; accuracy should improve significantly
+- [ ] Ashby API fetch — trigger: measure what % of SimplifyJobs URLs are Ashby; add if significant
+- [ ] Firecrawl `/search` employer URL discovery — trigger: measure broken URL rate in SimplifyJobs; add if > 10%
+- [ ] Ghost posting detection — trigger: after 2-3 weeks of pipeline history exists
 
 ### Future Consideration (v2+)
 
-Defer until there is evidence of user demand and product-market fit.
-
-- [ ] Additional data sources (other than SimplifyJobs) — defer until SimplifyJobs coverage is insufficient for users
-- [ ] Skill gap recommendations ("you're missing X skill for this job") — complex, requires O*NET or similar taxonomy
-- [ ] Batch profile matching (match N profiles against M jobs) — only needed at scale; current design handles one profile at a time
-- [ ] A/B weight testing framework — only needed if tuning weights becomes a recurring need
+- [ ] Tech stack extraction as separate column — defer until skills matching quality is validated
+- [ ] Additional ATS platforms (SmartRecruiters, Jobvite, BambooHR) — defer until coverage data shows gap
+- [ ] Salary filter in matching engine — defer until salary data coverage > 30% of jobs
 
 ---
 
@@ -149,69 +297,61 @@ Defer until there is evidence of user demand and product-market fit.
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| SimplifyJobs scraper | HIGH | MEDIUM | P1 |
-| Stable ID + upsert + staleness marking | HIGH | LOW | P1 |
-| LLM enrichment (with hash check) | HIGH | HIGH | P1 |
-| Embedding generation (pgvector) | HIGH | LOW | P1 |
-| Location normalization | HIGH | LOW | P1 |
-| Fuzzy skill normalization | HIGH | LOW | P1 |
-| Hard filter enforcement | HIGH | LOW | P1 |
-| Weighted multi-signal scoring | HIGH | HIGH | P1 |
-| Ranked results API with breakdown | HIGH | LOW | P1 |
-| Cron-ready entrypoint | HIGH | LOW | P1 |
-| Sponsorship classification (LLM) | HIGH | MEDIUM | P1 |
-| Feedback loop (like/dislike) | MEDIUM | MEDIUM | P2 |
-| User affinity embedding | MEDIUM | MEDIUM | P2 |
-| Recency decay scoring | MEDIUM | LOW | P2 |
-| Signal-level score breakdown | MEDIUM | LOW | P2 |
-| Incremental enrichment (hash gate) | MEDIUM | LOW | P2 |
-| Multi-source aggregation | LOW | HIGH | P3 |
-| Resume parsing | LOW | HIGH | P3 |
-| Salary normalization and filter | LOW | HIGH | P3 |
-| Collaborative filtering | LOW | HIGH | P3 |
-
-**Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when possible
-- P3: Nice to have, future consideration
+| ATS platform detection | HIGH | LOW | P1 |
+| Greenhouse API fetch + description | HIGH | LOW | P1 |
+| Lever API fetch + description | HIGH | LOW | P1 |
+| Firecrawl scrape (Workday + unknown) | HIGH | MEDIUM | P1 |
+| Incremental hash check | HIGH | LOW | P1 |
+| Canonical JD schema mapping | HIGH | MEDIUM | P1 |
+| Data quality scoring | MEDIUM | LOW | P1 |
+| Retry with backoff | HIGH | LOW | P1 |
+| Firecrawl JSON mode extraction | HIGH | HIGH | P2 |
+| Salary normalization | MEDIUM | MEDIUM | P2 |
+| Visa sponsorship re-classification | HIGH | LOW | P2 |
+| Ashby API fetch | MEDIUM | LOW | P2 |
+| Firecrawl search URL discovery | MEDIUM | MEDIUM | P2 |
+| Ghost posting detection | MEDIUM | MEDIUM | P3 |
+| Tech stack extraction column | MEDIUM | HIGH | P3 |
+| Additional ATS platforms | LOW | HIGH | P3 |
 
 ---
 
 ## Competitor Feature Analysis
 
-The relevant "competitors" for this engine are open-source job scraper projects and commercial job board matching APIs. The WeKruit engine is a private, opinionated backend — not a general-purpose platform — so differentiation is measured against what these tools do and where they fall short.
+How SimplifyJobs, JobRight, and LinkedIn collect JD data — what we can learn from each.
 
-| Feature | rabiuk/job-scraper (open-source) | Google Cloud Talent Solution (commercial) | WeKruit Matching Engine |
-|---------|----------------------------------|-------------------------------------------|------------------------|
-| SimplifyJobs source | Yes (GitHub + Simplify.jobs) | No | Yes |
-| Deduplication | JSON state file (in-memory across runs) | Built-in | Postgres upsert by stable ID |
-| LLM enrichment | No | Partial (NLP title normalization) | Yes (Claude, full classification) |
-| Embeddings / semantic matching | No | Yes (proprietary) | Yes (text-embedding-3-small + pgvector) |
-| Weighted multi-signal scoring | No (notification only) | Yes (opaque model) | Yes (transparent, tunable weights) |
-| Hard filters | No | Yes | Yes |
-| Feedback loop | No | Yes (implicit signals) | Yes (explicit like/dislike) |
-| Sponsorship classification | No | No | Yes (LLM-classified) |
-| Cost model | Free (DIY) | Pay per query | Minimize via hash-gated enrichment |
-| Transparency | High (open source) | Low (black box) | High (signal breakdown in response) |
+| Feature | SimplifyJobs | JobRight | LinkedIn | WeKruit Pipeline |
+|---------|-------------|----------|----------|-----------------|
+| Data source | GitHub repos (structured markdown tables) | GitHub repos (same data) | Direct employer integrations + user submissions | SimplifyJobs → employer ATS pages via Firecrawl/API |
+| Full JD text | No (title + company + URL only in README) | No (same README source) | Yes (employer-submitted) | Yes (via ATS API + Firecrawl) |
+| Structured fields (skills, salary, seniority) | No | No | Partial (employer-provided) | Yes (extracted via Firecrawl JSON mode + ATS native) |
+| ATS detection | No | No | N/A (direct integration) | Yes (URL routing table) |
+| Salary data | No | No | Partial (state-mandated disclosure) | Partial (Ashby/Lever/Greenhouse API fields where available) |
+| Sponsorship flag | No | No | No | Yes (LLM classify from full JD text) |
+| Ghost posting detection | Manual (lock emoji) | Same | Partial (LinkedIn removes expired) | Yes (hash + recency heuristic) |
+| Data freshness | Daily (GitHub Actions) | Same | Near-real-time | Daily (aligned to SimplifyJobs cadence) |
+| Data quality scoring | No | No | No | Yes (per-record heuristic score) |
 
-**Key gap filled by WeKruit:** No open-source tool combines SimplifyJobs scraping + LLM enrichment + pgvector semantic matching + weighted scoring + feedback loops in a single coherent backend. The engine addresses exactly this gap.
+**Key gap filled:** SimplifyJobs and JobRight are aggregation layers — they provide pointers (company + URL) but not full JD content. WeKruit bridges this by following URLs to ATS pages and extracting structured data, which materially improves LLM enrichment quality and enables new matching signals.
 
 ---
 
 ## Sources
 
-- [SimplifyJobs Summer2026-Internships repository structure](https://github.com/SimplifyJobs/Summer2026-Internships) — confirmed `listings.json` format with `active`, `id`, `company_name`, `locations`, `title`, `date_posted`, `url` fields
-- [rabiuk/job-scraper — open-source SimplifyJobs scraper](https://github.com/rabiuk/job-scraper) — deduplication via seen_jobs.json, polling pattern, Discord webhook
-- [Eightfold AI engineering blog — talent matching architecture](https://eightfold.ai/engineering-blog/ai-powered-talent-matching-the-tech-behind-smarter-and-fairer-hiring/) — multi-signal scoring: skill overlap, career trajectory, company similarity, recency
-- [Real-Time Adaptive Job Recommendations via RL (IJERT)](https://www.ijert.org/real-time-adaptive-job-recommendations-using-reinforcement-learning-based-on-user-interaction-feedback-ijertconv14is010054) — feedback loop signals: view, click, dismiss, apply → reward signal
-- [Job Matching Algorithms overview (mokahr.io)](https://www.mokahr.io/myblog/job-matching-algorithms/) — weighted scoring formula, ensemble approaches
-- [Semantic Job Matching with pgvector (PostgreSQL Fastware)](https://www.postgresql.fastware.com/blog/from-embeddings-to-answers) — embedding pipeline with pgvector, under 1M vectors postgres is sufficient
-- [Zero-Shot Resume-Job Matching with LLMs (MDPI Electronics)](https://www.mdpi.com/2079-9292/14/24/4960) — structured prompting for job classification, 87% accuracy on zero-shot matching
-- [Stale listings and job board freshness (Jobspikr)](https://www.jobspikr.com/blog/the-struggle-of-stale-listings-revitalize-your-job-board-with-job-scraping/) — staleness as a data quality problem; automated expiry patterns
-- [LLM embedding caching for cost reduction (apxml.com)](https://apxml.com/courses/getting-started-with-llm-toolkit/chapter-9-performance-and-cost-optimization/caching-embeddings) — cache embeddings, only re-embed on content change
-- [Google Cloud Talent Solution](https://cloud.google.com/solutions/talent-solution) — commercial benchmark for hard filters, soft scoring, location normalization
+- [Firecrawl Extract endpoint docs](https://docs.firecrawl.dev/features/extract) — URL formats, schema support, LLM extraction, `enableWebSearch` flag; HIGH confidence
+- [Firecrawl Scrape endpoint docs](https://docs.firecrawl.dev/features/scrape) — JSON mode, actions, output formats, `maxAge` cache param; HIGH confidence
+- [Firecrawl Search endpoint docs](https://docs.firecrawl.dev/features/search) — query params, combined search+scrape, `scrapeOptions`; HIGH confidence
+- [Firecrawl Batch Scrape launch post](https://www.firecrawl.dev/blog/launch-week-ii-day-1-introducing-batch-scrape-endpoint) — async batch pattern, 5,000 URL limit, 24h expiry; HIGH confidence
+- [Greenhouse Job Board API docs](https://developers.greenhouse.io/job-board.html) — all query params, field names, pay_input_ranges; HIGH confidence (official)
+- [Lever postings-api GitHub README](https://github.com/lever/postings-api/blob/master/README.md) — full field listing including salaryRange, lists, workplaceType; HIGH confidence (official)
+- [Ashby Job Postings API docs](https://developers.ashbyhq.com/docs/public-job-posting-api) — endpoint URL, compensation fields, `includeCompensation` param; HIGH confidence (official)
+- [Workday scraping patterns (Apify)](https://apify.com/blackfalcondata/workday-scraper) and [GitHub community crawlers](https://github.com/chuchro3/WebCrawler) — POST endpoint pattern, tenant/site URL structure; MEDIUM confidence (community-sourced, not official)
+- [wrkmatch ATS detection project](https://github.com/daviderubio/wrkmatch) — URL fingerprinting for Greenhouse, Lever, Ashby, Workable, Recruitee; HIGH confidence (working open-source implementation)
+- [Hiring Signal Tracker (Apify)](https://apify.com/emastra/hiring-signal-tracker) — confirms Greenhouse/Lever/Ashby/Workday URL patterns are standard and stable; MEDIUM confidence
+- [Data quality scoring (Clarity Scorecard)](https://www.cleansmartlabs.com/blog/how-to-measure-data-quality-building-a-clarity-scorecard) — completeness × recency × duplicate scoring formula; MEDIUM confidence
+- [Job data normalization (jobspikr)](https://www.jobspikr.com/blog/job-data-normalization/) — deduplication, location normalization, title normalization patterns; MEDIUM confidence
 
 ---
 
-*Feature research for: Job scraping and matching engine (backend API)*
-*Researched: 2026-03-25*
+*Feature research for: Job data collection pipeline (Firecrawl, ATS parsing, structured JD extraction)*
+*Researched: 2026-03-31*

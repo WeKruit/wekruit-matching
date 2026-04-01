@@ -1,12 +1,206 @@
 # Stack Research
 
 **Domain:** Python job scraping + vector matching engine
-**Researched:** 2026-03-25
+**Researched:** 2026-03-25 (base); 2026-03-31 (milestone update: data pipeline)
 **Confidence:** HIGH (most choices verified against PyPI, official docs, and multiple independent sources)
 
 ---
 
-## Recommended Stack
+## Milestone Update: Job Data Pipeline Additions (2026-03-31)
+
+This section documents the **new** stack additions for the job data collection pipeline milestone: Firecrawl integration, ATS page parsing (Greenhouse, Lever, Workday), and structured JD extraction. The base stack below is unchanged.
+
+### New Libraries Required
+
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| firecrawl-py | 4.21.0 | Render and scrape JS-heavy employer career pages into clean markdown/HTML | Use when the ATS doesn't have a public JSON API and the page requires a headless browser (Workday embedded pages, custom career sites, Ashby). Cloud handles proxy rotation and JS rendering — self-hosted lacks these. Do NOT use for Greenhouse/Lever which have free, unauthenticated JSON APIs |
+| beautifulsoup4 | 4.14.x | Parse HTML job description content from ATS API responses | Greenhouse and Lever return `content` as styled HTML. bs4 + lxml strips to plain text for LLM enrichment input. Do NOT add a full browser stack just to strip HTML tags |
+| lxml | 5.x | Fast HTML/XML parser backend for BeautifulSoup | 5-10x faster than Python's built-in html.parser; install as `lxml` and pass `features="lxml"` to BeautifulSoup |
+| playwright | 1.50.x | Headless browser for Workday intercept pattern | Workday's myworkdayjobs.com uses XHR fetches to load job data dynamically. Playwright intercepts the network response (JSON) rather than parsing obfuscated DOM. ONLY add this if Workday is a named target — its Docker footprint is large (~200MB) |
+
+### What NOT to Add
+
+| Avoid | Why | What to Use Instead |
+|-------|-----|---------------------|
+| firecrawl-py for Greenhouse | Greenhouse has a public unauthenticated REST API (`boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true`). Using Firecrawl here costs credits needlessly | httpx direct to Greenhouse API |
+| firecrawl-py for Lever | Same as Greenhouse — Lever has a free unauthenticated JSON endpoint at `api.lever.co/v0/postings/{company}?mode=json` | httpx direct to Lever API |
+| requests | Already excluded from base stack. enrich_from_jobright.py uses httpx correctly — do not introduce requests | httpx (already present) |
+| Scrapy / crawlee | Full crawl framework overhead for a targeted pipeline that hits known ATS endpoints. Adds scheduler, middleware, and item pipeline abstractions we don't need | httpx + ThreadPoolExecutor (already the pattern in enrich_from_jobright.py) |
+| playwright for Greenhouse/Lever | Both ATS expose JSON APIs. Playwright is a 200MB dependency to solve a problem that doesn't exist for these two | httpx direct to JSON API |
+
+---
+
+## Firecrawl: Cloud vs Self-Hosted Decision
+
+**Recommendation: Use Firecrawl Cloud (Hobby plan, $16/month)**
+
+**Rationale:**
+
+Self-hosted Firecrawl is missing Fire-engine — the component that handles IP rotation, stealth mode, and bot detection bypass. The cloud version's self-hosted variant only supports basic Playwright rendering without the proxy layer. For employer ATS pages (especially custom career sites and Ashby), IP-based blocks are common. Self-hosting saves $16/month but loses the primary reason to use Firecrawl over raw httpx.
+
+The Hobby plan (3,000 credits/month at $16) is sufficient for this pipeline's scope:
+- 1 credit per standard page scrape
+- ATS pages are targeted (not a crawl of thousands) — a daily pipeline visiting 50-100 new employer pages costs ~100 credits/day max
+- 3,000 credits covers ~1 month of aggressive employer page collection
+
+**When to upgrade to Standard ($83/month, 100K credits):** If the pipeline starts bulk-collecting employer pages across hundreds of companies per day. At that scale, the cost per page drops from $0.0053 (Hobby) to $0.00083 (Standard) — a 6x reduction.
+
+**Cloud rate limits (verified):**
+
+| Plan | /scrape RPM | /search RPM | /crawl RPM | Concurrent Browsers |
+|------|-------------|-------------|------------|---------------------|
+| Free | 10 | 5 | 1 | 2 |
+| Hobby | 100 | 50 | 15 | 5 |
+| Standard | 500 | 250 | 50 | 50 |
+
+**Free tier caveat:** 500 lifetime credits (not per month). Sufficient for development/testing only — do not use free tier in production.
+
+**Credits do not roll over.** Unused credits at month-end are lost. Structure the pipeline to use credits during the month rather than banking them.
+
+---
+
+## ATS Page Parsing Strategy
+
+### Greenhouse (boards-api.greenhouse.io)
+
+**Method: httpx + existing pattern (NO Firecrawl needed)**
+
+Greenhouse provides an unauthenticated public REST API. The `content` field returns HTML that bs4 can strip to plain text.
+
+```
+GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs?content=true
+GET https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}?pay_transparency=true
+```
+
+Fields available: `title`, `location`, `absolute_url`, `content` (HTML JD), `updated_at`, `metadata`. Salary data available via `?pay_transparency=true` on individual job endpoints.
+
+No rate limits documented. Be polite — 0.5s delay between requests matches the existing jobright.py pattern.
+
+### Lever (api.lever.co)
+
+**Method: httpx + existing pattern (NO Firecrawl needed)**
+
+Lever's v0 postings API requires no authentication and returns structured JSON.
+
+```
+GET https://api.lever.co/v0/postings/{company_name}?mode=json
+GET https://api.lever.co/v0/postings/{company_name}/{posting_id}
+```
+
+Fields available: `text` (title), `categories` (team, location, commitment, department), `descriptionPlain`, `lists` (requirements, responsibilities as text), `salaryRange`, `workplaceType` (on-site/remote/hybrid). The `descriptionPlain` field is already stripped of HTML — no bs4 needed for Lever.
+
+### Workday (*.wd*.myworkdayjobs.com)
+
+**Method: httpx POST to undocumented CXS API (preferred) OR Playwright for JS-heavy variants**
+
+Workday exposes an undocumented but stable JSON endpoint pattern:
+
+```
+POST https://{tenant}.{wd_server}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs
+Body: {"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""}
+```
+
+Returns paginated job listings. Individual job details:
+```
+GET https://{tenant}.{wd_server}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job/{externalPath}
+```
+
+**Caveats:** `wd_server` varies per company (wd1, wd3, wd5 — must be discovered from the actual career page URL). Job descriptions are returned as HTML strings — use bs4 to strip. Only use Playwright if the CXS endpoint returns 403 or the tenant uses embedded Workday (rare).
+
+### Custom Career Pages / Ashby / BambooHR
+
+**Method: Firecrawl `scrape()` with `formats=["markdown"]`**
+
+For career pages that don't match Greenhouse/Lever/Workday patterns, delegate to Firecrawl. It handles JS rendering, proxy rotation, and returns LLM-ready markdown — reducing token count by ~67% vs raw HTML before feeding to the enrichment LLM.
+
+---
+
+## SiliconFlow Free Tier: Validated Limits (2026-03-31)
+
+**Recommendation: Keep SiliconFlow Qwen3-8B for gap-fill enrichment**
+
+Confirmed current state:
+- **Free models:** Qwen3-8B, DeepSeek-R1-Distill-Qwen-7B, GLM-4.1V-9B-Thinking, and others
+- **Rate limits (free tier):** 1,000 RPM, 50,000 TPM — HIGH confidence from official docs
+- **Daily cap:** 50 requests/day without purchased credits; 1,000 requests/day after purchasing at least $10 in credits
+- **Cost for Qwen3-8B (paid):** $0.06/M input tokens, $0.06/M output tokens — effectively free at enrichment volumes
+
+**The 50 req/day cap without credits is the critical constraint.** A pipeline enriching 200 new jobs/day at 1 request/job will hit this wall immediately. Either purchase $10 in credits (unlocks 1,000 req/day) or batch multiple jobs per request (5-10 jobs per call keeps daily requests under 50 even without credits).
+
+**Alternative if SiliconFlow proves unreliable:** OpenRouter's free tier offers 29 free models with 20 RPM / 200 req/day limits. Models include Llama 3.3 70B and Qwen3 variants. The 200 req/day cap is 4x better than SiliconFlow's uncredited free tier, but model quality and latency are less predictable on a shared free router. MEDIUM confidence — useful fallback, not primary.
+
+---
+
+## Integration with Existing enrich_from_jobright.py
+
+The existing `enrich_from_jobright.py` uses:
+- `httpx.get()` + `ThreadPoolExecutor` for parallel fetches (8 workers)
+- `__NEXT_DATA__` JSON extraction from JobRight SSR pages
+- Direct psycopg3 DB writes
+- No LLM — $0 cost enrichment from structured JobRight data
+
+**Do not replicate this pattern for ATS pages.** ATS pages serve structured JSON APIs directly — the `__NEXT_DATA__` regex approach is JobRight-specific. New ATS scrapers should call the JSON APIs with httpx and parse the returned structured fields, not scrape HTML.
+
+**Integration points:**
+- New `scraper/ats_greenhouse.py`, `scraper/ats_lever.py`, `scraper/ats_workday.py` — each follows the same `list[Job]` return type as `jobright.py` for clean upsert pipeline integration
+- New `scraper/ats_firecrawl.py` — for custom/unknown ATS pages, uses firecrawl-py SDK and returns extracted text for LLM enrichment rather than structured fields
+- bs4 HTML stripping belongs in ATS scrapers, not in the enrichment layer — strip to plain text before passing to the LLM
+
+---
+
+## Recommended pyproject.toml Additions
+
+```toml
+# Add to [project] dependencies in pyproject.toml:
+"firecrawl-py>=4.21.0,<5.0",
+"beautifulsoup4>=4.14.0",
+"lxml>=5.0",
+# playwright only if Workday CXS API approach fails:
+# "playwright>=1.50.0",
+```
+
+Install with uv:
+```bash
+uv add "firecrawl-py>=4.21.0,<5.0" "beautifulsoup4>=4.14.0" "lxml>=5.0"
+
+# Playwright is optional — only if needed for Workday embedded pages:
+# uv add "playwright>=1.50.0"
+# uv run playwright install chromium  # downloads ~200MB browser binary
+```
+
+Set Firecrawl API key in environment:
+```bash
+# .env (managed via pydantic-settings, never hardcoded):
+FIRECRAWL_API_KEY=fc-YOUR-KEY-HERE
+```
+
+---
+
+## Version Compatibility (New Libraries)
+
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| firecrawl-py 4.21.0 | Python 3.8+; httpx already in project | SDK uses its own httpx internally; no conflict with project's httpx usage |
+| beautifulsoup4 4.14.x | lxml 5.x | Always pass `features="lxml"` to BeautifulSoup constructor; fallback to `"html.parser"` if lxml not installed |
+| playwright 1.50.x | Python 3.8+ | Requires `playwright install chromium` post-install step — add to setup docs; NOT needed if Workday CXS API works (it usually does) |
+
+---
+
+## Alternatives Considered (New Decisions)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| Firecrawl cloud Hobby | Firecrawl self-hosted | Self-hosted lacks Fire-engine (proxy rotation, stealth mode) — the main reason to use Firecrawl over raw httpx. Self-hosting saves $16/month but removes anti-bot protection |
+| Firecrawl cloud Hobby | Apify | Apify is better for large-scale crawls across thousands of pages; for targeted ATS page fetching, Firecrawl's simpler API and Python SDK are more appropriate |
+| httpx direct API for Greenhouse/Lever | Firecrawl for Greenhouse/Lever | Both ATS have free JSON APIs. Firecrawl credits are wasted here; use httpx |
+| Workday CXS POST endpoint | Playwright for Workday | The undocumented CXS API works for most Workday tenants and avoids Playwright's 200MB browser dependency. Fall back to Playwright only if the tenant blocks the CXS endpoint |
+| SiliconFlow Qwen3-8B (free) | OpenAI GPT-4o-mini for enrichment | GPT-4o-mini costs ~$0.60/M tokens. At 200 jobs/day × 500 tokens/job = 100K tokens/day = $0.06/day = ~$22/month. SiliconFlow free tier is $0. Use the free tier with batching |
+| SiliconFlow with batching | One LLM call per job | 50 req/day free tier limit forces batching anyway. Send 5 jobs per request, extract structured JSON for each — reduces cost 5x and stays within free tier |
+
+---
+
+## Base Stack (Unchanged from 2026-03-25)
 
 ### Core Technologies
 
@@ -15,159 +209,45 @@
 | Python | 3.12+ | Runtime | Spec constraint; 3.12 is stable LTS with noticeable performance gains over 3.10/3.11; 3.13 exists but 3.12 has broader library compatibility |
 | PostgreSQL | 16+ | Primary database | Spec constraint; required for pgvector extension; Postgres 16 added parallel query improvements relevant to vector workloads |
 | pgvector | 0.4.2 (Python lib) / extension 0.8+ | Vector similarity search inside Postgres | Eliminates a dedicated vector DB (Pinecone, Weaviate, Qdrant); for this scale (thousands of job listings, not millions), co-locating structured data + embeddings in one DB is the right call — simpler ops, one connection pool, transactional guarantees |
-| psycopg (v3) | 3.x | Postgres adapter | New projects should use psycopg3; 3-5x memory efficiency over psycopg2; native async support; required by pgvector HNSW best practices (LangChain and pgvector-python both migrate away from psycopg2); psycopg2 is maintenance-only with no new features planned |
-| httpx | 0.28.1 | HTTP client for GitHub raw content | Spec constraint; sync + async in one library; HTTP/2 support; Requests-style API without the legacy baggage; correct choice for a scraper that may need to parallelize fetches without committing to a fully async codebase |
-| anthropic | 0.86.0 | LLM enrichment (Claude) | Spec constraint; current SDK is actively maintained (weekly releases); use for job classification, industry tagging, sponsorship detection — tasks requiring language understanding |
-| openai | 2.30.0 | Embedding generation | Spec constraint; text-embedding-3-small produces 1536-dim vectors; best cost/quality ratio for semantic job matching at this scale; $0.02/1M tokens makes bulk embedding affordable |
-| numpy | 1.26+ / 2.x | Vector arithmetic for multi-signal scoring | Spec constraint; correct for weighted score computation in Python; cosine similarity, dot products, normalization — all fast via numpy without pulling in scipy or sklearn |
+| psycopg (v3) | 3.x | Postgres adapter | New projects should use psycopg3; 3-5x memory efficiency over psycopg2; native async support; required by pgvector HNSW best practices |
+| httpx | 0.28.1 | HTTP client for GitHub raw content and ATS JSON APIs | Spec constraint; sync + async in one library; HTTP/2 support; correct for ATS API calls that don't need JS rendering |
+| anthropic | 0.86.0 | LLM enrichment (Claude) | Spec constraint; use for fields requiring language understanding |
+| openai | 2.30.0 | Embedding generation (text-embedding-3-small) | Spec constraint; $0.02/1M tokens, best cost/quality for semantic job matching |
+| numpy | 1.26+ / 2.x | Vector arithmetic for multi-signal scoring | Spec constraint; correct for weighted score computation |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| pydantic | v2 (2.x) | Schema validation for job/user/profile models | Use for ALL data models; v2 is Rust-backed, 5-50x faster than v1; use `pydantic-settings` subpackage (separate install) for env var management — replaces python-dotenv |
-| pydantic-settings | 2.x | Typed environment variable management | Always; type-safe config with validation errors that tell you what's missing; prefer over bare `python-dotenv` which silently mutates `os.environ` |
-| alembic | 1.18.x | Database migration management | Always; the de facto standard for SQLAlchemy-managed Postgres schemas; use autogenerate to track schema diffs |
-| SQLAlchemy | 2.x | ORM / query builder | Use for schema definitions and migrations (pairs with alembic); optional for queries — for a backend-only engine, raw psycopg3 queries are acceptable for hot paths like matching |
-| tenacity | 8.x | Retry logic with exponential backoff | Required for all LLM API calls (Anthropic + OpenAI); exponential backoff with jitter is the industry standard for 429 handling; 3-5 retries with 2-30s backoff window |
-| loguru | 0.7.x | Application logging | Use over stdlib logging and structlog; single import, sane defaults, structured output without ceremony; structlog is more powerful but overkill for a backend script/API |
-| python-dateutil | 2.x | Date parsing for job posting timestamps | Handles ambiguous date formats from GitHub README tables (e.g., "Aug 15", "2025-08-15") without manual strptime patterns |
-| mistune or mistletoe | mistune 3.x | Markdown table parsing | For parsing SimplifyJobs README tables; mistune is faster and better maintained for Python 3.12+; mistletoe is spec-compliant but heavier; both work — pick mistune |
-| APScheduler | 3.x | Cron-based scheduling | For wrapping scraper + enrichment scripts in a persistent scheduler; supports cron triggers; `schedule` library is fine for simple scripts but lacks persistence across restarts |
-| pytest | 8.x | Test runner for end-to-end pipeline tests | Standard; use with `pytest-asyncio` if async paths need testing |
-| uv | latest | Package manager and virtual environment | Replaces pip + venv; 10-100x faster than pip; Rust-backed; single binary; correct choice for a greenfield 2026 Python project |
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| uv | Dependency management, venv, Python version pinning | Use `uv init`, `uv add`, `uv run`; commit `uv.lock` for reproducible installs; replaces `requirements.txt + pip + virtualenv` |
-| ruff | Linting + formatting | Replaces flake8 + black + isort in a single Rust-backed binary; fast enough to run on save |
-| pyright / basedpyright | Type checking | Strict mode catches psycopg3 and pydantic v2 type errors before runtime |
-
----
-
-## Installation
-
-```bash
-# Initialize project with uv
-uv init wekruit-matching
-cd wekruit-matching
-
-# Core runtime dependencies
-uv add psycopg[binary] pgvector sqlalchemy alembic
-uv add httpx anthropic openai numpy pydantic pydantic-settings
-uv add tenacity loguru python-dateutil mistune apscheduler
-
-# Dev dependencies
-uv add --dev pytest pytest-asyncio ruff pyright
-```
-
----
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| psycopg (v3) | psycopg2 | Only if inheriting a legacy codebase already on psycopg2; no reason to start new on psycopg2 in 2026 |
-| pgvector in Postgres | Pinecone / Qdrant / Weaviate | At 100K+ vectors with sub-10ms p99 latency requirements; this project will have thousands of job listings, not millions — dedicated vector DB is unnecessary complexity |
-| numpy for scoring | scipy / scikit-learn | If you need pairwise similarity matrices or clustering at scale; numpy is sufficient for per-user scoring against a job corpus of this size |
-| FastAPI | Flask | Flask is acceptable for lower-throughput internal APIs; FastAPI is better when callers (Discord bot, web app) need typed contracts and auto-generated OpenAPI docs |
-| FastAPI | Plain Python functions / library API | Correct if the matching engine is consumed as a Python library directly (no HTTP); spec says "no frontend" and "any client can consume the matching API" — suggests HTTP API is expected, making FastAPI appropriate |
-| mistune | BeautifulSoup / lxml | GitHub serves raw markdown — no HTML to parse; using an HTML parser for markdown tables is the wrong abstraction |
-| APScheduler | System cron + standalone scripts | System cron is simpler and more reliable for production; APScheduler is better for development where you want scheduling embedded in the process; spec says "cron-ready scripts" which favors standalone scripts + system cron in production |
-| pydantic-settings | python-dotenv | python-dotenv silently mutates os.environ and provides no type validation; pydantic-settings surfaces config errors at startup, not mid-execution |
-| loguru | structlog | structlog is superior for distributed systems with structured log aggregation pipelines; loguru is correct for a standalone backend service/script |
-| alembic | raw SQL migrations | Raw SQL is fine for throwaway projects; alembic autogenerate is materially faster for iterating on schema during development |
-| uv | pip + virtualenv / poetry | pip lacks lock files; poetry is slower and heavier; uv is the 2025/2026 standard for new Python projects |
-
----
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| requests | Synchronous-only; no HTTP/2; missing modern features; httpx is a strict superset | httpx |
-| aiohttp | Async-only; forces async everywhere; httpx gives you sync when you want it, async when you need it | httpx |
-| psycopg2 | Maintenance-only (no new features); 3-5x worse memory efficiency; no native asyncio; pgvector-python documentation specifically recommends psycopg3 for new projects | psycopg (v3) |
-| Pinecone / Qdrant / Weaviate | Operational overhead of a separate service for a corpus measured in thousands, not millions; adds latency, cost, and a second system to keep running | pgvector inside Postgres |
-| LangChain | Abstracts away the exact API calls you need to control for cost optimization; for this project, direct SDK calls give you precise control over when enrichment runs and what gets cached | anthropic SDK + openai SDK directly |
-| IVFFlat index (pgvector) | Requires selecting `lists` parameter upfront and rebuilds poorly as data grows; HNSW has better query latency/recall tradeoff and handles incremental inserts better | HNSW index in pgvector |
-| pip + requirements.txt | No lock file, slow, no Python version management | uv |
-| black + flake8 + isort separately | Three tools doing what ruff does 10-100x faster in one binary | ruff |
-
----
-
-## Stack Patterns by Variant
-
-**If running as a library (imported by Discord bot directly):**
-- Drop FastAPI; expose a `match(user_profile) -> list[JobMatch]` function
-- Keep everything else; psycopg3 + pgvector + pydantic models work identically
-- This is viable — the matching engine is pure Python, FastAPI is only needed if HTTP is required
-
-**If running as an HTTP API (Discord bot calls over HTTP):**
-- Add FastAPI + uvicorn
-- Pydantic models double as FastAPI request/response schemas automatically
-- Use `uvicorn --workers 1` for a single-worker process unless concurrency becomes a concern
-
-**If embedding corpus grows to 100K+ jobs:**
-- Consider dimensionality reduction (1536 → 768 via PCA) — halves HNSW memory, doubles query throughput, retains ~97% recall
-- At this scale (intern + new grad listings from SimplifyJobs), you will not reach 100K; this is not a near-term concern
-
-**If cron scheduling is needed in production:**
-- Prefer system cron (crontab) + standalone Python scripts over APScheduler in-process
-- APScheduler is fine for local development and Docker-based deployments without cron access
-- The spec's "cron-ready scraper and enrichment scripts" language implies standalone scripts are the target
-
----
-
-## Version Compatibility
-
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| pgvector 0.4.2 (Python) | psycopg 3.x, psycopg2, asyncpg, SQLAlchemy 2.x | Do NOT mix psycopg2 connection strings with psycopg3 style (`postgresql+psycopg://` not `postgresql+psycopg2://`) |
-| pydantic v2 | pydantic-settings 2.x | pydantic-settings is a separate package in v2; `pip install pydantic-settings` separately from `pydantic` |
-| SQLAlchemy 2.x | alembic 1.18.x | SQLAlchemy 2.x required for alembic 1.18+; do not pin SQLAlchemy 1.x |
-| httpx 0.28.1 | Python 3.8+ | Stable release; 1.0 dev versions exist but are pre-release; use 0.28.1 |
-| anthropic 0.86.0 | Python 3.9+ | Active weekly releases; pin to minor (e.g., `anthropic>=0.86,<1.0`) |
-| openai 2.30.0 | Python 3.9+ | Pin to minor; openai has had breaking changes between major versions |
-
----
-
-## Spec Validation
-
-The spec's technology choices are validated. No changes recommended for the core spec:
-
-| Spec Choice | Verdict | Notes |
-|-------------|---------|-------|
-| Python 3.12+ | CONFIRMED | Correct; stable, widely supported, good performance |
-| Postgres + pgvector | CONFIRMED | Correct for this scale; right call to avoid a dedicated vector DB |
-| httpx | CONFIRMED | Correct choice; sync+async, HTTP/2, actively maintained |
-| Anthropic API for enrichment | CONFIRMED | Correct; Claude is strong at structured classification tasks |
-| text-embedding-3-small | CONFIRMED | Correct; 1536 dims, best cost/quality for semantic job matching |
-| numpy for vector math | CONFIRMED | Correct; sufficient for per-user weighted scoring; no need for scipy overhead |
-| Cron-based scheduling | CONFIRMED | Correct framing; implement as standalone scripts callable by system cron |
-
-One addition not in spec but required: **psycopg3** (psycopg package, not psycopg2) as the Postgres adapter. The spec mentions Postgres but not which adapter. Psycopg3 is the correct 2026 choice.
+| pydantic | v2 (2.x) | Schema validation | ALL data models |
+| pydantic-settings | 2.x | Typed env var management | Always; surfaces config errors at startup |
+| alembic | 1.18.x | Database migrations | Always |
+| SQLAlchemy | 2.x | ORM / schema definitions | Schema + migrations; raw psycopg3 for hot paths |
+| tenacity | 8.x | Retry with exponential backoff | All LLM API calls and Firecrawl requests |
+| loguru | 0.7.x | Application logging | Always; single import, sane defaults |
+| python-dateutil | 2.x | Date parsing | GitHub README table timestamps |
+| mistune | 3.x | Markdown table parsing | SimplifyJobs README tables |
+| fastapi | 0.135.x | HTTP API | When callers need HTTP interface |
+| uvicorn | 0.42.x | ASGI server | Pair with FastAPI |
 
 ---
 
 ## Sources
 
-- PyPI: pgvector 0.4.2 — version confirmed December 5, 2025
-- PyPI: anthropic 0.86.0 — version confirmed March 18, 2026
-- PyPI: openai 2.30.0 — version confirmed March 25, 2026
-- PyPI: httpx 0.28.1 — version confirmed December 6, 2024
-- Alembic docs (alembic.sqlalchemy.org) — version 1.18.4 confirmed
-- psycopg.org/psycopg3 — "if you are starting a new project, you should probably start from psycopg3"
-- github.com/pgvector/pgvector-python — confirmed psycopg3 + asyncpg + SQLAlchemy 2.x compatibility
-- OpenAI platform docs — text-embedding-3-small: 1536 dims, 8192 token limit, cl100k_base encoding
-- Crunchydata HNSW blog — HNSW preferred over IVFFlat for recall/latency tradeoff
-- Multiple sources (BetterStack, Speakeasy, Oxylabs) — httpx vs requests vs aiohttp comparison; MEDIUM confidence on performance claims, HIGH on feature set
-- Multiple sources (TigerData benchmark, psycopg.org) — psycopg3 vs psycopg2 performance; HIGH confidence on direction
-- Multiple sources (Medium, Upsun, DataCamp) — uv vs pip vs poetry 2025; HIGH confidence on direction
+- PyPI: firecrawl-py 4.21.0 — version confirmed March 25, 2026 (https://pypi.org/project/firecrawl-py/)
+- Firecrawl docs: rate limits verified (https://docs.firecrawl.dev/rate-limits) — HIGH confidence
+- Firecrawl pricing: 500 free lifetime credits, Hobby $16/3,000 credits/month, Standard $83/100K credits/month — verified March 2026 (https://www.firecrawl.dev/pricing)
+- Firecrawl self-hosted docs: confirms Fire-engine (proxy/stealth) absent in self-hosted (https://docs.firecrawl.dev/contributing/self-host)
+- Greenhouse Job Board API: unauthenticated public API confirmed (https://developers.greenhouse.io/job-board.html) — HIGH confidence
+- Lever postings-api: v0 unauthenticated endpoint confirmed (https://github.com/lever/postings-api) — HIGH confidence
+- Workday CXS API pattern: `POST /wday/cxs/{tenant}/{site}/jobs` — MEDIUM confidence (undocumented, widely used in open-source scrapers, no official docs)
+- SiliconFlow rate limits: 1,000 RPM / 50K TPM (free tier), 50 req/day without credits / 1,000 req/day with $10+ credits — MEDIUM confidence (official docs page lacked exact numbers; sourced from rate-limits page + community sources)
+- SiliconFlow pricing: Qwen3-8B at $0.06/M tokens — verified (https://www.siliconflow.com/models/qwen3-8b)
+- OpenRouter free tier: 20 RPM / 200 req/day, 29 free models — MEDIUM confidence (https://openrouter.ai/collections/free-models)
+- BeautifulSoup4 4.14.3: current version confirmed (https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- Firecrawl vs httpx comparison: multiple sources confirm Firecrawl adds value for JS-heavy pages, not for static/API-backed pages — MEDIUM confidence
 
 ---
 
 *Stack research for: Python job scraping + vector matching engine (WeKruit Matching)*
-*Researched: 2026-03-25*
+*Base research: 2026-03-25 | Pipeline milestone update: 2026-03-31*

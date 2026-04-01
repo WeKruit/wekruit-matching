@@ -1,194 +1,388 @@
 # Pitfalls Research
 
-**Domain:** Job scraping + matching engine (GitHub README source, LLM enrichment, pgvector, weighted multi-signal scoring)
-**Researched:** 2026-03-25
-**Confidence:** HIGH (primary sources: GitHub changelog, pgvector GitHub issues, official pgvector docs, SimplifyJobs repo inspection, OpenAI/Anthropic API docs)
+**Domain:** Job scraping + matching engine (GitHub README source, LLM enrichment, pgvector, weighted multi-signal scoring) — EXTENDED for Firecrawl scraping, ATS page parsing, and search milestone
+**Researched:** 2026-03-31 (updated; original 2026-03-25)
+**Confidence:** HIGH (primary sources: GitHub issues, Firecrawl official docs, pgvector GitHub issues, Supabase official docs, SimplifyJobs repo inspection, OpenAI/Anthropic API docs)
 
 ---
 
-## Critical Pitfalls
+## PART A — NEW MILESTONE PITFALLS (Firecrawl, ATS Scraping, Pipeline Integration)
 
-### Pitfall 1: HTML Embedded in Markdown Table Cells Breaks Naive Parsers
-
-**What goes wrong:**
-The SimplifyJobs README uses `<details>/<summary>` HTML blocks inside table cells to collapse multi-location entries. A row like `<details><summary><strong>4 locations</strong></summary>London, UK<br>SF<br>NYC<br>Munich, Germany</details>` is valid GitHub Markdown but will confuse any parser that splits on `|` and treats cells as plain text. The parser sees raw HTML tags as location strings, or worse, splits incorrectly mid-tag and corrupts the row.
-
-**Why it happens:**
-Developers inspect a few rows manually, see clean text, and write a naive `line.split("|")` parser. They never test against multi-location rows. The SimplifyJobs repo also uses `↳` row continuations (same company, multiple roles) with no parent company field on those rows — requiring state-tracking across rows, which naive parsers skip.
-
-**How to avoid:**
-Use a proper Markdown parser (`mistune` or `markdown-it-py`) that handles inline HTML, then post-process cells to strip tags. Treat `↳` rows as inheriting the company from the prior non-continuation row. Write an explicit parser test using a downloaded snapshot of the live README that includes multi-location and continuation rows.
-
-**Warning signs:**
-- Location field contains raw `<details>` or `<br>` strings in your database
-- Company field is empty for many rows (un-handled `↳` continuations)
-- Row counts from parser are lower than visible rows in GitHub UI
-
-**Phase to address:** Phase 1 (Scraper) — build the parser defensively from day one. Retrofitting a parser after enrichment has run is expensive (re-enrichment cost).
+Pitfalls specific to adding Firecrawl scraping, ATS page parsing, and search to the existing 76K-job pipeline.
 
 ---
 
-### Pitfall 2: GitHub Rate Limiting Kills Unauthenticated raw.githubusercontent.com Fetches
+### Pitfall A1: Firecrawl Timeout Unit Bug Silently Disables Client-Side Timeout
 
 **What goes wrong:**
-GitHub announced (May 2025) a rollout of stricter rate limits for unauthenticated requests, explicitly including `raw.githubusercontent.com` file downloads. Previously, fetching the README via `https://raw.githubusercontent.com/SimplifyJobs/...` was effectively unlimited for a single-instance scraper. Under the new limits, hitting this endpoint repeatedly without a token — especially during development, testing, and production cron runs — will result in 429 errors. The scraper silently returns an empty or truncated page and the caller may not notice.
+The Firecrawl Python SDK `scrape_url()` method documents `timeout` as milliseconds, but the SDK passes the value directly to `requests.post()`, which expects seconds. Setting `timeout=60000` (intending 60 seconds) passes 60,000 seconds (~16.6 hours) to the underlying HTTP library — the scrape request blocks indefinitely with no client-side timeout. On the Mac Mini running launchd jobs, this means a hung scrape worker holds a Postgres connection open and blocks the enrichment stage from starting.
 
 **Why it happens:**
-Scraping a raw README feels like a simple HTTP GET. Developers assume it's rate-limit-free because it's not the REST API. GitHub's changelog buried this change in infrastructure announcements.
+The bug exists in the SDK internals. Developers trust SDK parameter names and never test edge cases where the scrape target is slow or unresponsive. The launchd wrapper has no process-level timeout by default.
 
 **How to avoid:**
-Always authenticate: use a GitHub personal access token (PAT) or GitHub App token in the `Authorization` header. Authenticated requests get 5,000 REST API req/hr (and substantially higher raw content limits). Alternatively, use the GitHub REST API `/repos/{owner}/{repo}/contents/{path}` endpoint with the `Accept: application/vnd.github.raw` header — authenticated, versioned, and with a clear error response when limits are hit. Add explicit 429 detection and exponential backoff.
+Pin a known-good `firecrawl-py` version that has addressed this issue. Always wrap Firecrawl calls with an `asyncio.wait_for()` or `httpx.Timeout` at the application level, independent of the SDK's timeout parameter. Set `StartTimeout` and `ExitTimeout` keys in your launchd plist. Use `timeout=30` (30 seconds) at the call site, treating it as seconds, and add a separate asyncio-level timeout of 45s as backstop. Reference: GitHub issue #1848 (firecrawl/firecrawl).
 
 **Warning signs:**
-- HTTP 429 or 403 responses from `raw.githubusercontent.com` during cron
-- Scraper returns empty content with no exception raised
-- Cron works fine in development (low frequency) but fails in production (higher frequency)
+- Scraping worker is still running 10+ minutes after launch
+- Postgres connection pool exhausted (all connections held by hung scrape workers)
+- launchd shows the scrape job still active when enrichment cron fires
 
-**Phase to address:** Phase 1 (Scraper) — add token-authenticated fetching before any production deployment.
+**Phase to address:** Firecrawl integration phase — set `ExitTimeout` in launchd plist and add asyncio-level timeout wrappers on day one.
 
 ---
 
-### Pitfall 3: pgvector Index Silently Falls Back to Sequential Scan
+### Pitfall A2: Firecrawl Credits Are Not One-Per-Request (5x Multiplier on Extraction)
 
 **What goes wrong:**
-pgvector's HNSW or IVFFlat index is only used when the query includes `ORDER BY embedding <=> $1 LIMIT N` with the matching operator. If the WHERE clause filters too aggressively (few rows survive), or if the query uses `<->` (L2) while the index was built with `vector_cosine_ops` (cosine), PostgreSQL's planner abandons the index and performs a full sequential scan. At 1,000 jobs this is fine (milliseconds). At 50,000 jobs, it is 30+ seconds. No error is raised — queries return correct-looking results, just catastrophically slowly.
+Firecrawl charges 1 credit per page scrape, but 5 credits per page when using the AI-powered `extract` feature. If you design an enrichment pipeline that calls Firecrawl's `extract` to pull structured fields from ATS job pages, your effective credit budget is one-fifth what you planned. At 1,000 ATS pages/day with extract, you consume 5,000 credits/day — not 1,000. Additionally, unused credits expire at the end of the billing cycle with no rollover.
 
 **Why it happens:**
-Two failure modes:
-1. **Operator mismatch**: Developer builds index with `vector_cosine_ops` then writes queries using `<->` (L2 distance). The index cannot be used. No warning.
-2. **Aggressive pre-filtering**: Adding hard filters (`WHERE is_active = true AND job_type = 'internship'`) before the vector ORDER BY can reduce the candidate set to where the planner decides seq scan is cheaper.
+Firecrawl's pricing page prominently shows the per-page credit count; the multiplier for extract is in fine print. The dual pricing structure (credits for scrape, separate token-based subscription for AI extract) is not obvious from the main pricing table.
 
 **How to avoid:**
-Standardize on one distance metric — cosine (`<=>`) for `text-embedding-3-small` embeddings (OpenAI models produce normalized vectors so inner product and cosine are equivalent, but pick one and never mix). Build the index with `vector_cosine_ops`. Verify the index is being used with `EXPLAIN ANALYZE` after every schema/query change. For filtered queries, use approximate filtering: apply hard filters in a post-processing step after fetching top-K vector candidates, not as a pre-filter in SQL.
+Use Firecrawl's `scrape` endpoint (1 credit/page) to get raw markdown, then route the markdown through your existing SiliconFlow LLM pipeline for structured extraction — the enrichment stage you already built. Do not use Firecrawl's `extract` feature; it duplicates work you already pay for elsewhere and burns 5x credits. Only use `extract` for exploratory research; never in the production pipeline.
 
 **Warning signs:**
-- `EXPLAIN ANALYZE` shows `Parallel Seq Scan` instead of `Index Scan`
-- Query time spikes from <10ms to >1s as job count grows
-- `pg_indexes` shows `vector_cosine_ops` but queries use `<->`
+- Monthly Firecrawl bill is 5x higher than projected from page counts
+- Credit balance depletes mid-month on a predictable scrape volume that should fit the plan
+- `usage.credits_used` per call is 5, not 1
 
-**Phase to address:** Phase 2 (Database + Embeddings) — validate index usage with `EXPLAIN ANALYZE` as part of the phase completion criteria.
+**Phase to address:** Firecrawl integration phase — architecture decision: scrape-only, not extract; route markdown to existing LLM pipeline.
 
 ---
 
-### Pitfall 4: LLM Enrichment Cost Explosion on Every Scrape Run
+### Pitfall A3: Firecrawl Batch Jobs Get Stuck "Scraping" Without Completing
 
 **What goes wrong:**
-The enrichment pipeline calls Claude (Anthropic) for each job to classify industry, company size, skills, and sponsorship. If the enrichment check is keyed on "job is in table" rather than "job fields have changed," every daily scrape re-enriches all jobs even when nothing changed. At 2,000 jobs and $0.01/job enrichment cost, a daily cron that re-enriches everything costs $20/day, $600/month — before embeddings.
+Firecrawl's async `start_batch_scrape()` returns a job ID. Polling `get_batch_scrape_status()` can show status `"scraping"` indefinitely — documented user reports show jobs stuck for 12+ hours past expected completion in the community discussion board. On a Mac Mini with a once-daily launchd schedule, a stuck batch job blocks the entire enrichment cron run, resulting in a day of no data with no alert raised.
 
 **Why it happens:**
-Simple `INSERT OR IGNORE` or "enrich if missing" logic works in testing where jobs are inserted once. In production, the upsert updates existing rows (fixing the Age column), which triggers re-enrichment in naive implementations that check `updated_at` rather than whether enrichable fields changed.
+Firecrawl's batch queue is shared infrastructure. When upstream browser capacity is exceeded, jobs queue silently. If the queue threshold is exceeded, new requests receive 429, but jobs already enqueued may hang waiting for browsers to free. The SDK's `batch_scrape()` (blocking waiter) respects a `max_wait_time` parameter, but only stops auto-pagination — it doesn't cancel the underlying job.
 
 **How to avoid:**
-Store a content hash of the source row fields that feed enrichment (company name + role title). Only re-enrich if this hash changes. Use the Anthropic Batch API (available for async workloads) for 50% cost reduction on bulk enrichment. Use Claude Haiku for enrichment tasks — it is significantly cheaper than Sonnet/Opus for structured classification tasks with well-designed prompts. Enrich new jobs immediately; re-enrich existing jobs only on content change.
+Never use blocking `batch_scrape()` in cron-driven scripts. Use `start_batch_scrape()` to get a job ID, store the ID in Postgres with a `started_at` timestamp, and poll on a separate shorter interval. Add a maximum age check: if a batch job is older than 90 minutes and still not `completed`, cancel it with `cancel_batch_scrape()` and log the failure. Implement alerting on failed/timed-out scrape jobs so the daily run failure is visible.
 
 **Warning signs:**
-- API cost grows proportionally to total job count rather than to new-job count
-- `enriched_at` timestamp updates daily for all jobs, not just new/changed ones
-- Monthly Anthropic bill spikes after the scraper dataset grows
+- `get_batch_scrape_status()` returns `status: "scraping"` for more than 60 minutes
+- Enrichment cron fails with "no new jobs to enrich" when new ATS pages should have been scraped
+- Firecrawl activity log shows jobs in "queued" state from prior day
 
-**Phase to address:** Phase 2 (Database + Enrichment) — design the upsert + re-enrichment trigger logic before running any enrichment at scale.
+**Phase to address:** Firecrawl integration phase — job ID persistence + maximum age timeout are mandatory, not optional enhancements.
 
 ---
 
-### Pitfall 5: Stable ID Generation Breaks on Company Name Variations
+### Pitfall A4: ATS Platform Structures Diverge and Change Without Notice
 
 **What goes wrong:**
-The system needs a stable job ID to deduplicate across scrape runs. If the ID is derived from `hash(company_name + role_title + location)`, any variation in how SimplifyJobs writes the company name — "Meta" vs "Meta Platforms" vs "🔥 Meta" (with the FAANG emoji prefix) — generates a different hash and creates duplicate entries. The same job gets enriched and embedded twice, and the stale version is never marked inactive.
+Each ATS has a different URL scheme and data structure. Greenhouse exposes a public JSON API (`boards-api.greenhouse.io/v1/boards/{token}/jobs`) that is stable and authenticated-optional. Lever exposes a REST API (`api.lever.co/v0/postings/{company}`) that returns clean JSON. Workday uses a non-public internal CXS API (`{tenant}.{wd_server}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs`) that requires POST with JSON body — and the `wd_server` suffix (wd1, wd3, wd5, etc.) varies per company. A parser that works for `wd3` breaks for a company on `wd5`. Worse, the Workday server suffix is not derivable from the company name; it must be scraped from the company's career page first.
 
 **Why it happens:**
-The lock emoji (`🔒`) for closed jobs and the FAANG emoji (`🔥`) are part of the Company field. Developers who strip emojis at display time but hash the raw field get hash instability whenever SimplifyJobs changes their emoji usage, which they do seasonally and at formatting updates.
-
-**Why it matters here specifically:** The `↳` continuation rows present a secondary problem — they inherit the company from the prior row, but if a developer incorrectly creates them as standalone entries with `↳` as the company name, the hash function produces garbage IDs.
+Developers discover the CXS endpoint from community GitHub repos, copy the URL pattern, and assume wd3 is universal. The per-company server discovery step is skipped because it requires an extra HTTP call.
 
 **How to avoid:**
-Normalize before hashing: strip all emoji, lowercase, strip punctuation, collapse whitespace. Use `(normalized_company, normalized_role, primary_location)` as the composite natural key, not a hash of raw values. Store the normalized key as a generated column in Postgres for fast lookup. Test the ID function against the actual README, specifically on rows with emojis, `↳` continuations, and multi-location `<details>` blocks.
+For Greenhouse: use the official Job Board API, not HTML scraping. It's public, JSON, stable, and has no anti-scraping protections. For Lever: use `api.lever.co/v0/postings/{company}`. For Workday: implement a two-step fetch — (1) fetch the company's careers page HTML to extract the actual CXS endpoint URL, (2) POST to that URL. Never hardcode a Workday server suffix. Maintain an ATS type registry mapping company identifiers to detected ATS types and known endpoint URLs, refreshed monthly.
 
 **Warning signs:**
-- Same company/role combination appearing multiple times in the database with different IDs
-- `is_active` never being set to False (deduplication key never matches on update)
-- Total job count grows unbounded across scrape runs instead of stabilizing
+- Workday scrapes fail for some companies but not others with no pattern
+- ATS page fetch returns 404 after a company migrates to a different ATS
+- HTTP 301 redirects to a completely different domain (company changed ATS provider)
 
-**Phase to address:** Phase 1 (Scraper) — ID generation must be correct before enrichment runs, otherwise you pay double enrichment cost for every duplicate.
+**Phase to address:** ATS scraping phase — ATS type detection and endpoint discovery must precede batch scraping.
 
 ---
 
-### Pitfall 6: Embedding Drift When the Embedding Model Changes
+### Pitfall A5: Workday's CXS API Is Protected by Cloudflare and Requires Non-Trivial Headers
 
 **What goes wrong:**
-`text-embedding-3-small` embeddings stored today are mathematically incompatible with embeddings generated by a future model version. Cosine similarity between a v1 query embedding and a v2 document embedding can be as low as 0.78 — the index silently returns wrong results. This is a slow-onset failure: the system works fine until it doesn't, and the degradation is invisible unless you measure retrieval quality explicitly.
+Workday career pages for many enterprise employers are protected by Cloudflare Bot Management (TLS fingerprinting, JavaScript challenges, behavioral analysis). A plain `httpx` GET to the careers page returns a Cloudflare challenge page (HTTP 403 or a JavaScript interstitial), not the actual page content. Firecrawl handles this for HTML scraping, but your direct calls to the CXS API endpoint with `httpx` will hit the same Cloudflare rules if the employer enables bot protection on their entire domain.
 
 **Why it happens:**
-Teams rarely plan for embedding model migration at project start. The immediate pressure is to ship. When OpenAI releases a better model, the upgrade path requires recomputing all stored embeddings, which is a batch operation that costs money and requires downtime (or dual-index management during transition).
+Developers successfully scrape the CXS endpoint for a few employers (those without Cloudflare protection) and assume the approach is universal. Enterprise employers (banks, consulting firms, government contractors) are significantly more likely to have Cloudflare Bot Management enabled.
 
 **How to avoid:**
-Store `embedding_model` and `embedding_model_version` alongside every embedding row. When these values are queried, compare with the currently configured model — any mismatch means stale embedding. Add a `needs_reembedding` flag to the job schema. At model upgrade time, run a bulk re-embedding job before switching the query path. For this project's scale (a few thousand jobs), a full recompute costs under $0.10 with batch API — the risk is not cost, it is forgetting to do it.
+Route Workday CXS API calls through Firecrawl's `scrape` endpoint instead of direct `httpx` calls — Firecrawl's headless browser infrastructure handles the TLS fingerprint and JavaScript challenges. For employers where Firecrawl also fails, fall back to the simplest effective strategy: check if the company posts to Greenhouse or Lever instead (many companies use multiple ATS paths). Do not attempt to bypass Cloudflare with custom TLS libraries in production; it violates ToS and Cloudflare continuously evolves detection.
 
 **Warning signs:**
-- Match quality reports decline after model update
-- Some users report irrelevant recommendations that were fine before
-- `embedding_model` column has mixed values across rows
+- HTTP 403 or 503 response from `myworkdayjobs.com` subdomains
+- Response body contains "Checking if the site connection is secure" text
+- Works in development (low frequency) but fails in production cron (higher frequency triggers bot detection)
 
-**Phase to address:** Phase 2 (Database + Embeddings) — add `embedding_model` column to schema on day one, not as a retrofit.
+**Phase to address:** ATS scraping phase — test with at least 3 enterprise employer Workday pages before committing to direct CXS API approach; budget for Firecrawl route for blocked domains.
 
 ---
 
-### Pitfall 7: Cold Start Produces Useless Matches for New Users
+### Pitfall A6: `__NEXT_DATA__` Scraping Breaks When Sites Migrate to Next.js App Router
 
 **What goes wrong:**
-A new user provides a profile with a few skills and a vague preference. The matching engine has no feedback history, so `feedback_boost` contributes nothing and the affinity embedding is a zero vector. The system falls back to pure weighted scoring, which over-weights `title_similarity` (0.30 weight) and returns whatever job titles most exactly match the profile's target role — often highly competitive roles the user is unlikely to land, or generic SWE roles that ignore their actual interests.
+The `__NEXT_DATA__` JSON blob embedded in Next.js Pages Router HTML is a common shortcut for extracting structured data from job boards (JobRight and similar) without parsing HTML. This technique works for Pages Router (`/pages/` directory). When a site migrates to the App Router (Next.js 13+), there is no `__NEXT_DATA__` blob; data is fetched server-side via React Server Components and streaming flight protocol. The scraper silently returns an empty dict when `__NEXT_DATA__` is absent, and no exception is raised.
 
 **Why it happens:**
-The weighted scoring weights (title 0.30, skills 0.25, etc.) were designed for users with some history. New users get the same weights, but several signals are degenerate: feedback_boost is 0, affinity embedding similarity is undefined or random. The result is a ranking dominated by whichever weights happen to fire for incomplete profiles.
+`__NEXT_DATA__` extraction is widely documented in scraping guides as a reliable technique for Next.js sites. Guides from 2021-2023 do not cover the App Router migration that became mainstream in 2023-2024. Sites migrated to App Router without announcing it publicly.
 
 **How to avoid:**
-Explicitly detect new-user state: if `feedback_count < threshold` (e.g., 3), apply a cold-start mode that suppresses feedback_boost, explicitly asks for more profile signal (desired company size, must-have tech stack), and emphasizes recency (newer jobs = more likely still open, easier to apply to). Consider returning a deliberately broad top-K set on first query to gather feedback quickly. Document the feedback-count threshold as a tunable parameter, not a hardcoded magic number.
+Never rely solely on `__NEXT_DATA__` extraction. Add a presence check: if `window.__NEXT_DATA__` is absent in the response HTML, fall back to DOM parsing or route through Firecrawl's headless browser. Treat `__NEXT_DATA__` as an opportunistic fast path, not a guaranteed structure. Set up a monitoring job that detects when `__NEXT_DATA__` disappears from a previously reliable source and pages an alert.
 
 **Warning signs:**
-- First-session match scores are clustered at similar values (no differentiation)
-- New users click through to jobs and immediately leave (bounce signal)
-- `feedback_boost = 0` for all returned results in new user sessions
+- `__NEXT_DATA__` extraction returns empty dict or raises KeyError where it previously worked
+- Response HTML size drops significantly (Pages Router sends full SSR; App Router sends a shell)
+- The page has a `<script type="text/x-next-data-opts">` or no `<script id="__NEXT_DATA__">` at all
 
-**Phase to address:** Phase 3 (Matching Engine + Feedback) — design cold-start handling explicitly as a first-class concern during matching engine implementation.
+**Phase to address:** ATS/job board scraping phase — `__NEXT_DATA__` extraction must have a fallback path and presence assertion.
 
 ---
 
-### Pitfall 8: Feedback Loop Narrows Results Into a Filter Bubble
+### Pitfall A7: Supabase Statement Timeout Kills Large Batch Upserts
 
 **What goes wrong:**
-A user likes 10 FAANG software engineering internships. The affinity embedding drifts toward "large tech company SWE." The feedback_boost amplifies FAANG results. The user stops seeing relevant opportunities at startups or non-SWE roles (PM, data science) they might actually want. Over time, the matching engine self-reinforces preferences the user expressed early, not preferences they hold currently.
+You already hit this. Supabase enforces per-role statement timeouts: `anon` role gets 3 seconds, `authenticated` role gets 8 seconds, and even the `postgres` role is capped at 2 minutes by a global timeout. A batch upsert of 33K rows in one transaction exceeds these limits and gets cancelled with `ERROR: canceling statement due to statement timeout`. The partially-written batch leaves the jobs table in an inconsistent state — some rows enriched, some not — and the scraper will re-attempt the same rows on the next run, triggering duplicate-enrichment risk if content hashes aren't correctly preserved.
 
 **Why it happens:**
-Feedback systems are designed to improve relevance by learning from behavior. The failure is treating every feedback signal as equally valid indefinitely. Early feedback from an uninformed user (who hadn't seen many jobs yet) gets permanent weight in the affinity embedding.
+The existing pipeline was designed for incremental daily updates (hundreds of new rows), not bulk initial loads or large catch-up batches. New ATS sources add large one-time imports of job pages that exceed incremental assumptions.
 
 **How to avoid:**
-Apply feedback decay: weight recent feedback more heavily than old feedback using time-decay functions. Add an explicit diversity injection: ensure the top-K results always include at least 20% jobs outside the user's established affinity cluster (controlled exploration). Allow the user to explicitly reset preferences. Store feedback timestamps so decay can be applied retroactively when the scoring function is updated.
+Cap batch size at 500 rows per transaction, not 33K. Implement chunked upserts with commit after each chunk: `for chunk in chunks(jobs, size=500): upsert(chunk); conn.commit()`. For initial bulk loads from new ATS sources, use a dedicated session with `SET statement_timeout = 0` (disabled) via direct Postgres connection (port 5432 session mode), not through the Supabase pooler (which ignores per-session timeout overrides). Never use the Supabase REST API client (`supabase-py`) for bulk inserts — it hits the 8-second authenticated role limit immediately.
 
 **Warning signs:**
-- Result set entropy decreases monotonically (less diversity over sessions)
-- User explicitly searches for a different company/role type but matches don't change
-- All returned companies are the same 5-10 employers after 20+ feedback events
+- `ERROR: canceling statement due to statement timeout` in scraper logs
+- Job count in DB is lower than expected after a bulk import run
+- `enriched_at IS NULL` jobs appear that have a `created_at` from a prior run (partial batch succeeded on a previous attempt)
 
-**Phase to address:** Phase 3 (Matching Engine + Feedback) — implement diversity injection from the start; it is much harder to add after users have feedback histories.
+**Phase to address:** ATS/data ingestion phase — chunked upserts are mandatory; set 500 as the hard batch-size constant from day one.
 
 ---
 
-### Pitfall 9: LLM Hallucination in Structured Enrichment Fields
+### Pitfall A8: SiliconFlow 1K RPM / 50K TPM Limits Both Fire Independently
 
 **What goes wrong:**
-Claude classifies jobs for industry, company size, skills, and visa sponsorship. The Anthropic Structured Outputs feature guarantees valid JSON format — it does not guarantee correct content. Claude may confidently classify a "Quantitative Research Intern" at a hedge fund as "Software Engineering" industry, or mark a job as offering sponsorship when the posting is silent on the topic. These errors propagate to every user who would have benefited from that filter.
+SiliconFlow rate limits trigger on whichever metric (RPM or TPM) hits its cap first. With 1,000 RPM and 50,000 TPM: if you send 50 requests per minute, each with 1,000 tokens, you hit the TPM cap (50,000 tokens) after exactly 50 requests — your RPM is 950 below limit, but you're blocked. With short prompts (~200 tokens each), you can hit the RPM cap (1,000 RPM) while consuming only 200,000 tokens/min — well under the token limit. The effective throughput depends on prompt size, and naive backoff code that only handles 429 from RPM may not correctly distinguish RPM vs TPM exhaustion.
 
 **Why it happens:**
-Structured output guarantees format compliance, not factual accuracy. The job data in the SimplifyJobs README is terse — typically just company name, role title, and location. Claude must infer industry and company size from minimal signal, creating high hallucination risk on ambiguous cases.
+Developers test with a small batch, measure RPM headroom, and incorrectly assume token headroom scales proportionally. The two limits interact non-linearly based on prompt length distribution.
 
 **How to avoid:**
-Add a confidence score to each enrichment field (returned by Claude alongside the classification). For `sponsorship_offered`, default to null (unknown) rather than false when the README row has no explicit signal — surface "unknown" to users as a separate filter state rather than silently excluding jobs. Use a two-pass enrichment: Claude classifies, then a deterministic post-processor validates against known company databases for company size. For skills extraction, limit to a controlled vocabulary rather than free-form tags to reduce hallucination surface area.
+At the start of each enrichment batch, estimate total tokens: `len(jobs) * avg_tokens_per_prompt`. If `estimated_tokens > 45_000` (90% of TPM), chunk the batch into time-separated segments with a 60-second sleep between. Track both `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens` response headers; consume whichever is lower to determine safe next-request timing. Write a `RateLimiter` class that tracks both dimensions independently, not just 429 count.
 
 **Warning signs:**
-- Users report being filtered out of jobs they know they're eligible for
-- Sponsorship filter excludes significantly more jobs than expected given the source repo's known composition
-- Company size classifications are inconsistent for the same employer across different role listings
+- 429 errors after far fewer than 1,000 requests in a minute
+- 429 rate is higher when scraping detailed job descriptions (longer prompts) vs short terse listings
+- Enrichment throughput inconsistent across runs with the same job count
 
-**Phase to address:** Phase 2 (Enrichment) — add confidence scores and null-safe filter states before running enrichment at scale.
+**Phase to address:** LLM enrichment integration phase — dual-dimension rate limiter required before SiliconFlow is used in production pipeline.
+
+---
+
+### Pitfall A9: New Scraping Stage Corrupts Existing `content_hash` If Schema Misaligned
+
+**What goes wrong:**
+The existing pipeline uses `content_hash` (SHA-256 of company + role + location) as the enrichment gate: if hash unchanged, skip enrichment. When you add ATS page scraping, you may enrich the `job_description` field with richer text from the actual ATS page. If `content_hash` is not updated to include the ATS-derived `job_description`, the hash will never change when the ATS page updates its description, and re-enrichment will never trigger. Conversely, if you naively add `job_description` to the hash input, every row's hash changes on first ATS scrape — triggering a full re-enrichment of all 76K jobs and a corresponding LLM bill.
+
+**Why it happens:**
+The content hash was designed for the GitHub README source. Adding a new data source with richer fields requires rethinking what "content changed" means per-source. Developers add the new field to the hash without considering the migration cost of the first run.
+
+**How to avoid:**
+Add a separate `ats_content_hash` column that tracks changes to ATS-derived fields independently from the GitHub README `content_hash`. Gate ATS-specific re-enrichment on `ats_content_hash` changes. The first ATS scrape populates `ats_content_hash` for all rows; subsequent scrapes only re-enrich when that hash changes. Never modify the existing `content_hash` logic — it is working correctly for the GitHub source.
+
+**Warning signs:**
+- After deploying ATS scraping, an enrichment run touches every job in the table
+- Enrichment runs cost 10x more than normal on the first day after ATS scraping goes live
+- `enriched_at` timestamps reset to current time for all jobs, not just newly scraped ones
+
+**Phase to address:** Data integration phase — schema migration adding `ats_content_hash` before ATS scraping goes live.
+
+---
+
+### Pitfall A10: HNSW Index Degrades 100x for Non-Vector Column Updates
+
+**What goes wrong:**
+A confirmed pgvector issue (GitHub issue #875): updating non-vector columns (e.g., `is_active`, `enriched_at`, `job_description`, `status`) on a table with an HNSW index is catastrophically slow — approximately 100x slower than without the index. Updating 10,000 rows takes ~6 seconds with the HNSW index vs ~58 milliseconds without it. This affects the existing upsert pipeline today, but becomes significantly worse when ATS scraping adds bulk non-vector updates (job description updates, status changes, close detection) to the 76K-row jobs table.
+
+**Why it happens:**
+The HNSW index unnecessarily triggers buffer access during non-vector column updates — a known pgvector implementation issue. The maintainer's recommended fix is a schema split.
+
+**How to avoid:**
+The official recommendation is to split the table: one table with only the vector column + foreign key (receives HNSW index), one table with all non-vector frequently-updated columns. For this pipeline, the minimum viable fix is to batch all non-vector updates in a single transaction rather than row-by-row, and to run non-vector updates separately from vector inserts. In the new ATS scraping stage, never update a job row's `job_description` in the same upsert that touches the `embedding` column.
+
+**Warning signs:**
+- Upsert runs that worked in <10s now take several minutes after ATS scraping adds bulk updates
+- `EXPLAIN ANALYZE` on non-vector UPDATEs shows high buffer access counts relative to row count
+- Pipeline stage times grow proportionally with total table size, not new-row count
+
+**Phase to address:** ATS data integration phase — separate vector and non-vector update operations; consider table split if update frequency increases significantly.
+
+---
+
+### Pitfall A11: Stale and Ghost ATS Listings Degrade Match Quality
+
+**What goes wrong:**
+An estimated 30-40% of job postings on external ATS pages represent positions that are already filled, on hold, or never genuinely open ("ghost postings"). Unlike the SimplifyJobs GitHub README — which marks closed jobs with a lock emoji — ATS boards (especially Workday) often leave filled positions visible for weeks or months after closure. Scraping and enriching these stale listings poisons the matching engine: users get matched to jobs they cannot apply to, and the LLM wastes tokens enriching dead listings.
+
+**Why it happens:**
+ATS boards are employer-facing tools. Removing a listing requires deliberate action; many employers forget or deprioritize removing filled positions. There is no universal "closed" signal in Workday/Greenhouse/Lever JSON responses — some use `status: "closed"`, others use `status: "live"` for open and simply remove the listing (404) when closed.
+
+**How to avoid:**
+Treat 404 on a previously-scraped ATS URL as a strong "closed" signal and mark `is_active = false` immediately. For Greenhouse, use `updated_at` from the Job Board API — jobs not updated in 90+ days are very likely stale. Set a freshness TTL: any ATS-scraped job not confirmed live in the last 30 days should have `is_active = false` regardless of what the page says. Explicitly check for `status` fields in Greenhouse and Lever JSON; map `"closed"` to `is_active = false` at parse time.
+
+**Warning signs:**
+- Users click "Apply" links from matched jobs and receive 404 or "position filled" pages
+- ATS job count does not decrease over time despite jobs presumably being filled
+- Date distribution of ATS jobs is heavily skewed toward past months (many old listings)
+
+**Phase to address:** ATS scraping phase — TTL and 404 detection are table-stakes, not optional quality improvements.
+
+---
+
+### Pitfall A12: Adding New Scraping Stages Without Feature-Flag Isolation Breaks the Working Pipeline
+
+**What goes wrong:**
+The existing GitHub README scraper is working in production. Adding Firecrawl-based ATS scraping as a new code path in the same scraper module risks introducing import errors, connection pool conflicts, or exception handling changes that break the existing scraper. A bug in the ATS scraping stage can propagate upstream and prevent the GitHub scrape from running.
+
+**Why it happens:**
+Developers extend the existing scraper module because it already has the DB connection pool and upsert logic. The new code runs in the same process as the old code, sharing resources. A `TypeError` in the Firecrawl client initialization causes the entire scraper module to fail on import.
+
+**How to avoid:**
+Implement new ATS scraping as a separate script/module with its own entrypoint (`scripts/ats_scraper.py`), separate launchd plist, and independent error boundary. The existing `cron_scraper.sh` must not be modified — do not add new scraping sources to it. The new ATS scraper should be additive-only: it writes to a staging table or uses a source-tagged upsert path. The GitHub README scraper continues to run on its existing schedule, unchanged. Only merge their data at the enrichment stage via a unified view or fan-in query.
+
+**Warning signs:**
+- GitHub scraper fails to start after ATS scraper code is deployed
+- Postgres connection pool errors appear during the GitHub scraper run after the new module is introduced
+- Import errors in `wekruit_matching` package after adding new dependencies (e.g., `firecrawl-py`)
+
+**Phase to address:** Architecture decision before any ATS scraping code is written — separate modules, separate entrypoints, shared DB only at the upsert layer.
+
+---
+
+### Pitfall A13: Encoding and HTML Entity Contamination From ATS Pages Poisons Embedding Input
+
+**What goes wrong:**
+ATS job pages (especially Workday HTML descriptions and Greenhouse rich text bodies) contain HTML entities (`&amp;`, `&lt;`, `&nbsp;`), Unicode smart quotes (`\u2019`, `\u201c`), soft hyphens (`\xad`), and zero-width spaces (`\u200b`). These characters pass through Firecrawl's markdown conversion but survive as literal text. When this text is fed to the OpenAI embedding model, the embedding for "5+ years experience" (with smart apostrophe) is not the same as "5+ years experience" (with ASCII apostrophe). Skill overlap matching that compares extracted skills from terse GitHub listings against enriched ATS descriptions will produce systematically lower scores due to invisible character differences.
+
+**Why it happens:**
+Firecrawl's markdown output is clean-looking but not normalized. Developers inspect the output visually and see readable text; the invisible characters only show up in hex dumps or when debugging embedding distance anomalies.
+
+**How to avoid:**
+Add a mandatory text normalization step in the ATS parsing pipeline: (1) run `html.unescape()` on all text fields, (2) apply `unicodedata.normalize("NFKC", text)` to normalize Unicode variants to canonical forms, (3) strip zero-width characters (`\u200b`, `\u200c`, `\xad`), (4) normalize whitespace. This normalizer should be a standalone utility function tested against known ATS HTML patterns. Apply it at the scrape output stage, before any field is written to the DB.
+
+**Warning signs:**
+- Job descriptions contain `&amp;` or `&#160;` literal strings in the database
+- Two identical-looking job descriptions have different content hashes (invisible character difference)
+- Skill overlap scores are lower-than-expected for ATS-sourced jobs vs GitHub-sourced jobs
+
+**Phase to address:** ATS parsing phase — normalization utility is a prerequisite before any ATS content reaches the embedding pipeline.
+
+---
+
+## PART B — ORIGINAL MILESTONE PITFALLS (retained for completeness)
+
+The following pitfalls were documented in the original v1.0 milestone research (2026-03-25). They remain relevant and their prevention phases have been completed.
+
+---
+
+### Pitfall B1: HTML Embedded in Markdown Table Cells Breaks Naive Parsers
+
+**What goes wrong:**
+The SimplifyJobs README uses `<details>/<summary>` HTML blocks inside table cells for multi-location entries. A naive `line.split("|")` parser sees raw HTML tags as location strings or splits incorrectly mid-tag and corrupts the row.
+
+**How to avoid:**
+Use a proper Markdown parser that handles inline HTML, then post-process cells to strip tags. Treat `↳` rows as inheriting the company from the prior non-continuation row.
+
+**Phase to address:** Phase 2 (Scraper) — completed 2026-03-26.
+
+---
+
+### Pitfall B2: GitHub Rate Limiting Kills Unauthenticated raw.githubusercontent.com Fetches
+
+**What goes wrong:**
+GitHub (May 2025) introduced stricter rate limits for unauthenticated raw content fetches. The scraper silently returns empty/truncated content on 429 with no exception.
+
+**How to avoid:**
+Always authenticate with a GitHub PAT. Add explicit 429 detection and exponential backoff.
+
+**Phase to address:** Phase 2 (Scraper) — completed 2026-03-26.
+
+---
+
+### Pitfall B3: pgvector Index Silently Falls Back to Sequential Scan
+
+**What goes wrong:**
+If the WHERE clause pre-filters too aggressively, or the query uses the wrong distance operator for the index operator class, the planner abandons the index. At 76K jobs, this is a 30+ second query.
+
+**How to avoid:**
+Standardize on `<=>` (cosine) with `vector_cosine_ops` index. Apply hard filters post-retrieval, not as SQL pre-filters. Verify with `EXPLAIN ANALYZE`.
+
+**Phase to address:** Phase 4 (Embeddings) — completed 2026-03-26.
+
+---
+
+### Pitfall B4: LLM Enrichment Cost Explosion on Every Scrape Run
+
+**What goes wrong:**
+Naive re-enrichment on every upsert triggers API calls for unchanged jobs. At 76K jobs, this is catastrophic.
+
+**How to avoid:**
+Content hash gate: only re-enrich when hash changes. Use Claude Haiku, not Sonnet/Opus.
+
+**Phase to address:** Phase 3 (LLM Enrichment) — completed 2026-03-26.
+
+---
+
+### Pitfall B5: Stable ID Generation Breaks on Company Name Variations
+
+**What goes wrong:**
+Emojis, formatting changes, and `↳` continuation rows in SimplifyJobs README cause hash instability and duplicate entries.
+
+**How to avoid:**
+Normalize before hashing: strip emoji, lowercase, collapse whitespace.
+
+**Phase to address:** Phase 2 (Scraper) — completed 2026-03-26.
+
+---
+
+### Pitfall B6: Embedding Drift When the Embedding Model Changes
+
+**What goes wrong:**
+Embeddings from different model versions are mathematically incompatible. Cosine similarity silently degrades.
+
+**How to avoid:**
+Store `embedding_model` on every row. Set `needs_reembedding` flag when model changes.
+
+**Phase to address:** Phase 4 (Embeddings) — completed 2026-03-26.
+
+---
+
+### Pitfall B7: Cold Start Produces Useless Matches for New Users
+
+**What goes wrong:**
+New users get `feedback_boost = 0` and degenerate affinity embedding. Matches are dominated by title similarity at 0.30 weight.
+
+**How to avoid:**
+Explicit cold-start mode when `feedback_count < threshold`. Suppress `feedback_boost`. Return a broad top-K on first query.
+
+**Phase to address:** Phase 6 (Scoring Engine) — completed 2026-03-26.
+
+---
+
+### Pitfall B8: Feedback Loop Narrows Results Into a Filter Bubble
+
+**What goes wrong:**
+Early feedback permanently dominates affinity embedding. Results converge to 5-10 employers.
+
+**How to avoid:**
+Time-decay on feedback. Diversity injection (20% results outside affinity cluster). Feedback timestamp storage for retroactive decay.
+
+**Phase to address:** Phase 7 (Feedback Loop) — completed 2026-03-26.
+
+---
+
+### Pitfall B9: LLM Hallucination in Structured Enrichment Fields
+
+**What goes wrong:**
+Claude generates plausible-but-wrong classifications for terse listings with only company name + role title.
+
+**How to avoid:**
+Confidence scores per field. Default `sponsorship_offered = null` (unknown) when no explicit signal. Controlled skills vocabulary.
+
+**Phase to address:** Phase 3 (LLM Enrichment) — completed 2026-03-26.
 
 ---
 
@@ -196,13 +390,14 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Raw string split on `\|` for markdown table parsing | Fast to write | Breaks on multi-location HTML cells, corrupts location data silently | Never — use a real parser from day one |
-| No `embedding_model` column on jobs table | Simpler schema | Cannot detect stale embeddings after model upgrade; full recompute required with no way to identify stale rows | Never — add this column in the initial migration |
-| Enrich all jobs on every scrape run | Simple logic | Cost explosion proportional to total job count, not new job count | Never — content hashing is cheap insurance |
-| Unauthenticated GitHub raw fetch | No token management | 429 errors in production; new GitHub rate limits explicitly target this | Never in production |
-| Hard WHERE filters before vector ORDER BY | Intuitive SQL structure | Forces sequential scan, defeats index entirely | Never — apply hard filters post-retrieval |
-| Hardcode feedback weights as constants | Fast to ship | Cannot A/B test or tune without a redeploy | Acceptable in MVP; add config table in Phase 3 |
-| Single IVFFlat index without tuning lists parameter | Zero config | Query optimizer abandons index at moderate scale | Acceptable in Phase 1 for <1,000 jobs; tune before scaling |
+| Use Firecrawl `extract` for ATS structured data | Avoids building a parser | 5x credit cost vs `scrape` + existing LLM pipeline | Never in production pipeline |
+| Blocking `batch_scrape()` in cron scripts | Simpler code | Hung process blocks launchd pipeline stages | Never — always use `start_batch_scrape()` + async poll |
+| Add ATS scraping to existing scraper module | Reuse connection pool | One bug breaks the working GitHub scraper | Never — separate modules, separate entrypoints |
+| Hardcode Workday server suffix (wd3) | Fast to write | Fails for companies on wd1, wd5 | Never — discover from careers page |
+| Skip text normalization before embedding | Faster scrape pipeline | Invisible Unicode differences degrade skill overlap scores | Never — normalization is cheap |
+| Single content_hash covering GitHub + ATS fields | Simpler schema | Adding ATS fields to hash triggers full re-enrichment of 76K jobs | Never — separate `ats_content_hash` column |
+| Direct `httpx` to Workday CXS API | No Firecrawl credits spent | Blocked by Cloudflare for enterprise employers | Acceptable for employers without Cloudflare; route blocked ones through Firecrawl |
+| Raw string split on `\|` for markdown table parsing | Fast to write | Breaks on multi-location HTML cells | Never — already burned on this |
 
 ---
 
@@ -210,12 +405,17 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| GitHub raw README fetch | Unauthenticated HTTP GET to `raw.githubusercontent.com` | Authenticate with PAT in `Authorization: Bearer` header; add 429 detection |
-| OpenAI Embeddings API | Embedding one job per API call | Batch up to 2,048 texts per request; use Batch API for 50% cost reduction on bulk runs |
-| Anthropic Claude (enrichment) | Not using Batch API for initial bulk enrichment | Use Batch API for non-urgent async enrichment; use Haiku model not Sonnet for classification tasks |
-| pgvector | Building HNSW index then using L2 operator in queries | Match index operator class to query operator: `vector_cosine_ops` with `<=>` exclusively |
-| Postgres UPSERT | Triggering re-enrichment on every `ON CONFLICT DO UPDATE` | Track content hash of enrichable fields; only flag for re-enrichment when hash changes |
-| SimplifyJobs README | Treating `Age` column as a parseable date | The `Age` column is a display string ("0d", "8d+"), not a timestamp; use GitHub commit metadata for actual posting timestamp |
+| Firecrawl Python SDK | Pass `timeout=60000` (intending ms) | Treat SDK timeout as seconds; add asyncio-level timeout wrapper independently |
+| Firecrawl batch jobs | Use blocking `batch_scrape()` in cron | Use `start_batch_scrape()`, store job ID in DB, poll with 90-min max-age check |
+| Firecrawl `extract` feature | Use it for job field extraction | Use `scrape` (1 credit) + existing SiliconFlow LLM pipeline; extract costs 5 credits |
+| Greenhouse Job Board API | Scrape HTML from board.greenhouse.io | Use `boards-api.greenhouse.io/v1/boards/{token}/jobs` — public JSON, no auth needed |
+| Lever Postings API | Scrape HTML from jobs.lever.co | Use `api.lever.co/v0/postings/{company}` — public REST API, no auth needed |
+| Workday CXS API | Hardcode `wd3.myworkdayjobs.com` | Discover actual server suffix from company's careers page HTML first |
+| Supabase large batches | Single transaction for 33K rows | Chunk at 500 rows; SET statement_timeout = 0 for bulk loads via direct connection |
+| SiliconFlow rate limits | Only handle RPM, ignore TPM | Track both `x-ratelimit-remaining-requests` and `x-ratelimit-remaining-tokens` |
+| `__NEXT_DATA__` extraction | Treat as guaranteed structure | Presence-check first; fall back to Firecrawl headless if absent |
+| GitHub raw README fetch | Unauthenticated HTTP GET | Authenticate with PAT; add 429 detection with exponential backoff |
+| OpenAI Embeddings API | One embed call per job | Batch up to 2,048 texts; use Batch API for 50% cost on bulk runs |
 
 ---
 
@@ -223,11 +423,12 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Sequential scan on vector column (no index or wrong operator) | Queries degrade from 5ms to 30s+ as job count grows | Use `EXPLAIN ANALYZE`; verify index usage after every schema change | ~5,000+ rows |
-| Re-embedding all jobs on every cron run | Embedding API cost grows with total job count | Content hash check before re-embedding | From day one — cost is immediate |
-| IVFFlat with wrong `lists` parameter | Index abandoned by planner for small tables; poor recall for large tables | Use `rows / 1000` for tables under 1M rows; set `lists` at index creation | Immediately on creation (wrong formula) |
-| Fetching all jobs into memory before filtering | OOM in matching engine for large result sets | Use server-side SQL filtering for hard filters; only load top-K candidates | ~50,000+ jobs |
-| `maintenance_work_mem` too low for index build | Index creation fails with OOM error | Set `maintenance_work_mem` to at least 256MB before HNSW index creation | During initial index build |
+| HNSW index on non-vector UPDATE (pgvector #875) | 100x slower UPDATEs on `is_active`, `enriched_at`, `job_description` | Separate vector and non-vector updates; batch non-vector UPDATEs | Immediately with ATS bulk updates on 76K rows |
+| Sequential scan on vector column (wrong operator) | Queries degrade from 5ms to 30s+ | `EXPLAIN ANALYZE`; `<=>` matches `vector_cosine_ops` index | ~5,000+ rows |
+| Single 33K-row upsert transaction | Statement timeout kills batch | Chunk at 500 rows per transaction | Immediately on Supabase with >8s query time |
+| SiliconFlow dual-limit exhaustion | 429 after fewer than 1K requests/min | Track both RPM and TPM remaining headers | Any batch with >50K tokens/min throughput |
+| Re-embedding all jobs after content_hash change | $$$, hours of OpenAI calls | Separate `ats_content_hash`; only re-embed rows whose source hash changed | First ATS scrape run if hash design is wrong |
+| Fetching all jobs into Python before filtering | OOM on 76K+ jobs | Server-side SQL filtering; load only top-K candidates | ~50,000 jobs already in pipeline |
 
 ---
 
@@ -235,24 +436,38 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Storing GitHub PAT in source code or `.env` committed to repo | Token theft exposes scraper's GitHub access | Use environment variables; never commit `.env`; use short-lived tokens |
-| No validation of LLM-returned JSON before DB insert | Malformed enrichment data corrupts DB; SQL injection if enrichment output is interpolated into queries | Use parameterized queries always; validate all LLM output against schema before insert |
-| Exposing raw user profile data in matching API logs | PII leakage | Log only user IDs, not profile contents; mask skills/preferences in debug logs |
-| No rate limiting on matching API endpoint | Embedding API cost attack (caller can spam match requests, each triggering OpenAI call) | Cache query embeddings by profile hash; rate limit API consumers |
+| Storing Firecrawl API key in source code | Key theft enables credit drain | Environment variable; Infisical; never commit |
+| Storing SiliconFlow API key in source code | Key theft enables LLM cost abuse | Environment variable; Infisical; rate-limit monitoring |
+| Scraping ATS pages that disallow scrapers in robots.txt | ToS violation; IP ban; legal risk | Check robots.txt before adding any new source; prefer official JSON APIs (Greenhouse, Lever) |
+| Logging raw Firecrawl response bodies in DEBUG | Job description content in logs; potential PII (recruiter contact info) | Log only status codes and byte counts; never log response bodies |
+| No rate limiting on matching API endpoint | Caller can trigger unlimited OpenAI embedding calls | Cache query embeddings by profile hash; rate limit API consumers |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Scraper:** Handles `<details>/<summary>` multi-location HTML in table cells — verify by checking `location` field in DB contains no raw HTML tags
-- [ ] **Scraper:** `↳` continuation rows correctly inherit company name — verify by checking that no job row has `↳` as its company value
-- [ ] **Scraper:** Closed/locked jobs (`🔒`) are skipped at parse time, not filtered post-insert — verify by checking `is_active` logic and that locked emoji rows never enter enrichment queue
-- [ ] **Deduplication:** `normalized_key` is consistent across scrape runs — verify by running scraper twice on same README snapshot and confirming zero new rows inserted
-- [ ] **Enrichment:** Re-enrichment only fires when content hash changes — verify by running scraper twice and confirming no Anthropic API calls on the second run
-- [ ] **Embeddings:** `embedding_model` column populated on every job row — verify with `SELECT COUNT(*) FROM jobs WHERE embedding_model IS NULL`
-- [ ] **pgvector:** HNSW index is actually used by the query planner — verify with `EXPLAIN ANALYZE SELECT ... ORDER BY embedding <=> $1 LIMIT 10`
-- [ ] **Matching:** Cold-start path triggers for new users — verify by running matching with a zero-feedback-history profile and checking that `feedback_boost` contribution is 0 and results are appropriately diverse
-- [ ] **Sponsorship filter:** Null/unknown sponsorship jobs surface correctly — verify that `sponsorship_offered IS NULL` jobs appear when user filter is "include unknown"
+**New milestone additions:**
+
+- [ ] **Firecrawl timeout:** Application-level asyncio timeout wrapper exists independently of SDK timeout parameter — verify by testing with an intentionally slow URL
+- [ ] **Firecrawl credits:** Pipeline uses `scrape` (not `extract`) for all ATS page fetches — verify that `usage.credits_used` per call is 1, not 5
+- [ ] **Batch job persistence:** Firecrawl batch job IDs stored in DB with `started_at`; max-age check at 90 minutes — verify by inspecting `ats_scrape_jobs` table after a batch run
+- [ ] **Workday endpoint discovery:** No Workday server suffix is hardcoded; all endpoints discovered from careers page — verify by checking ATS registry for `wd_server` field derivation
+- [ ] **`__NEXT_DATA__` fallback:** Presence check runs before extraction; Firecrawl fallback triggers when absent — verify by testing against an App Router Next.js site
+- [ ] **Supabase batch size:** Upsert chunked at 500 rows maximum — verify by checking upsert function for batch-size constant
+- [ ] **Separate scraper modules:** ATS scraper does not import from `cron_scraper.sh` or share its process — verify by checking launchd plist files for separation
+- [ ] **`ats_content_hash` column:** Schema migration adds this column before ATS scraping runs — verify with `\d jobs` in psql
+- [ ] **Text normalization:** All ATS-derived text runs through `html.unescape()` + `unicodedata.normalize("NFKC")` before DB write — verify by searching DB for literal `&amp;` strings
+
+**Carried from original milestone (all completed):**
+
+- [x] **Scraper:** Handles `<details>/<summary>` multi-location HTML in table cells
+- [x] **Scraper:** `↳` continuation rows correctly inherit company name
+- [x] **Deduplication:** `normalized_key` is consistent across scrape runs
+- [x] **Enrichment:** Re-enrichment only fires when content hash changes
+- [x] **Embeddings:** `embedding_model` column populated on every job row
+- [x] **pgvector:** HNSW index is used by query planner (EXPLAIN ANALYZE confirmed)
+- [x] **Matching:** Cold-start path triggers for new users
+- [x] **Sponsorship filter:** Null/unknown sponsorship jobs surface correctly
 
 ---
 
@@ -260,12 +475,14 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Duplicate jobs due to bad ID function | HIGH | Deduplicate DB, re-derive IDs from normalized keys, re-run enrichment for merged records |
-| All embeddings stale after model upgrade | MEDIUM | Batch re-embed all active jobs via Batch API ($0.01/1M tokens); takes ~30min for 5,000 jobs |
-| pgvector using sequential scan in production | LOW | Add/rebuild index with correct operator class; verify with EXPLAIN ANALYZE; no data loss |
-| LLM enrichment over-billed due to re-enrichment bug | HIGH (cost already spent) | Fix content hash check; no way to recover past API spend |
-| GitHub rate limit blocking production scraper | LOW | Add PAT authentication; rate limit was just exposing missing auth |
-| Feedback bubble locked user into narrow results | MEDIUM | Add time-decay to feedback scoring; recompute affinity embeddings with decayed weights |
+| Firecrawl credits drained by `extract` feature | MEDIUM (credits already spent) | Switch to `scrape` immediately; no technical recovery for spent credits |
+| Batch job stuck "scraping" for 12h | LOW | Cancel via `cancel_batch_scrape()`; re-run with smaller batch; check Firecrawl status page |
+| Statement timeout killed 33K batch | LOW | Re-run with 500-row chunk size; confirm no partial-batch enrichment triggered |
+| `content_hash` modification triggered full re-enrichment | HIGH (LLM cost) | Fix hash design to use `ats_content_hash`; no recovery for API spend |
+| HNSW index 100x UPDATE degradation causing timeouts | MEDIUM | Batch non-vector updates separately; consider table split for long-term fix |
+| `__NEXT_DATA__` extraction returns empty after site migration | LOW | Enable Firecrawl fallback path; update source registry to flag App Router sites |
+| ATS scraping stage breaks GitHub scraper | HIGH | Immediately revert ATS module; GitHub scraper must be isolated and independently deployable |
+| Duplicate jobs due to bad ID function | HIGH | Deduplicate DB, re-derive IDs, re-run enrichment for merged records |
 
 ---
 
@@ -273,37 +490,51 @@ Add a confidence score to each enrichment field (returned by Claude alongside th
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| HTML in markdown table cells breaks parser | Phase 1: Scraper | Parser test against live README snapshot with multi-location rows |
-| Unauthenticated GitHub fetch rate limited | Phase 1: Scraper | Scraper runs 100 consecutive fetches without 429 |
-| Stable ID breaks on emoji / company name variations | Phase 1: Scraper | Dual-run deduplication test — same README, zero new rows on second run |
-| `↳` continuation rows lose company name | Phase 1: Scraper | No job row in DB has company = `↳` or company = null |
-| LLM re-enrichment on every scrape (cost explosion) | Phase 2: Enrichment | Scraper run on unchanged data produces zero Anthropic API calls |
-| LLM hallucination in sponsorship / industry fields | Phase 2: Enrichment | Confidence scores present; null state used for unknown sponsorship |
-| No `embedding_model` column | Phase 2: Embeddings | Schema migration includes `embedding_model VARCHAR NOT NULL` |
-| pgvector operator class mismatch | Phase 2: Embeddings | `EXPLAIN ANALYZE` shows Index Scan, not Seq Scan |
-| Embedding drift after model upgrade | Phase 2: Embeddings | `embedding_model` column enables targeted recompute; documented runbook exists |
-| Cold start poor matches | Phase 3: Matching | Cold-start profile returns diverse results; no single company dominates |
-| Feedback loop filter bubble | Phase 3: Matching | After 20 feedback events, result diversity metric (entropy) remains above threshold |
+| Firecrawl SDK timeout unit bug | Firecrawl integration phase | asyncio-level timeout test against slow URL |
+| Firecrawl 5x credit multiplier on extract | Architecture decision (pre-implementation) | `usage.credits_used = 1` per scrape call |
+| Firecrawl batch jobs stuck | Firecrawl integration phase | Job ID stored in DB; 90-min max-age check in scraper logic |
+| ATS platform structure divergence (Workday server suffix) | ATS scraping phase | Endpoint discovery step confirmed for ≥3 distinct employers |
+| Cloudflare blocking direct Workday CXS calls | ATS scraping phase | Test enterprise employer pages; Firecrawl route for blocked domains |
+| `__NEXT_DATA__` scraping fragility | ATS/job board scraping phase | Presence check + fallback path; tested against App Router site |
+| Supabase 33K batch statement timeout | ATS data ingestion phase | Upsert chunked at 500 rows; no statement timeout errors in logs |
+| SiliconFlow dual RPM/TPM limits | LLM enrichment integration phase | Dual-dimension rate limiter class; no 429s at target throughput |
+| `content_hash` corruption from new ATS fields | Data integration phase (schema) | `ats_content_hash` column in migration; first ATS scrape does not re-enrich existing rows |
+| HNSW non-vector UPDATE degradation | ATS data integration phase | Vector and non-vector updates separated in upsert logic |
+| Stale/ghost ATS listings | ATS scraping phase | 404 detection marks `is_active = false`; 30-day TTL enforced |
+| New scraping stage breaks existing pipeline | Architecture decision (pre-implementation) | GitHub scraper runs successfully in isolation after ATS module deployed |
+| Encoding contamination from ATS HTML | ATS parsing phase | Text normalization utility; no `&amp;` literals in DB |
 
 ---
 
 ## Sources
 
-- GitHub Changelog: "Updated rate limits for unauthenticated requests" (May 8, 2025) — https://github.blog/changelog/2025-05-08-updated-rate-limits-for-unauthenticated-requests/
-- pgvector GitHub: HNSW index not used for KNN queries issue #835 — https://github.com/pgvector/pgvector/issues/835
-- pgvector GitHub: Cosine distance vs cosine similarity (issue #72) — https://github.com/pgvector/pgvector/issues/72
+**New milestone sources:**
+- Firecrawl Rate Limits (official) — https://docs.firecrawl.dev/rate-limits
+- Firecrawl Python SDK (official) — https://docs.firecrawl.dev/sdks/python
+- Firecrawl GitHub issue #1848: SDK timeout unit conversion bug — https://github.com/firecrawl/firecrawl/issues/1848
+- Firecrawl community: batch scrape jobs stuck in "scraping" — https://www.answeroverflow.com/m/1324115093444628591
+- Firecrawl pricing analysis: 5x credit multiplier on extract — https://scrapegraphai.com/blog/firecrawl-pricing
+- Lever Postings API (official) — https://github.com/lever/postings-api
+- Greenhouse Job Board API (official) — https://developers.greenhouse.io/job-board.html
+- Workday CXS API community discovery — https://news.ycombinator.com/item?id=39624542
+- Cloudflare bot detection mechanisms (2025) — https://alterlab.io/blog/bypass-cloudflare-bot-protection-web-scraping
+- pgvector GitHub issue #875: HNSW 100x degradation on non-vector column UPDATE — https://github.com/pgvector/pgvector/issues/875
+- pgvector GitHub issue #810: HNSW INSERT performance — https://github.com/pgvector/pgvector/issues/810
+- Supabase Docs: statement timeouts (official) — https://supabase.com/docs/guides/database/postgres/timeouts
+- Supabase Docs: avoiding timeouts in long-running queries — https://supabase.com/docs/guides/troubleshooting/avoiding-timeouts-in-long-running-queries-6nmbdN
+- SiliconFlow rate limits (official) — https://docs.siliconflow.cn/en/userguide/rate-limits/rate-limit-and-upgradation
+- ScrapingAnt: building a web data quality layer — https://scrapingant.com/blog/building-a-web-data-quality-layer-deduping-canonicalization
+- Job Board Scraping 2025 guide — https://www.jobboardly.com/blog/job-board-scraping-complete-guide-2025
+- Web scraping legal compliance 2025 — https://groupbwt.com/blog/is-web-scraping-legal/
+- Forage.ai: character encoding bugs in scraping pipeline — https://forage.ai/blog/character-encoding-bugs-web-scraping-guide/
+
+**Original milestone sources (retained):**
+- GitHub Changelog: rate limits for unauthenticated requests (May 8, 2025) — https://github.blog/changelog/2025-05-08-updated-rate-limits-for-unauthenticated-requests/
+- pgvector GitHub: HNSW index not used for KNN queries — https://github.com/pgvector/pgvector/issues/835
 - Crunchy Data: pgvector performance for developers — https://www.crunchydata.com/blog/pgvector-performance-for-developers
-- pgvector GitHub: Open-source vector similarity search for Postgres — https://github.com/pgvector/pgvector
-- AWS Blog: pgvector indexing deep dive (IVFFlat and HNSW) — https://aws.amazon.com/blogs/database/optimize-generative-ai-applications-with-pgvector-indexing-a-deep-dive-into-ivfflat-and-hnsw-techniques/
-- Anthropic Docs: Structured outputs — https://platform.claude.com/docs/en/build-with-claude/structured-outputs
-- OpenAI Docs: Vector embeddings and batch API — https://developers.openai.com/api/docs/guides/embeddings
-- Medium: "When Embeddings Go Stale: Detecting & Fixing Retrieval Drift in Production" — https://medium.com/@yashtripathi.nits/when-embeddings-go-stale-detecting-fixing-retrieval-drift-in-production-778a89481a57
-- Zilliz: "What is embedding drift and how do I detect it?" — https://zilliz.com/ai-faq/what-is-embedding-drift-and-how-do-i-detect-it
-- SimplifyJobs Summer2026-Internships README (live inspection) — https://github.com/SimplifyJobs/Summer2026-Internships/blob/dev/README.md
-- Supabase GitHub issue: "pgvector <=> is cosine distance, not cosine similarity" — https://github.com/supabase/supabase/issues/12244
-- ScrapingAnt: "Building a Web Data Quality Layer" — https://scrapingant.com/blog/building-a-web-data-quality-layer-deduping-canonicalization
-- Frontiers in AI: "Explainable person-job recommendations: challenges" (2025) — https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1660548/full
+- AWS Blog: pgvector indexing deep dive — https://aws.amazon.com/blogs/database/optimize-generative-ai-applications-with-pgvector-indexing-a-deep-dive-into-ivfflat-and-hnsw-techniques/
+- SimplifyJobs Summer2026-Internships README — https://github.com/SimplifyJobs/Summer2026-Internships/blob/dev/README.md
 
 ---
-*Pitfalls research for: job scraping + matching engine (SimplifyJobs GitHub source, Postgres/pgvector, LLM enrichment)*
-*Researched: 2026-03-25*
+*Pitfalls research for: job scraping + matching engine — Firecrawl scraping, ATS page parsing, and search milestone*
+*Original research: 2026-03-25 | Updated: 2026-03-31*

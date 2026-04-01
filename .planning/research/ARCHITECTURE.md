@@ -1,283 +1,500 @@
 # Architecture Research
 
-**Domain:** Job scraping + matching engine (Python backend, no frontend)
-**Researched:** 2026-03-25
+**Domain:** Firecrawl integration into existing wekruit-matching pipeline
+**Researched:** 2026-03-31
 **Confidence:** HIGH
+
+---
+
+## Context: What Already Exists
+
+Before any new components, the pipeline looks like this:
+
+```
+Stage 1: scrape_all()
+  ├── SimplifyJobs GitHub READMEs (httpx, markdown parsing)
+  └── JobRight GitHub repos (httpx, markdown parsing)
+         ↓ upsert_jobs() → jobs table
+
+Stage 2a: enrich_from_jobright.enrich_all_jobs()
+  └── JobRight.ai page fetch (httpx, __NEXT_DATA__ JSON parse)
+      → fills job_description, required_skills, salary_range,
+        seniority_level, benefits, qualifications, sponsorship
+         ↓ UPDATE jobs WHERE primary_url LIKE 'https://jobright.ai/%'
+
+Stage 2b: enrichment.worker.enrich_pending()
+  └── SiliconFlow Qwen3-8B (OpenAI-compatible API)
+      → fills industry, company_size, required_skills, sponsorship
+         ↓ UPDATE jobs WHERE enriched_at IS NULL
+
+Stage 3: embedding.worker.embed_all()
+  └── OpenAI text-embedding-3-small
+      → fills embedding vector(1536), embedding_model
+         ↓ UPDATE jobs WHERE embedded_at IS NULL AND enriched_at IS NOT NULL
+```
+
+**Key observation:** Stage 2a (`enrich_from_jobright`) is already the model for what Firecrawl integration should look like — it fills the job detail columns that the initial scrape leaves empty. Firecrawl becomes a parallel path alongside `enrich_from_jobright`, not a replacement for it.
 
 ---
 
 ## Standard Architecture
 
-### System Overview
+### System Overview: Post-Firecrawl Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         INGESTION LAYER                             │
 │                                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐   │
-│  │  GitHub Raw  │    │   Scraper    │    │   Enrichment Worker  │   │
-│  │   README     │───►│   (httpx +   │───►│  (Anthropic classify │   │
-│  │  (markdown)  │    │   parser)    │    │   + OAI embeddings)  │   │
-│  └──────────────┘    └──────┬───────┘    └──────────┬───────────┘   │
-│                             │                       │               │
-│                     [raw Job records]      [enriched metadata       │
-│                      + stable IDs          + 1536-dim vectors]      │
-└─────────────────────────────┼───────────────────────┼───────────────┘
-                              │                       │
-                              ▼                       ▼
+│  ┌────────────────┐    ┌──────────────────┐                         │
+│  │ SimplifyJobs + │    │  Firecrawl Search │                         │
+│  │ JobRight GitHub│    │  (new employer    │                         │
+│  │ READMEs        │    │   career URLs)    │                         │
+│  └───────┬────────┘    └────────┬──────────┘                         │
+│          │                     │                                     │
+│          ▼                     ▼                                     │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │              Stage 1: scrape_all() — unchanged                 │   │
+│  │   SimplifyJobs + JobRight GitHub → upsert_jobs()              │   │
+│  └───────────────────────────────┬───────────────────────────────┘   │
+└──────────────────────────────────┼──────────────────────────────────┘
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         STORAGE LAYER                               │
+│                      JD ENRICHMENT LAYER                            │
 │                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    PostgreSQL + pgvector                      │   │
-│  │                                                               │   │
-│  │   jobs table                    user_profiles table           │   │
-│  │   ├── id (stable hash)          ├── user_id                  │   │
-│  │   ├── title, company, url       ├── skills[], preferences    │   │
-│  │   ├── location, sponsorship     ├── feedback_history[]       │   │
-│  │   ├── status (active/stale)     └── affinity_embedding       │   │
-│  │   ├── metadata JSONB                                          │   │
-│  │   └── embedding vector(1536)    feedback table               │   │
-│  │                                 ├── user_id, job_id          │   │
-│  │                                 └── signal (like/dislike)    │   │
-│  └──────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────┐   ┌──────────────────────────────────┐    │
+│  │  Stage 2a (existing) │   │  Stage 2b: Firecrawl Enricher    │    │
+│  │  enrich_from_jobright│   │  (NEW — for non-JobRight URLs)   │    │
+│  │                      │   │                                  │    │
+│  │  target: jobs WHERE  │   │  target: jobs WHERE              │    │
+│  │  primary_url LIKE    │   │  primary_url NOT LIKE            │    │
+│  │  'jobright.ai/%'     │   │  'jobright.ai/%'                 │    │
+│  │  AND job_description │   │  AND job_description IS NULL     │    │
+│  │  IS NULL             │   │  AND primary_url IS NOT NULL     │    │
+│  │                      │   │                                  │    │
+│  │  method: httpx GET   │   │  routing:                        │    │
+│  │  + __NEXT_DATA__     │   │  1. ATS JSON APIs (free,fast)    │    │
+│  │  JSON parse ($0 cost)│   │     → Greenhouse, Lever          │    │
+│  │                      │   │  2. Firecrawl /scrape (JS-render)│    │
+│  │                      │   │     → Workday, Ashby, iCIMS etc  │    │
+│  │                      │   │  3. Firecrawl /extract (LLM)     │    │
+│  │                      │   │     → unstructured employer pages│    │
+│  └──────────┬───────────┘   └──────────────┬───────────────────┘    │
+│             │                              │                         │
+│             └──────────┬───────────────────┘                         │
+│                        │                                             │
+│                        ▼                                             │
+│  ┌──────────────────────────────────────────────────────────────┐    │
+│  │    Stage 2c (existing): LLM metadata classifier              │    │
+│  │    SiliconFlow Qwen3-8B → industry, company_size,            │    │
+│  │    required_skills (where 2a/2b didn't fill them)            │    │
+│  └──────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────┬───────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         MATCHING LAYER                              │
-│                                                                     │
-│  ┌─────────────────┐    ┌──────────────────┐    ┌───────────────┐   │
-│  │  User Profile   │    │  Matching Engine  │    │  Ranked Job   │   │
-│  │  JSON (input)   │───►│  1. Hard filters  │───►│  List (output)│   │
-│  │                 │    │  2. ANN retrieve  │    │  (top-N with  │   │
-│  └─────────────────┘    │  3. Multi-signal  │    │   scores)     │   │
-│                          │     score         │    └───────────────┘   │
-│                          └──────────────────┘                        │
+│                      EMBEDDING LAYER (unchanged)                    │
+│   Stage 3: embed_all() — OpenAI text-embedding-3-small             │
+│   Input text now richer: title + company + skills + jd_text        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Boundary |
-|-----------|----------------|----------|
-| **Scraper** | Fetches raw GitHub README markdown, parses job table rows, generates stable IDs, skips closed listings (lock emoji) | Outputs normalized Job records; knows nothing about enrichment or matching |
-| **Enrichment Worker** | Calls Anthropic to classify industry/company size/skills/sponsorship; calls OpenAI to generate embeddings; writes enriched records to DB | Reads unenriched jobs, writes enriched jobs; never touches user profiles |
-| **Job DB** | Persists jobs with enriched metadata and vector embeddings; handles upsert (insert new, update changed, mark stale inactive) | Single source of truth for jobs; never invokes business logic |
-| **Matching Engine** | Accepts user profile, applies hard filters, retrieves ANN candidates via pgvector, scores with multi-signal weighted formula, returns ranked list | Reads from DB; never scrapes; never calls enrichment APIs |
-| **User Profile** | Input-only record: skills, preferences, experience, feedback history, affinity embedding | Provided by caller; updated only via feedback endpoint |
-| **Feedback Handler** | Records like/dislike signals, adjusts user preference weights and affinity embedding | Writes to DB; triggers no scraping or enrichment |
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `scraper/run.py` | Fetch job listings from GitHub READMEs, upsert to DB | Existing, unchanged |
+| `scraper/enrich_from_jobright.py` | Fetch JobRight.ai detail pages via httpx + `__NEXT_DATA__` parse, fill JD columns | Existing, unchanged |
+| `scraper/firecrawl_enricher.py` | NEW — fetch non-JobRight job pages via Firecrawl (3-tier routing), fill same JD columns | New |
+| `scraper/ats_enricher.py` | NEW — free ATS JSON API fetchers for Greenhouse/Lever (no Firecrawl credits needed) | New |
+| `scraper/url_classifier.py` | NEW — classify a primary_url into routing tier: jobright / ats-json / firecrawl-scrape / firecrawl-extract / unknown | New |
+| `pipeline/daily.py` | Orchestrate all stages in sequence | Existing, modified to insert new stages |
+| `enrichment/worker.py` | LLM metadata classification for jobs without enriched_at | Existing, unchanged |
+| `embedding/worker.py` | Generate embeddings for enriched jobs | Existing, unchanged |
 
 ---
 
-## Recommended Project Structure
+## Recommended Project Structure Changes
+
+The existing `src/wekruit_matching/` structure needs these additions:
 
 ```
-wekruit-matching/
+src/wekruit_matching/
 ├── scraper/
-│   ├── fetch.py            # httpx calls to GitHub raw README URLs
-│   ├── parse.py            # markdown table parser, row extractor
-│   ├── id.py               # stable ID generation (hash of company+title+url)
-│   └── run.py              # cron entrypoint: fetch → parse → upsert
+│   ├── enrich_from_jobright.py    # existing — unchanged
+│   ├── url_classifier.py          # NEW: classify URL → routing tier
+│   ├── ats_enricher.py            # NEW: Greenhouse/Lever JSON API fetchers
+│   ├── firecrawl_enricher.py      # NEW: Firecrawl /scrape + /extract + search
+│   └── run_jd_enrichment.py       # NEW: orchestrator that routes jobs to the right fetcher
 │
-├── enrichment/
-│   ├── classify.py         # Anthropic prompt: extract industry, skills, etc.
-│   ├── embed.py            # OpenAI text-embedding-3-small calls
-│   ├── cache.py            # skip already-enriched jobs (check DB state)
-│   └── run.py              # cron entrypoint: find unenriched → enrich → write
+├── pipeline/
+│   └── daily.py                   # MODIFIED: insert new JD enrichment stage
 │
-├── db/
-│   ├── schema.sql          # table definitions, pgvector extension, indexes
-│   ├── client.py           # connection pool, query helpers
-│   └── upsert.py           # upsert logic: insert/update/mark stale
-│
-├── matching/
-│   ├── filters.py          # hard filter: job type, sponsorship, location blocklist
-│   ├── retrieve.py         # pgvector ANN query: get top-K candidates
-│   ├── score.py            # weighted multi-signal scorer
-│   ├── location.py         # fuzzy location normalization (SF/San Francisco, etc.)
-│   └── api.py              # match(user_profile) → ranked list; library entrypoint
-│
-├── feedback/
-│   └── handler.py          # record signal, update user embedding + weights
-│
-├── models/
-│   ├── job.py              # Job dataclass
-│   ├── user_profile.py     # UserProfile dataclass
-│   └── match_result.py     # MatchResult dataclass (job + score breakdown)
-│
-├── config.py               # env vars: DB URL, API keys, weights
-└── tests/
-    └── e2e_test.py         # full pipeline smoke test
+└── config.py                      # MODIFIED: add FIRECRAWL_API_KEY setting
 ```
 
-### Structure Rationale
+**Why this structure:**
 
-- **scraper/ vs enrichment/ separation:** Scraping is network I/O against GitHub (rate-limit profile: moderate, predictable). Enrichment is LLM API calls (rate-limit profile: expensive, slow, must cache). Combining them would force re-enrichment on scrape failures or conflate two very different failure modes.
-- **db/upsert.py standalone:** Upsert logic is the most complex DB operation (detect changed rows, mark stale). Isolating it means both the scraper and enrichment worker import it independently without coupling.
-- **matching/ is a library, not a service:** No HTTP server. Callers (Discord bot, web app) import `matching/api.py` directly. This keeps this repo backend-only per the project constraint.
-- **models/ shared dataclasses:** All three modules (scraper, matching, feedback) use the same Job and UserProfile types. Putting them in models/ avoids circular imports.
+- `url_classifier.py` stays separate because the routing logic will evolve independently of fetch logic. URL pattern matching (does URL match greenhouse.io? lever.co?) is distinct from the HTTP calls.
+- `ats_enricher.py` is split from `firecrawl_enricher.py` because ATS JSON APIs are free, synchronous, and reliable — they should not consume Firecrawl credits. Mixing them would complicate credit budgeting.
+- `run_jd_enrichment.py` is a new orchestrator that replaces calling `enrich_from_jobright` alone. It dispatches to the right fetcher per job and can be called from `daily.py` as a single entry point.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Stable ID for Deduplication
+### Pattern 1: Tiered Fetcher Routing
 
-**What:** Hash-based deterministic job ID derived from company + title + application URL (not row position in README).
-**When to use:** Any time a job listing can appear in multiple scrape runs, or across multiple source repos (Summer2026-Internships and New-Grad-Positions may overlap).
-**Trade-offs:** Simple and stateless. Fails if company renames role slightly — acceptable for this domain.
+**What:** Before fetching a job page, classify the URL to choose the cheapest method that can succeed. Apply methods in ascending cost order, short-circuiting when one succeeds.
+
+**When to use:** Every time a job record with `job_description IS NULL` and a non-null `primary_url` is processed.
+
+**Trade-offs:** Adds one classification step per job. Saves significant cost — ATS JSON APIs are free, Firecrawl /scrape costs 1 credit, /extract with LLM costs up to 5 credits.
+
+**Routing table (ascending cost):**
+
+| Tier | Trigger | Method | Cost |
+|------|---------|--------|------|
+| 0 | `jobright.ai/` in URL | `enrich_from_jobright` (existing) | $0 |
+| 1 | `greenhouse.io/` or `lever.co/` in URL | `ats_enricher` — direct JSON API | $0 |
+| 2 | Known JS-heavy ATS (Workday, Ashby, iCIMS, Rippling, etc.) | Firecrawl `/scrape` → markdown parse | 1 credit |
+| 3 | Unknown employer career page with detectable structure | Firecrawl `/scrape` → markdown parse | 1 credit |
+| 4 | Unstructured or employer-specific pages that resist markdown parsing | Firecrawl `/extract` with JD schema | 5 credits |
+
+**Example routing:**
+
+```python
+# url_classifier.py
+def classify_url(url: str) -> str:
+    """Return routing tier for a job application URL."""
+    if not url:
+        return "unknown"
+    lower = url.lower()
+    if "jobright.ai" in lower:
+        return "jobright"
+    if "greenhouse.io" in lower or "lever.co" in lower or "ashbyhq.com" in lower:
+        return "ats-json"
+    if any(p in lower for p in ["myworkday.com", "wd1.myworkdayjobs", "wd3.myworkdayjobs",
+                                  "icims.com", "rippling.com", "jobvite.com", "workable.com"]):
+        return "firecrawl-scrape"
+    # Default: try scrape first, fall back to extract if it returns no JD text
+    return "firecrawl-scrape"
+```
+
+### Pattern 2: Credit-Aware Batch Processing with DB Tracking
+
+**What:** Track which jobs have been attempted by Firecrawl (success or failure) in a DB column so re-runs don't re-spend credits on already-attempted jobs.
+
+**When to use:** Any Firecrawl call that costs credits.
+
+**Trade-offs:** Requires a new DB column (`jd_fetch_attempted_at`, `jd_fetch_source`). Prevents duplicate spend — critical at scale.
+
+**DB columns needed (new migration):**
+
+```sql
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS jd_fetch_source TEXT;
+-- Values: 'jobright' | 'greenhouse_api' | 'lever_api' | 'firecrawl_scrape'
+--         | 'firecrawl_extract' | 'search' | 'failed' | NULL (not attempted)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS jd_fetch_attempted_at TIMESTAMPTZ;
+```
+
+**Query for jobs to process:**
+
+```sql
+SELECT job_id, primary_url, role_title, company_name
+FROM jobs
+WHERE status = 'active'
+  AND job_description IS NULL
+  AND primary_url IS NOT NULL
+  AND primary_url NOT LIKE 'https://jobright.ai/%'
+  AND jd_fetch_attempted_at IS NULL  -- never attempted
+ORDER BY first_seen_at DESC
+LIMIT 100
+```
+
+### Pattern 3: Fallback Chain Within Firecrawl Tier
+
+**What:** For jobs routed to Firecrawl, try `/scrape` first. If the returned markdown lacks a detectable job description (under 200 chars, or no keywords like "responsibilities", "requirements", "qualifications"), escalate to `/extract` with a JD schema.
+
+**When to use:** Jobs where URL tier is `firecrawl-scrape` or `firecrawl-extract`.
+
+**Trade-offs:** Escalation from scrape (1 credit) to extract (5 credits) costs more but only triggers when the cheaper method fails. In practice, most mainstream ATS pages return good markdown.
 
 **Example:**
-```python
-import hashlib
 
-def make_job_id(company: str, title: str, url: str) -> str:
-    key = f"{company.lower().strip()}|{title.lower().strip()}|{url.strip()}"
-    return hashlib.sha256(key.encode()).hexdigest()[:16]
+```python
+def fetch_with_firecrawl(url: str, fc: Firecrawl) -> dict | None:
+    """Try /scrape first, escalate to /extract if JD text is insufficient."""
+    # Attempt 1: scrape (1 credit)
+    result = fc.scrape(url, formats=["markdown"], timeout=30000)
+    markdown = result.get("markdown", "") or ""
+
+    if _has_jd_content(markdown):
+        return _parse_markdown_to_jd(markdown)
+
+    # Attempt 2: extract with schema (5 credits)
+    schema = {
+        "type": "object",
+        "properties": {
+            "job_description": {"type": "string"},
+            "responsibilities": {"type": "array", "items": {"type": "string"}},
+            "qualifications": {"type": "array", "items": {"type": "string"}},
+            "salary_range": {"type": "string"},
+            "skills": {"type": "array", "items": {"type": "string"}},
+        }
+    }
+    extracted = fc.extract(urls=[url], schema=schema)
+    if extracted and extracted.get("job_description"):
+        return extracted
+    return None
+
+
+def _has_jd_content(markdown: str) -> bool:
+    """Heuristic: markdown likely contains a real JD if it's long enough
+    and mentions at least one job-description keyword."""
+    if len(markdown) < 200:
+        return False
+    keywords = {"responsibilities", "requirements", "qualifications",
+                "experience", "skills", "duties", "about the role", "what you'll do"}
+    text_lower = markdown.lower()
+    return any(kw in text_lower for kw in keywords)
 ```
 
-### Pattern 2: Enrich-Only-New Jobs (Conditional Enrichment)
+### Pattern 4: Firecrawl Search for Direct Employer URL Discovery
 
-**What:** Before calling LLM APIs, check if a job already has enriched metadata and an embedding. Skip if present and unchanged.
-**When to use:** Every enrichment run. LLM calls are expensive; scraping happens daily on a corpus of 1000+ listings.
-**Trade-offs:** Saves ~90% of LLM cost. Adds a DB read before each potential LLM call — negligible overhead.
+**What:** For jobs where `primary_url` points to a job aggregator (not an employer page), use Firecrawl `/search` to find the employer's direct careers page URL, then scrape that.
+
+**When to use:** When `primary_url` is a redirect tracker, LinkedIn, or an aggregator that blocks scraping. Also useful for jobs that have no `primary_url` at all — search for `"{company} {role} careers site:company.com"`.
+
+**Trade-offs:** Search costs 2 credits per 10 results. Only worth doing for high-value jobs (rare role titles, target companies). Not worth doing for all 76K jobs — apply selectively.
 
 **Example:**
+
 ```python
-def needs_enrichment(job_id: str, db) -> bool:
-    row = db.fetch_one("SELECT enriched_at FROM jobs WHERE id = %s", job_id)
-    return row is None or row["enriched_at"] is None
+def discover_employer_url(company: str, role: str, fc: Firecrawl) -> str | None:
+    """Use Firecrawl search to find a direct employer career page URL."""
+    query = f"{company} {role} job application site:{company.lower().replace(' ', '')}.com"
+    results = fc.search(query, limit=5)
+    for r in (results or []):
+        url = r.get("url", "")
+        # Prefer direct employer domains, not aggregators
+        if not any(agg in url for agg in ["linkedin.com", "indeed.com",
+                                           "glassdoor.com", "simplyhired.com"]):
+            return url
+    return None
 ```
 
-### Pattern 3: Two-Stage Match (Filter → Score)
+### Pattern 5: ATS JSON API Fetchers (Greenhouse + Lever, Free)
 
-**What:** Apply hard boolean filters first (job type, sponsorship, excluded locations), then run ANN vector retrieval on the surviving set, then apply weighted multi-signal scoring.
-**When to use:** Always. Hard filters eliminate structurally incompatible jobs before any expensive computation. ANN retrieval narrows to semantically relevant candidates. Weighted scoring ranks the shortlist by all signals.
-**Trade-offs:** Three passes over data — but each pass is dramatically smaller than the prior one. Hard filters are O(N) SQL with indexed columns. ANN is O(log N) via HNSW. Weighted scoring is O(K) where K is the candidate count (typically 50-200).
+**What:** Greenhouse and Lever both expose unauthenticated public JSON APIs. These return full JD text, skills-adjacent requirements, and location without any scraping or credits.
 
-```
-All jobs (N=~2000)
-   ↓ hard filters (SQL WHERE clauses)
-Eligible jobs (maybe 400)
-   ↓ pgvector ANN (<-> cosine distance, LIMIT 100)
-Candidates (100)
-   ↓ weighted score: title_sim×0.30 + skills×0.25 + industry×0.15 + ...
-Ranked list (top 20 returned)
-```
+**When to use:** Any job where `primary_url` contains `greenhouse.io` or `lever.co`.
 
-### Pattern 4: Feedback Embedding Shift
+**ATS API shapes:**
 
-**What:** When a user likes a job, nudge their affinity embedding toward that job's embedding. When they dislike, nudge away. Lerp by a small factor (e.g., 0.05).
-**When to use:** After any like/dislike signal.
-**Trade-offs:** Simple online update without retraining. Embedding drift over many likes is possible — mitigated by also keeping explicit preference fields.
+**Greenhouse** — `https://boards-api.greenhouse.io/v1/boards/{company}/jobs/{job_id}`
+Returns: `title`, `location.name`, `content` (HTML JD), `departments[]`, `offices[]`, `absolute_url`
+
+**Lever** — `https://api.lever.co/v0/postings/{company}/{job_id}`
+Returns: `text` (title), `description` (HTML), `lists[]` (requirements sections), `categories.location`, `categories.team`
+
+**Implementation:** Parse HTML from `content`/`description` field with a simple regex strip (same `_clean_html()` already in `enrich_from_jobright.py`). Extract company slug and job ID from URL with regex.
 
 ---
 
 ## Data Flow
 
-### Ingestion Flow (Daily Cron)
+### New JD Enrichment Stage in Daily Pipeline
 
 ```
-[GitHub Raw README URL]
-    ↓ httpx GET (no auth required for public repos)
-[Raw Markdown Text]
-    ↓ parse.py — extract table rows, skip lock-emoji rows
-[Job records: title, company, url, location, sponsorship_flag, date]
-    ↓ id.py — generate stable hash ID
-    ↓ db/upsert.py — INSERT ON CONFLICT UPDATE, mark missing rows stale
-[Jobs table: raw fields written, enriched_at = NULL for new rows]
-    ↓ enrichment/run.py — query WHERE enriched_at IS NULL
-[Unenriched jobs]
-    ↓ classify.py — Anthropic batch: industry, company_size, skills[], remote_ok
-    ↓ embed.py — OpenAI text-embedding-3-small on (title + company + skills)
-[Enriched metadata + embedding vector]
-    ↓ db/upsert.py — UPDATE jobs SET metadata=..., embedding=..., enriched_at=NOW()
-[Jobs table: fully enriched, queryable]
+[daily.py Stage 2a — existing, unchanged]
+  enrich_from_jobright() targets: jobright.ai URLs
+         ↓
+[daily.py Stage 2b — NEW]
+  run_jd_enrichment() targets: all other URLs
+  For each job WHERE job_description IS NULL
+    AND primary_url IS NOT NULL
+    AND primary_url NOT LIKE 'jobright.ai/%'
+    AND jd_fetch_attempted_at IS NULL:
+
+    url_classifier.classify_url(primary_url)
+         ↓ tier = "ats-json"        → ats_enricher.fetch_greenhouse() or fetch_lever()
+         ↓ tier = "firecrawl-scrape" → firecrawl_enricher.scrape_url()
+                                          ↓ if _has_jd_content(): parse markdown
+                                          ↓ else: escalate to extract()
+         ↓ tier = "search"          → firecrawl_enricher.discover_and_scrape()
+         ↓ tier = "unknown"         → skip (mark attempted, log)
+
+  Write result to DB:
+    UPDATE jobs SET
+      job_description = ...,
+      core_responsibilities = ...,
+      qualifications = ...,
+      salary_range = ...,
+      jd_fetch_source = '...',
+      jd_fetch_attempted_at = NOW()
+    WHERE job_id = ...
+
+[daily.py Stage 2c — existing: LLM metadata enrichment]
+  Now has richer job_description text to work with for classification
+         ↓
+[daily.py Stage 3 — existing: embeddings]
+  Embedding text = title + company + skills + job_description[:500]
+  (richer input → better semantic matching)
 ```
 
-### Match Request Flow (On-Demand)
+### Credit Budget Planning
 
-```
-[Caller: UserProfile JSON]
-    ↓ matching/api.py — validate profile, generate query embedding if absent
-[Query embedding (1536-dim)]
-    ↓ matching/filters.py — build SQL WHERE for job_type, sponsorship, location
-[Hard filter clause]
-    ↓ matching/retrieve.py — pgvector ANN: WHERE <filters> ORDER BY embedding <-> query_vec LIMIT 100
-[Candidate job list (≤100)]
-    ↓ matching/score.py — compute 7-signal weighted score per candidate
-[Scored candidates]
-    ↓ sort descending, slice top-N
-[MatchResult list: job + score + per-signal breakdown]
-    ↓ return to caller
+Assuming 76K jobs total, 70% already enriched, 30% needing JD fetch:
+- ~23K jobs need JD enrichment
+- Estimated URL distribution:
+  - ~40% jobright.ai → already handled by Stage 2a ($0)
+  - ~15% Greenhouse/Lever → ATS JSON API ($0)
+  - ~30% known JS ATS (Workday, etc.) → Firecrawl /scrape (1 credit each = ~5K credits)
+  - ~10% unknown employer pages → Firecrawl /scrape with fallback (~3K credits)
+  - ~5% completely opaque → Firecrawl /extract (~1.2K credits, 5 each)
+
+**Total estimated: ~9K credits for initial backfill.**
+
+At $16/month for 3K credits or self-hosted for $0, the right choice is to self-host Firecrawl for the initial bulk run (AGPL Docker image, runs on the existing server), then potentially switch to the managed API for ongoing daily incremental work where volume is low (50-200 new jobs/day).
+
+---
+
+## DB Schema Changes Needed
+
+One new alembic migration (`0004_add_jd_fetch_tracking.py`):
+
+```sql
+-- Track which method filled the JD, and whether we've attempted it
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS jd_fetch_source TEXT;
+-- Allowed values: 'jobright' | 'greenhouse_api' | 'lever_api'
+--   | 'firecrawl_scrape' | 'firecrawl_extract' | 'search'
+--   | 'failed' (tried, got nothing) | NULL (not yet attempted for non-jobright)
+
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS jd_fetch_attempted_at TIMESTAMPTZ;
+-- NULL = never attempted  |  timestamp = last attempt time
+-- Used to skip re-processing on subsequent cron runs
+
+-- Index for the enrichment queue query
+CREATE INDEX IF NOT EXISTS ix_jobs_jd_pending
+  ON jobs (status, jd_fetch_attempted_at)
+  WHERE job_description IS NULL
+    AND primary_url IS NOT NULL;
 ```
 
-### Feedback Flow
+**Why these columns:**
+- `jd_fetch_source` answers "why does this job have/lack a JD?" and enables analytics (what % of Workday pages succeeded?). Also prevents duplicate Firecrawl credit spend on retry runs.
+- `jd_fetch_attempted_at` is the gate for the incremental queue — `WHERE jd_fetch_attempted_at IS NULL` ensures we only process each job once unless explicitly reset.
+- The partial index on `(status, jd_fetch_attempted_at) WHERE job_description IS NULL AND primary_url IS NOT NULL` directly accelerates the enrichment queue query.
 
+**Note:** `job_description`, `core_responsibilities`, `qualifications`, `salary_range`, `benefits` columns already exist from migration 0003. No changes needed to those.
+
+---
+
+## Integration Points with Existing Code
+
+### `enrich_from_jobright.py` — Preserved Unchanged
+
+This is the highest-value enrichment path (free, structured, reliable). The new Firecrawl enricher is additive — it handles URLs that `enrich_from_jobright` explicitly skips (non-jobright.ai URLs). No changes to `enrich_from_jobright.py` are needed.
+
+**Existing query in `enrich_from_jobright.enrich_all_jobs()`:**
+```sql
+WHERE status = 'active'
+  AND primary_url LIKE 'https://jobright.ai/%'
+  AND (required_skills IS NULL OR required_skills = '{}')
 ```
-[Caller: user_id, job_id, signal (like/dislike)]
-    ↓ feedback/handler.py
-[Record in feedback table]
-    ↓ fetch user affinity_embedding and job embedding
-    ↓ nudge: new_affinity = lerp(affinity, job_embedding, α=0.05) if like
-              new_affinity = lerp(affinity, -job_embedding, α=0.05) if dislike
-    ↓ UPDATE user_profiles SET affinity_embedding=..., feedback_history=...
-[User profile updated — next match call uses shifted embedding]
+
+**New Firecrawl enricher query:**
+```sql
+WHERE status = 'active'
+  AND (job_description IS NULL OR job_description = '')
+  AND primary_url IS NOT NULL
+  AND primary_url NOT LIKE 'https://jobright.ai/%'
+  AND jd_fetch_attempted_at IS NULL
 ```
+
+These two queries are mutually exclusive — no job can match both.
+
+### `pipeline/daily.py` — Minimal Change
+
+Insert one new stage call between Stage 2a and Stage 2b:
+
+```python
+# --- Stage 2a: JobRight Page Enrichment (existing, FREE) ---
+logger.info("=== Stage 2a: JobRight Page Enrichment (free) ===")
+with get_connection() as conn:
+    jobright_stats = enrich_jobright(conn, max_workers=8, batch_size=50)
+
+# --- Stage 2b: Firecrawl JD Enrichment (NEW) ---
+logger.info("=== Stage 2b: Firecrawl JD Enrichment ===")
+from wekruit_matching.scraper.run_jd_enrichment import run_jd_enrichment
+firecrawl_stats = run_jd_enrichment()
+
+# --- Stage 2c: LLM metadata classifier (existing) ---
+logger.info("=== Stage 2c: LLM Enrichment (metadata classification) ===")
+enrich_stats = enrich_all()
+```
+
+### `config.py` — One New Field
+
+```python
+# Firecrawl (optional — pipeline degrades gracefully if absent)
+firecrawl_api_key: str = Field("", repr=False)
+firecrawl_base_url: str = Field("https://api.firecrawl.dev")
+# Set firecrawl_base_url to http://localhost:3002 for self-hosted
+```
+
+Using `Field("")` (empty default) means the enricher can check `if not settings.firecrawl_api_key: skip` and the pipeline continues without Firecrawl configured. Graceful degradation is important — the pipeline was working before, it shouldn't break without a Firecrawl key.
+
+### `enrichment/worker.py` — No Change Needed
+
+The LLM classifier reads `enriched_at IS NULL`. When Stage 2b fills `job_description`, the classifier will use that text to make better `industry`, `company_size`, and `required_skills` decisions. But the worker itself doesn't need modification — it already uses `role_title`, `company_name`, `location_raw` for classification. If we want to pass `job_description` into the LLM prompt, that's an optional enhancement to `enrichment/classifier.py`'s prompt, not a structural change.
 
 ---
 
 ## Build Order
 
-Components have hard dependencies. Build in this order:
+Dependencies are strict. Build in this exact order:
 
 ```
-Phase 1: DB schema + client
-    └── Everything else depends on this.
+Step 1: DB migration (0004_add_jd_fetch_tracking.py)
+  └── All new enrichment queries depend on jd_fetch_attempted_at column
 
-Phase 2: Scraper (fetch + parse + id + upsert)
-    └── Produces raw job data. Enrichment depends on this.
+Step 2: url_classifier.py
+  └── No external dependencies. Pure string matching.
+  └── Unit-testable with no DB or network.
 
-Phase 3: Enrichment (classify + embed + conditional cache)
-    └── Produces enriched jobs + embeddings. Matching depends on embeddings.
+Step 3: ats_enricher.py (Greenhouse + Lever JSON APIs)
+  └── Depends on: url_classifier (to know which ATS to call)
+  └── Free to run, validates approach before spending Firecrawl credits
+  └── Test against real Greenhouse/Lever URLs before moving on
 
-Phase 4: Matching engine (filters + retrieve + score + location normalization)
-    └── Depends on enriched jobs in DB. User profiles can be hardcoded for testing.
+Step 4: firecrawl_enricher.py (scrape + extract)
+  └── Depends on: url_classifier, firecrawl-py SDK
+  └── Build scrape path first, validate markdown quality
+  └── Add extract fallback only after scrape path is validated
 
-Phase 5: Feedback handler
-    └── Depends on matching (need to know what jobs exist) and user profiles.
+Step 5: run_jd_enrichment.py (orchestrator)
+  └── Depends on: url_classifier + ats_enricher + firecrawl_enricher
+  └── Routes each job to the right fetcher, writes results to DB
+  └── Contains the throttling, error isolation, and batch commit logic
 
-Phase 6: End-to-end test + cron wiring
-    └── Validates full pipeline. Depends on all prior phases.
+Step 6: daily.py modification
+  └── Insert run_jd_enrichment() between Stage 2a and Stage 2b
+  └── Final integration point — test with --dry-run first
+
+Step 7: embedding text enrichment (optional)
+  └── Modify embedding/worker.py to include job_description[:500]
+      in the text passed to text-embedding-3-small
+  └── Improves match quality — do after rest of pipeline is stable
 ```
 
-Parallel where possible:
-- Scraper and DB schema can be developed together (schema first, scraper writes to it).
-- Matching engine logic (score.py, location.py) can be unit-tested against mock data before the DB is populated.
-
----
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| GitHub Raw README | `httpx.get(raw_url)` — no auth, no JS, direct markdown | URL format: `https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md` — pin to `dev` branch |
-| Anthropic API | Single-turn classification prompt per job batch | Use `claude-haiku` for cost; structure output as JSON via tool use or response format |
-| OpenAI Embeddings | `text-embedding-3-small`, batch up to 2048 tokens | Batch multiple job texts per API call; cache by job ID to avoid re-embedding |
-| PostgreSQL + pgvector | psycopg3 with pgvector extension | `CREATE EXTENSION IF NOT EXISTS vector;` must run at schema init |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Scraper → DB | Direct function call via `db/upsert.py` | Scraper never calls enrichment directly |
-| Enrichment Worker → DB | Direct function call via `db/client.py` + `db/upsert.py` | Worker queries DB for unenriched rows; no IPC with scraper |
-| Matching Engine → DB | Read-only SQL queries via `db/client.py` | Matching never writes to jobs table |
-| Feedback Handler → DB | Read/write via `db/client.py` | Only writes to user_profiles and feedback tables |
-| Caller → Matching | Python function call: `from matching.api import match` | No HTTP server; no serialization overhead |
+**Rationale for this order:**
+- Steps 1-2 have no risk (schema migration + pure string matching)
+- Step 3 validates the ATS enrichment concept for free before any Firecrawl spend
+- Step 4 is isolated — can be tested against a handful of URLs without touching the DB
+- Step 5 is where all the pieces come together, so building it last ensures its dependencies are stable
+- Step 6 should be last to avoid disrupting the existing working daily pipeline during development
 
 ---
 
@@ -285,57 +502,77 @@ Parallel where possible:
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| 0-5K jobs, few users | Single Postgres instance, synchronous enrichment in cron job, in-process matching. Current design handles this well. |
-| 5K-50K jobs, hundreds of users | Add HNSW index on embedding column (`CREATE INDEX ON jobs USING hnsw (embedding vector_cosine_ops)`). Move enrichment to async task queue (e.g., asyncio batch). |
-| 50K+ jobs, thousands of users | Consider read replica for matching queries. Pre-compute candidate sets per user at cron time ("push model") rather than computing on request. |
+| Daily incremental (50-200 new jobs/day) | Cloud Firecrawl API is fine at this volume; 200 credits/day stays within $16/month plan |
+| Initial backfill (23K unenriched jobs) | Self-host Firecrawl via Docker Compose on the existing server; no credit cost; takes 2-4 hours at 8 concurrent workers |
+| Rate limiting from target sites | Implement per-domain rate limits in `run_jd_enrichment.py` — different sites have different tolerances; jobright pattern (0.3s sleep) is a good model |
 
 ### Scaling Priorities
 
-1. **First bottleneck: LLM enrichment cost.** At 2000 jobs/day, even haiku calls add up. Conditional enrichment (skip already-enriched) is the primary mitigation. Batch API calls reduce per-call overhead.
-2. **Second bottleneck: ANN query latency at high job count.** Add HNSW index before the job table exceeds ~10K rows. pgvector HNSW handles 1M+ vectors efficiently with the right configuration.
+1. **First bottleneck: Firecrawl credit budget.** ATS JSON path (Greenhouse/Lever) must be exhausted first — it's free and covers ~15% of URLs. Self-hosting for bulk runs eliminates credit cost entirely during backfill.
+2. **Second bottleneck: Per-domain rate limiting.** Without per-domain throttling, aggressive parallel scraping will get the IP blocked by Workday, iCIMS etc. Apply a `collections.defaultdict(deque)` tracking last-access-time per domain.
 
 ---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Enriching on Every Scrape Run
+### Anti-Pattern 1: Using Firecrawl for All URLs
 
-**What people do:** Call LLM classify + embed for all jobs on every daily scrape, not just new ones.
-**Why it's wrong:** 1000-job corpus at $0.001/job = $1/day = $365/year for zero new information on unchanged jobs.
-**Do this instead:** `WHERE enriched_at IS NULL` before calling any LLM API. Only enrich jobs that are new or have changed significantly (title/company/url changed = new hash = new row).
+**What people do:** Route every job URL through Firecrawl regardless of whether a cheaper method exists.
+**Why it's wrong:** Greenhouse and Lever have free public JSON APIs that return the full JD. Using Firecrawl on those URLs wastes 1-5 credits per job when $0 alternatives exist.
+**Do this instead:** `url_classifier.py` routes Greenhouse/Lever to `ats_enricher.py` (free), only unknown/JS-heavy pages go to Firecrawl.
 
-### Anti-Pattern 2: Storing Embeddings Outside the Job DB
+### Anti-Pattern 2: No Attempt Tracking Column
 
-**What people do:** Use a separate vector store (Pinecone, Weaviate, Chroma) alongside Postgres for the structured data.
-**Why it's wrong:** Two databases to keep in sync. Structured filters (sponsorship, job type) require a round-trip: SQL → vector store → SQL. Adds ops overhead for no benefit at this scale.
-**Do this instead:** pgvector in the same Postgres instance. Single query: `WHERE sponsorship = true ORDER BY embedding <-> $1 LIMIT 100` combines filter and ANN in one SQL statement.
+**What people do:** Re-query `WHERE job_description IS NULL` on every cron run without tracking whether Firecrawl was already tried.
+**Why it's wrong:** A failed fetch (404, JS wall, empty markdown) will re-spend credits on every daily run indefinitely. At 23K unenriched jobs × $0.01/credit, that's real money.
+**Do this instead:** Set `jd_fetch_attempted_at = NOW()` and `jd_fetch_source = 'failed'` on every attempt, successful or not. The queue query filters `WHERE jd_fetch_attempted_at IS NULL`.
 
-### Anti-Pattern 3: Pure Embedding Similarity as the Only Signal
+### Anti-Pattern 3: Mixing Firecrawl State with JobRight State
 
-**What people do:** Match = cosine similarity between user embedding and job embedding, nothing else.
-**Why it's wrong:** Embeddings capture semantic meaning but miss hard constraints. A user who needs visa sponsorship will get matches at sponsoring companies ranked #50 behind unsponored roles that are semantically closer.
-**Do this instead:** Hard filter sponsorship/job-type first, then use embedding similarity as one of seven weighted signals. Explicit preference signals (location, company size) get their own terms in the scoring formula.
+**What people do:** Reuse `enriched_at` to gate Firecrawl enrichment, conflating two different enrichment stages.
+**Why it's wrong:** `enriched_at` is set by the LLM metadata classifier (Stage 2c). If a job has `enriched_at` set but no `job_description`, it means Stage 2c ran before Stage 2b could fill the JD. Using `enriched_at` as the gate for Firecrawl would skip those jobs permanently.
+**Do this instead:** Use the dedicated `jd_fetch_attempted_at` column for JD fetch tracking. The two enrichment stages (JD text fetch and LLM metadata classification) gate on different columns for exactly this reason.
 
-### Anti-Pattern 4: Parsing README by Row Index
+### Anti-Pattern 4: Calling Firecrawl /extract on Every Page
 
-**What people do:** Extract row N from the markdown table, assume it maps to job N in DB.
-**Why it's wrong:** The SimplifyJobs README is edited by many contributors. Rows shift, get reordered, get deleted. Row-index-based IDs break on every table edit.
-**Do this instead:** Stable ID = hash of (company + title + application URL). URL is stable and unique per job application link.
+**What people do:** Always use `/extract` (LLM-backed, 5 credits) instead of trying `/scrape` (1 credit) first.
+**Why it's wrong:** Most ATS pages have consistent enough structure that plain markdown is sufficient. `/extract` is 5× more expensive and slower.
+**Do this instead:** Use `_has_jd_content(markdown)` heuristic after `/scrape`. Only escalate to `/extract` when the markdown is short or lacks JD keywords. In practice, ~80% of pages should resolve at the scrape tier.
+
+### Anti-Pattern 5: Self-Hosting Firecrawl for Daily Incremental Runs
+
+**What people do:** Run self-hosted Firecrawl (Docker Compose on the matching server) as the permanent solution for all scraping.
+**Why it's wrong:** Self-hosting requires Redis + Postgres + queue workers running 24/7. At 50-200 new jobs/day, the operational overhead exceeds the $2-3/month API cost. Self-hosting is the right choice for the initial 23K-job backfill, not for steady-state operations.
+**Do this instead:** Self-host for the bulk backfill (no credit cost), then switch to the managed Firecrawl API for daily incremental work. The `firecrawl_base_url` config field makes this a one-line change.
+
+---
+
+## External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Firecrawl API (cloud) | `firecrawl-py` SDK, `Firecrawl(api_key=...)` | `firecrawl-py` v4.21.0. Set `base_url` to override for self-hosted |
+| Firecrawl (self-hosted) | Same SDK, `base_url="http://localhost:3002"` | Docker Compose: needs Redis + Postgres; AGPL license; 100% feature parity for scrape/extract |
+| Greenhouse Job Board API | `httpx.get("https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{id}")` | No auth. Returns JSON with `content` field (HTML JD). Public API, documented. |
+| Lever Jobs API | `httpx.get("https://api.lever.co/v0/postings/{slug}/{id}")` | No auth. Returns JSON with `description` (HTML). Public, documented. |
+| Ashby HQ API | `httpx.get("https://api.ashbyhq.com/posting-api/job-board/{slug}")` | No auth. Returns JSON job board. Ashby is growing ATS in tech startups. |
 
 ---
 
 ## Sources
 
-- [GitHub - rabiuk/job-scraper: SimplifyJobs scraper architecture](https://github.com/rabiuk/job-scraper)
-- [pgvector: Open-source vector similarity search for Postgres](https://github.com/pgvector/pgvector)
-- [Hybrid Search in PostgreSQL (pgvector + SQL filters)](https://www.paradedb.com/blog/hybrid-search-in-postgresql-the-missing-manual)
-- [The 3-Stage Funnel Behind Every Modern Recommender System](https://www.mlwhiz.com/p/the-recommendation-engine-under-the)
-- [5 Patterns for Scalable LLM Service Integration](https://latitude.so/blog/5-patterns-for-scalable-llm-service-integration)
-- [Aman's AI Journal: Recommendation Systems Ranking/Scoring](https://aman.ai/recsys/ranking/)
-- [Technical Job Recommendation System Using APIs and Web Crawling (PMC)](https://pmc.ncbi.nlm.nih.gov/articles/PMC9239795/)
-- [Data Pipeline Architecture Patterns — Alation](https://www.alation.com/blog/data-pipeline-architecture-patterns/)
-- [Web Scraping for Data Engineers — Production Pipeline Architecture (Medium, 2026)](https://htrixe.medium.com/web-scraping-for-data-engineers-architecture-robustness-and-production-pipelines-with-scrapling-c327278222f7)
+- [Firecrawl Python SDK — PyPI firecrawl-py v4.21.0](https://pypi.org/project/firecrawl-py/) — HIGH confidence, verified March 25 2026
+- [Firecrawl /extract endpoint documentation](https://docs.firecrawl.dev/features/extract) — HIGH confidence
+- [Firecrawl /search endpoint documentation](https://docs.firecrawl.dev/features/search) — HIGH confidence
+- [Firecrawl /scrape endpoint documentation](https://docs.firecrawl.dev/features/scrape) — HIGH confidence
+- [Firecrawl self-hosting guide](https://docs.firecrawl.dev/contributing/self-host) — HIGH confidence; confirmed no-credit-limit for self-hosted
+- [Greenhouse Job Board API documentation](https://developers.greenhouse.io/job-board.html) — HIGH confidence; confirmed public, no auth required
+- [Lever public jobs API — confirmed via community sources](https://github.com/MarcusKyung/greenhouse.io-scraper) — MEDIUM confidence; API endpoint structure verified
+- [Firecrawl pricing: 1 credit/scrape, 5 credits/extract, 2 credits per 10 search results](https://www.firecrawl.dev/glossary/web-scraping-apis/how-web-scraping-apis-handle-rate-limiting-quotas) — MEDIUM confidence (pricing pages change frequently)
+- [Firecrawl caching: max_age parameter, storeInCache option](https://www.firecrawl.dev/changelog) — MEDIUM confidence
+- Existing codebase analysis: `enrich_from_jobright.py`, `pipeline/daily.py`, `db/tables.py`, `config.py` — HIGH confidence (direct code reading)
 
 ---
-*Architecture research for: WeKruit Matching Engine (job scraping + matching)*
-*Researched: 2026-03-25*
+
+*Architecture research for: Firecrawl integration into wekruit-matching pipeline*
+*Researched: 2026-03-31*
