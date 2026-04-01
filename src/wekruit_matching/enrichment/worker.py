@@ -7,7 +7,7 @@ changed jobs automatically re-enter the enrichment queue.
 Per-job failure isolation: a single classify_job exception or DB write
 error logs a warning and increments the failed counter — the batch continues.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import psycopg
 from loguru import logger
@@ -17,13 +17,18 @@ from wekruit_matching.models.job import Job
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
-    """Classify all unenriched active jobs and write results to the DB.
+    """Classify active jobs that are missing a JD or skills (ENRICH-01 gap-fill).
 
-    Query: SELECT ... FROM jobs WHERE enriched_at IS NULL AND status = 'active'
+    Query: SELECT ... FROM jobs WHERE status = 'active'
+             AND enriched_at IS NULL
+             AND (job_description IS NULL OR required_skills = ARRAY[]::text[])
+
+    ENRICH-01: LLM enrichment is a gap-fill step — only runs when upstream
+    parsing left the job without a JD or without skills.
 
     For each job:
       1. Call classify_job(job) — returns EnrichmentResult (never raises)
@@ -34,19 +39,31 @@ def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
     """
     rows = conn.execute(
         """
-        SELECT job_id, source_repo, company_name, role_title, location_raw, content_hash
+        SELECT
+          job_id,
+          source_repo,
+          company_name,
+          role_title,
+          location_raw,
+          content_hash,
+          job_description,
+          required_skills
         FROM jobs
-        WHERE enriched_at IS NULL
-          AND status = 'active'
+        WHERE status = 'active'
+          AND enriched_at IS NULL
+          AND (
+            job_description IS NULL
+            OR required_skills = ARRAY[]::text[]
+          )
         ORDER BY first_seen_at ASC
         """
     ).fetchall()
 
     if not rows:
-        logger.info("No unenriched jobs found — nothing to do")
+        logger.info("No gap-fill jobs found — nothing to do")
         return {"enriched": 0, "failed": 0, "skipped": 0}
 
-    logger.info("Found {} unenriched job(s) to classify", len(rows))
+    logger.info("Found {} gap-fill job(s) to classify (missing JD or skills)", len(rows))
     enriched = failed = 0
 
     for row in rows:
@@ -57,6 +74,7 @@ def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
             role_title=row["role_title"],
             location_raw=row["location_raw"] or "",
             content_hash=row["content_hash"],
+            job_description=row["job_description"],
         )
         try:
             result = classify_job(job)
