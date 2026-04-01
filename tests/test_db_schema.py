@@ -145,3 +145,68 @@ def test_cosine_query_uses_index():
     assert "Index Scan" in plan_text, (
         f"Expected Index Scan (HNSW) in query plan. Plan:\n{plan_text}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Migration 0004 assertions (added by plan 14-03)
+# ---------------------------------------------------------------------------
+
+
+def test_migration_0004_columns_exist():
+    """Migration 0004 must have added jd_fetch_source, jd_fetch_attempted_at,
+    ats_content_hash, and ats_apply_url columns to the jobs table."""
+    expected_cols = {
+        "jd_fetch_source",
+        "jd_fetch_attempted_at",
+        "ats_content_hash",
+        "ats_apply_url",
+    }
+    with _connect() as conn:
+        rows = conn.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'jobs'
+        """).fetchall()
+    found = {r["column_name"] for r in rows}
+    missing = expected_cols - found
+    assert not missing, (
+        f"Migration 0004 columns missing from jobs table: {missing}. "
+        f"Run: cd wekruit-matching && uv run alembic upgrade head"
+    )
+
+
+def test_migration_0004_index_exists():
+    """Partial index ix_jobs_jd_fetch_pending must exist for pipeline query efficiency."""
+    with _connect() as conn:
+        row = conn.execute("""
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE tablename = 'jobs' AND indexname = 'ix_jobs_jd_fetch_pending'
+        """).fetchone()
+    assert row is not None, (
+        "Index ix_jobs_jd_fetch_pending missing. "
+        "Run: cd wekruit-matching && uv run alembic upgrade head"
+    )
+    assert "WHERE" in row["indexdef"].upper(), (
+        f"Expected partial index (WHERE clause), got: {row['indexdef']}"
+    )
+
+
+def test_jd_fetch_pending_query_runs():
+    """Pipeline fetch-pending query must run without error and respect 500-row batch cap.
+
+    Tests on latest 1K pattern: latest active jobs needing JD fetch.
+    This is the exact query Stage 2 parsers will use.
+    """
+    with _connect() as conn:
+        rows = conn.execute("""
+            SELECT job_id, primary_url, jd_fetch_source, jd_fetch_attempted_at
+            FROM jobs
+            WHERE job_description IS NULL
+              AND status = 'active'
+            ORDER BY jd_fetch_attempted_at NULLS FIRST
+            LIMIT 500
+        """).fetchall()
+    # Query must execute — row count may be 0 if all jobs have JDs
+    assert isinstance(rows, list), "Expected list result from fetch-pending query"
+    assert len(rows) <= 500, f"Batch cap violated: got {len(rows)} rows (max 500)"
