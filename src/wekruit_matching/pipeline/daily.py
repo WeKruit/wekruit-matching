@@ -21,6 +21,7 @@ from wekruit_matching.notifications.email import (
     send_pipeline_start_email,
 )
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+from wekruit_matching.pipeline.run_url_resolution import run_url_resolution
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
 
@@ -71,6 +72,17 @@ def run_daily_pipeline() -> dict:
         logger.error("ATS JD enrichment crashed: {}", e)
         errors.append(f"ATS JD enrichment crash: {e}")
 
+    # --- Stage 2.5: URL Resolution ---
+    logger.info("=== Stage 2.5: URL Resolution ===")
+    url_stats = {"simplify": {}, "slug_registry": {}, "serper": {}, "total_resolved": 0, "resolution_rate": 0.0}
+    try:
+        with get_connection() as conn:
+            url_stats = run_url_resolution(conn=conn, batch_size=500)
+        logger.info("URL resolution stats: {}", url_stats)
+    except Exception as e:
+        logger.error("URL resolution crashed: {}", e)
+        errors.append(f"URL resolution crash: {e}")
+
     # --- Stage 2c: LLM fallback for metadata classification ---
     logger.info("=== Stage 2c: LLM Enrichment (metadata classification) ===")
     try:
@@ -116,6 +128,7 @@ def run_daily_pipeline() -> dict:
     send_pipeline_complete_email(
         scrape_stats=scrape_stats,
         jd_stats=jd_stats,
+        url_resolution_stats=url_stats,
         enrich_stats=enrich_stats,
         embed_stats=embed_stats,
         duration_seconds=duration,
@@ -126,6 +139,7 @@ def run_daily_pipeline() -> dict:
     return {
         "scrape": scrape_stats,
         "jd_enrichment": jd_stats,
+        "url_resolution": url_stats,
         "enrich": enrich_stats,
         "embed": embed_stats,
         "errors": errors,
