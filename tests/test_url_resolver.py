@@ -381,3 +381,114 @@ def test_resolve_via_slug_registry_no_registry_match():
     all_calls = conn.execute.call_args_list
     update_calls = [c for c in all_calls if "UPDATE" in str(c).upper()]
     assert not update_calls, f"Unexpected UPDATE for skipped job: {update_calls}"
+
+
+# ---------------------------------------------------------------------------
+# Task 2 (Plan 03) tests: resolve_via_serper + _extract_serper_url
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_via_serper_empty_key_returns_immediately():
+    """resolve_via_serper with empty serper_api_key returns immediately, queries_used=0."""
+    from wekruit_matching.pipeline.url_resolver import resolve_via_serper
+
+    conn = MagicMock()
+    stats = resolve_via_serper(conn, serper_api_key="")
+
+    assert stats["queries_used"] == 0, f"Expected queries_used=0, got {stats}"
+    assert stats["resolved"] == 0
+    assert stats["skipped"] == 0
+    assert stats["errors"] == 0
+    # conn must NOT have been touched at all (no SELECT)
+    conn.execute.assert_not_called()
+
+
+def test_extract_serper_url_returns_first_greenhouse_url():
+    """_extract_serper_url returns first result whose link contains greenhouse.io."""
+    from wekruit_matching.pipeline.url_resolver import _extract_serper_url
+
+    organic = [
+        {"link": "https://www.stripe.com/jobs/listing/swe-intern/123"},
+        {"link": "https://boards.greenhouse.io/stripe/jobs/999"},
+        {"link": "https://jobs.lever.co/stripe/abc"},
+    ]
+    result = _extract_serper_url(organic)
+    assert result == "https://boards.greenhouse.io/stripe/jobs/999"
+
+
+def test_extract_serper_url_returns_none_when_no_ats_urls():
+    """_extract_serper_url returns None when no organic results contain ATS hostnames."""
+    from wekruit_matching.pipeline.url_resolver import _extract_serper_url
+
+    organic = [
+        {"link": "https://www.linkedin.com/jobs/view/123"},
+        {"link": "https://indeed.com/view?id=456"},
+    ]
+    result = _extract_serper_url(organic)
+    assert result is None
+
+
+def _make_jobright_conn_no_ats_url(rows: list[dict]):
+    """Build a mock conn for serper tests: rows on first SELECT, empty on subsequent."""
+    conn = MagicMock()
+    select_cursor = MagicMock()
+    select_cursor.fetchall.return_value = rows
+    empty_cursor = MagicMock()
+    empty_cursor.fetchall.return_value = []
+    update_cursor = MagicMock()
+
+    call_count = {"n": 0}
+
+    def _execute_side_effect(query, params=None):
+        q = query.strip().upper()
+        if q.startswith("SELECT"):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return select_cursor
+            return empty_cursor
+        return update_cursor
+
+    conn.execute.side_effect = _execute_side_effect
+    conn.commit = MagicMock()
+    return conn
+
+
+def test_resolve_via_serper_with_mock_httpx_resolves_one(monkeypatch):
+    """resolve_via_serper with mock httpx: greenhouse URL found → resolved=1."""
+    import httpx
+
+    from wekruit_matching.pipeline.url_resolver import resolve_via_serper
+
+    rows = [
+        {
+            "job_id": "jr-serper-01",
+            "company_name": "Stripe",
+            "role_title": "Software Engineer Intern",
+        }
+    ]
+    conn = _make_jobright_conn_no_ats_url(rows)
+
+    def _fake_post(url, *, json=None, headers=None, **kwargs):
+        resp = MagicMock(spec=httpx.Response)
+        resp.status_code = 200
+        resp.json.return_value = {
+            "organic": [
+                {"link": "https://boards.greenhouse.io/stripe/jobs/123"}
+            ]
+        }
+        return resp
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.url_resolver.httpx.Client",
+        lambda **kwargs: MagicMock(
+            __enter__=lambda s: s,
+            __exit__=lambda s, *a: None,
+            post=_fake_post,
+        ),
+    )
+
+    stats = resolve_via_serper(conn, serper_api_key="test-key")
+
+    assert stats["resolved"] == 1, f"Expected resolved=1, got {stats}"
+    assert stats["queries_used"] == 1, f"Expected queries_used=1, got {stats}"
+    assert stats["errors"] == 0
