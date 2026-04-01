@@ -1,10 +1,64 @@
-# Requirements: WeKruit Matching Engine
+# Requirements: WeKruit Platform
 
-**Defined:** 2026-03-31  
-**Current milestone:** v1.2 Job Data Pipeline  
-**Archived milestone:** v1.1 shipped — see [.planning/milestones/v1.1-REQUIREMENTS.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/milestones/v1.1-REQUIREMENTS.md)
+**Defined:** 2026-04-01
+**Current milestone:** v2.0 Platform Unification
+**Previous milestones:** v1.2 (JD Pipeline), v1.1 (Internal UI)
 
-## v1.2 Requirements — Job Data Pipeline
+---
+
+## v2.0 Requirements — Platform Unification
+
+### User Sync
+
+- [ ] **SYNC-01**: Cloud Function receives Supabase DB Webhook payload (INSERT/UPDATE on users table) and validates the request signature
+- [ ] **SYNC-02**: Webhook receiver maps VALET user fields (skills, preferences, workAuth, resumeSummary) to PlatformUser schema and writes to Firestore `/platform-users/{uid}`
+- [ ] **SYNC-03**: Supabase Database Webhook is configured on the users table to POST to the Firebase Cloud Function endpoint on INSERT and UPDATE events
+- [ ] **SYNC-04**: User sync completes in < 1 second end-to-end with retry handling, deduplication, and sync event logging
+
+### Job Sync
+
+- [ ] **JSYNC-01**: Cloud Function POST `/api/sync/jobs` receives batched job payloads (up to 500 per request) and upserts to Firestore `/matching-jobs/{jobId}` using content_hash diffing
+- [ ] **JSYNC-02**: Python sync script runs after daily pipeline and POSTs new/changed active embedded jobs to the Firebase sync endpoint in batches
+- [ ] **JSYNC-03**: One-time bulk load script syncs all ~47K active jobs (with 1536-dim embeddings) from Postgres to Firestore
+- [ ] **JSYNC-04**: Pipeline marks jobs inactive in Firestore when they become stale in Postgres (status sync)
+
+### Matching
+
+- [ ] **MATCH-01**: Matching Cloud Function applies hard filters via Firestore WHERE clauses (sponsorship, industry, recency, location) before any vector computation, reducing candidates to ~500 docs
+- [ ] **MATCH-02**: In-memory cosine similarity computes distance between user query embedding and ~500 filtered job embeddings in TypeScript (< 50ms)
+- [ ] **MATCH-03**: 7-signal weighted scorer is ported from Python to TypeScript with identical weights and logic (title_similarity, skills_overlap, industry_match, company_size_match, location_fit, recency, feedback_boost)
+- [ ] **MATCH-04**: User can like/dislike/apply to jobs and bookmark them; feedback persists in Firestore and influences the feedback_boost signal in subsequent matches
+
+### Job Board API
+
+- [ ] **BOARD-01**: GET `/api/matching/jobs` returns paginated job listings with status, industry, location, and sponsorship filters
+- [ ] **BOARD-02**: Search and advanced filters allow querying by keyword (company, title), skills, salary range, and seniority level with Firestore composite indexes
+- [ ] **BOARD-03**: GET `/api/matching/jobs/:id` returns full job detail including JD text, skills, salary, apply link, qualifications, and responsibilities
+- [ ] **BOARD-04**: Handoff doc is expanded with current pipeline architecture (launchd plists, scripts, log paths), Mac Mini setup instructions, Firecrawl Docker setup, and complete infrastructure map
+
+### v2.0 Future Requirements
+
+- Firebase Auth as single identity provider (replace VALET custom JWT)
+- Job board frontend (Next.js on Firebase Hosting)
+- Real-time job alerts (Firestore onSnapshot or push notifications)
+- Resume-to-profile auto-mapping (parse resume → populate preferences)
+- Analytics dashboard (match quality, engagement rates, popular skills)
+
+### v2.0 Out of Scope
+
+- VALET code changes (sync via DB webhooks, zero modifications)
+- Frontend UI (API-only in this milestone)
+- Matching algorithm improvements (port as-is, optimize later)
+- Mobile app
+- Payment/billing integration
+
+### v2.0 Traceability
+
+(Filled by roadmapper)
+
+---
+
+## v1.2 Requirements — Job Data Pipeline (Completed)
 
 ### Pipeline Infrastructure
 
