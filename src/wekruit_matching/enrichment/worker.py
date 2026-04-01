@@ -56,6 +56,7 @@ def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
             OR required_skills = ARRAY[]::text[]
           )
         ORDER BY first_seen_at ASC
+        LIMIT 500
         """
     ).fetchall()
 

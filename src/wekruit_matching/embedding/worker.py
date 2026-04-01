@@ -49,6 +49,7 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
           AND enriched_at IS NOT NULL
           AND status = 'active'
         ORDER BY first_seen_at ASC
+        LIMIT 500
         """
     ).fetchall()
 
