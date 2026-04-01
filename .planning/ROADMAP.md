@@ -3,10 +3,11 @@
 ## Completed Milestones
 
 - [x] **v1.1 Internal UI Foundation** — shared jobs console shell, responsive jobs browsing, and customer-facing-ready hierarchy. Archive: [.planning/milestones/v1.1-ROADMAP.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/milestones/v1.1-ROADMAP.md)
+- [x] **v1.2 Job Data Pipeline** — ATS JD enrichment, Workday/Firecrawl resolution, Stage 2b orchestration, and operator observability. Audit: [.planning/v1.2-MILESTONE-AUDIT.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/v1.2-MILESTONE-AUDIT.md)
 
 ## Active Milestone
 
-Milestone v1.2 Job Data Pipeline builds the ATS JD enrichment layer: DB schema changes, URL routing, free ATS JSON API parsers, Firecrawl integration for the long tail, pipeline wiring into the existing daily.py, and observability tooling.
+No active milestone is defined yet. v1.2 is complete and awaiting the next milestone definition.
 
 ## Phases
 
@@ -16,11 +17,11 @@ Milestone v1.2 Job Data Pipeline builds the ATS JD enrichment layer: DB schema c
 
 ### v1.2 — Job Data Pipeline
 
-- [ ] **Phase 14: DB Schema & URL Classifier** - Migration adding JD tracking columns and the URL router classifying each job URL to the correct ATS fetch tier
-- [ ] **Phase 15: Free ATS Parsers** - Greenhouse, Lever, and Ashby JSON API fetchers with HTML stripping, text normalization, and data quality scoring
-- [ ] **Phase 16: URL Resolution & Firecrawl Integration** - Workday CXS fetcher, Firecrawl scrape/extract/search chain with asyncio timeout safety, and full tiered routing
-- [ ] **Phase 17: Pipeline Orchestrator & Daily Integration** - `run_jd_enrichment.py` with batched queue processing, per-domain rate limiting, and Stage 2b insertion into daily.py
-- [ ] **Phase 18: Observability, Email Digest & Testing** - Pipeline dashboard enrichment stats, email digest after each run, data quality distribution view, and 1K-job end-to-end test suite
+- [x] **Phase 14: DB Schema & URL Classifier** - Migration adding JD tracking columns and the URL router classifying each job URL to the correct ATS fetch tier
+- [x] **Phase 15: Free ATS Parsers** - Greenhouse, Lever, and Ashby JSON API fetchers with HTML stripping, text normalization, and data quality scoring
+- [x] **Phase 16: URL Resolution & Firecrawl Integration** - Workday CXS fetcher, Firecrawl scrape/extract/search chain with asyncio timeout safety, and full tiered routing
+- [x] **Phase 17: Pipeline Orchestrator & Daily Integration** - `run_jd_enrichment.py` with batched queue processing, per-domain rate limiting, and Stage 2b insertion into daily.py
+- [x] **Phase 18: Observability, Email Digest & Testing** - Pipeline dashboard enrichment stats, email digest after each run, data quality distribution view, and 1K-job end-to-end test suite
 
 ## Phase Details
 
@@ -92,8 +93,8 @@ Milestone v1.2 Job Data Pipeline builds the ATS JD enrichment layer: DB schema c
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. DB Schema & URL Classifier | 0/TBD | Not started | - |
-| 15. Free ATS Parsers | 0/TBD | Not started | - |
-| 16. URL Resolution & Firecrawl Integration | 0/TBD | Not started | - |
-| 17. Pipeline Orchestrator & Daily Integration | 0/TBD | Not started | - |
-| 18. Observability, Email Digest & Testing | 0/TBD | Not started | - |
+| 14. DB Schema & URL Classifier | 1/1 | Complete | 2026-03-31 |
+| 15. Free ATS Parsers | 1/1 | Complete | 2026-03-31 |
+| 16. URL Resolution & Firecrawl Integration | 1/1 | Complete | 2026-03-31 |
+| 17. Pipeline Orchestrator & Daily Integration | 1/1 | Complete | 2026-03-31 |
+| 18. Observability, Email Digest & Testing | 1/1 | Complete | 2026-03-31 |
