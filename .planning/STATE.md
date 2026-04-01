@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Job Data Pipeline
-status: Complete
-stopped_at: v1.2 complete; awaiting next milestone definition
-last_updated: "2026-03-31T22:55:00-05:00"
+milestone: v2.0
+milestone_name: Platform Unification
+status: Defining requirements
+stopped_at: Requirements definition in progress
+last_updated: "2026-04-01T16:00:00-05:00"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,59 +18,52 @@ progress:
 
 See: [.planning/PROJECT.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/PROJECT.md)
 
-**Core value:** People monitoring the WeKruit job corpus can immediately understand what jobs exist, what changed, and whether the pipeline is healthy.  
-**Current focus:** None — v1.2 complete
+**Core value:** New grads and interns find the best job matches for their skills and preferences through a personalized, filter-first matching engine.
+**Current focus:** Defining v2.0 requirements — Firebase Core Service as central hub
 
 ## Current Position
 
-Phase: Complete  
-Plan: Complete  
-Status: v1.2 delivered and audited  
-Last activity: 2026-03-31 — finished phases 14-18 and closed the JD pipeline milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-01 — Milestone v2.0 started
 
 ## Performance Metrics
 
-**Current milestone velocity:**
+**Previous milestone velocity:**
 
-- Total plans completed in this milestone: 5
-- Average duration: 1 execution wave per phase
-- Total execution time: 1 session
-
-**Archived milestone note:**
-
-- v1.1 shipped with 3/3 phases complete
-- Audit: [.planning/v1.1-MILESTONE-AUDIT.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/v1.1-MILESTONE-AUDIT.md)
-- Archive: [.planning/milestones/v1.1-ROADMAP.md](/Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching/.planning/milestones/v1.1-ROADMAP.md)
+- v1.2: 5 phases, 5 plans, 1 session
+- v1.1: 3 phases, 3 plans, 1 session
 
 ## By Phase
 
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 14. DB Schema & URL Classifier | 1/1 | Complete |
-| 15. Free ATS Parsers | 1/1 | Complete |
-| 16. URL Resolution & Firecrawl Integration | 1/1 | Complete |
-| 17. Pipeline Orchestrator & Daily Integration | 1/1 | Complete |
-| 18. Observability, Email Digest & Testing | 1/1 | Complete |
+(No phases yet — defining requirements)
 
 ## Accumulated Context
 
 ### Decisions
 
-- v1.2 is complete and audited.
-- Stage 2b now exists between JobRight enrichment and LLM metadata classification.
-- Full-repo tests still contain unrelated failures outside milestone scope; v1.2-specific verification is green.
+- v1.2 complete: JD pipeline with ATS parsers, Firecrawl, URL resolution, observability
+- Pipeline runs daily 6 AM CDT, 47K jobs, 97%+ coverage
+- Firecrawl self-hosted on Mac Mini Docker (port 3002)
+- Embedding actively running to 100% (31K/47K as of 2026-04-01)
+- Architecture decision: Firebase Core Service as central hub, VALET Supabase as user source of truth
+- Sync: Supabase DB Webhooks for users, POST endpoint for jobs
+- Matching: filter-first on Firestore, cosine sim in-memory, 7-signal scorer port to TypeScript
 
 ### Pending Todos
 
-- Define the next milestone before reopening active planning files
+- Complete requirements definition
+- Expand handoff doc with pipeline architecture details, Mac Mini setup, Firecrawl Docker
 
 ### Blockers/Concerns
 
-- Nested repo GSD root auto-discovery still resolves to the outer monorepo
-- Unrelated dirty worktree changes remain outside this milestone closeout
+- Firestore 1MB doc limit vs embedding arrays (6KB/doc — well within limit)
+- Firestore composite index limits for complex job queries
+- Supabase DB Webhook reliability and retry behavior need validation
 
 ## Session Continuity
 
-Last activity: 2026-03-31 — v1.2 JD pipeline completed and audited  
-Stopped at: waiting for next milestone definition  
+Last activity: 2026-04-01 — v2.0 milestone started
+Stopped at: defining requirements
 Resume file: None
