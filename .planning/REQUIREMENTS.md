@@ -54,7 +54,24 @@
 
 ### v2.0 Traceability
 
-(Filled by roadmapper)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Pending |
+| SYNC-01 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-02 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-03 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-04 | Phase 20 — User Sync Cloud Function | Pending |
+| JSYNC-01 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-02 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-03 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-04 | Phase 21 — Job Sync Pipeline | Pending |
+| MATCH-01 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-02 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-03 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-04 | Phase 22 — Matching Cloud Function | Pending |
+| BOARD-01 | Phase 23 — Job Board API | Pending |
+| BOARD-02 | Phase 23 — Job Board API | Pending |
+| BOARD-03 | Phase 23 — Job Board API | Pending |
 
 ---
 
@@ -136,6 +153,22 @@
 | TEST-01 | Phase 14 — DB Schema & URL Classifier | Complete |
 | TEST-02 | Phase 18 — Observability, Email Digest & Testing | Complete |
 | PIPE2-03 | Phase 17 — Pipeline Orchestrator & Daily Integration | Complete |
+| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Pending |
+| SYNC-01 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-02 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-03 | Phase 20 — User Sync Cloud Function | Pending |
+| SYNC-04 | Phase 20 — User Sync Cloud Function | Pending |
+| JSYNC-01 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-02 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-03 | Phase 21 — Job Sync Pipeline | Pending |
+| JSYNC-04 | Phase 21 — Job Sync Pipeline | Pending |
+| MATCH-01 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-02 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-03 | Phase 22 — Matching Cloud Function | Pending |
+| MATCH-04 | Phase 22 — Matching Cloud Function | Pending |
+| BOARD-01 | Phase 23 — Job Board API | Pending |
+| BOARD-02 | Phase 23 — Job Board API | Pending |
+| BOARD-03 | Phase 23 — Job Board API | Pending |
 
 ---
-*Last updated: 2026-03-31 after v1.2 JD pipeline completion*
+*Last updated: 2026-04-01 after v2.0 Platform Unification roadmap creation*
