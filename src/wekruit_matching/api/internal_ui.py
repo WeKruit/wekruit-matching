@@ -300,6 +300,13 @@ button,input,select{font:inherit}
   gap:18px;
   margin-bottom:18px;
 }
+.section-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
 .section-title{
   margin:0;
   font-family:"Halant", "Iowan Old Style", "Times New Roman", serif;
@@ -315,6 +322,23 @@ button,input,select{font:inherit}
   display:grid;
   grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:14px;
+}
+.filter-shell{
+  display:grid;
+  gap:16px;
+}
+.filter-toolbar{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.filter-helper{
+  margin:0;
+  max-width:44rem;
+  color:var(--wk-text-muted);
+  font-size:.95rem;
 }
 .filter-field{
   display:flex;
@@ -341,8 +365,13 @@ button,input,select{font:inherit}
 .filter-actions{
   display:flex;
   align-items:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
 }
 .button-primary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   min-height:48px;
   padding:12px 18px;
   border:0;
@@ -353,6 +382,47 @@ button,input,select{font:inherit}
   cursor:pointer;
 }
 .button-primary:hover{background:#3a2412}
+.button-secondary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:48px;
+  padding:12px 18px;
+  border:1px solid var(--wk-border);
+  border-radius:14px;
+  background:#fff;
+  color:var(--wk-text);
+  font-weight:600;
+  text-decoration:none;
+}
+.button-secondary:hover{
+  background:#fff8ef;
+  border-color:var(--wk-border-strong);
+}
+.filter-chips{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.filter-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:36px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid var(--wk-border);
+  background:rgba(255,255,255,.82);
+  color:var(--wk-text-muted);
+  font-size:.86rem;
+}
+.filter-chip strong{
+  color:var(--wk-text);
+  font-size:.78rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
 .badge-row{
   display:flex;
   gap:8px;
@@ -416,6 +486,9 @@ button,input,select{font:inherit}
   border:1px solid var(--wk-border);
   border-radius:20px;
   background:#fff;
+  contain:layout paint;
+  content-visibility:auto;
+  contain-intrinsic-size:720px;
 }
 table{
   width:100%;
@@ -481,6 +554,8 @@ tbody tr:hover td{background:#fffaf3}
   list-style:none;
   margin:0;
   padding:0;
+  content-visibility:auto;
+  contain-intrinsic-size:960px;
 }
 .job-card{
   padding:18px;
@@ -525,6 +600,19 @@ tbody tr:hover td{background:#fffaf3}
 .job-card-skills{
   margin-top:14px;
 }
+.results-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.results-meta{
+  margin:0;
+  color:var(--wk-text-muted);
+  font-size:.95rem;
+}
 .pagination{
   display:flex;
   justify-content:center;
@@ -557,9 +645,22 @@ tbody tr:hover td{background:#fffaf3}
   color:var(--wk-text-soft);
   cursor:not-allowed;
 }
+.pagination.pagination-compact{
+  justify-content:flex-start;
+  gap:6px;
+}
+.pagination.pagination-compact .pagination-link,
+.pagination.pagination-compact .pagination-current{
+  min-width:40px;
+  min-height:40px;
+  padding:8px 12px;
+  border-radius:12px;
+}
 .key-value{
   display:grid;
   gap:12px;
+  content-visibility:auto;
+  contain-intrinsic-size:520px;
 }
 .key-value-row{
   display:grid;
@@ -635,10 +736,19 @@ code{
   .job-card-grid{
     grid-template-columns:1fr;
   }
+  .filter-toolbar,
+  .results-toolbar,
+  .section-actions{
+    align-items:stretch;
+    flex-direction:column;
+  }
   .filter-actions{
     align-items:stretch;
   }
   .button-primary{
+    width:100%;
+  }
+  .button-secondary{
     width:100%;
   }
   .section-head,
@@ -674,6 +784,7 @@ def _summary_item(label: str, value: str) -> str:
 
 def _section(title: str, copy: str, body: str, actions: str = "") -> str:
     """Render a shared surface-card section."""
+    actions_html = f'<div class="section-actions">{actions}</div>' if actions else ""
     return f"""
     <section class="surface-card section">
       <div class="section-head">
@@ -681,7 +792,7 @@ def _section(title: str, copy: str, body: str, actions: str = "") -> str:
           <h2 class="section-title">{_esc(title)}</h2>
           <p class="section-copy">{_esc(copy)}</p>
         </div>
-        {actions}
+        {actions_html}
       </div>
       {body}
     </section>"""
@@ -724,6 +835,68 @@ def _job_state_badges(row: dict) -> str:
         embedded = _badge("Awaiting enrichment", "neutral")
 
     return f'<div class="status-stack">{status}{sponsorship}{enriched}{embedded}</div>'
+
+
+def _filter_chip(label: str, value: str) -> str:
+    """Render a compact active-filter chip."""
+    return (
+        '<span class="filter-chip">'
+        f"<strong>{_esc(label)}</strong>"
+        f"<span>{_esc(value)}</span>"
+        "</span>"
+    )
+
+
+def _pagination_nav(
+    *,
+    page: int,
+    total_pages: int,
+    page_url,
+    aria_label: str,
+    compact: bool = False,
+) -> str:
+    """Render pagination links with proper disabled boundary states."""
+    pagination_parts: list[str] = []
+    class_name = "pagination pagination-compact" if compact else "pagination"
+
+    if page <= 1:
+        pagination_parts.append(
+            '<span class="pagination-link is-disabled" aria-disabled="true">Prev</span>'
+        )
+    else:
+        pagination_parts.append(
+            f'<a class="pagination-link" href="{_esc(page_url(page - 1))}" '
+            'aria-label="Previous page">Prev</a>'
+        )
+
+    start_page = max(1, page - 3)
+    end_page = min(total_pages, start_page + 6)
+    start_page = max(1, end_page - 6)
+    for number in range(start_page, end_page + 1):
+        if number == page:
+            pagination_parts.append(
+                f'<span class="pagination-current" aria-current="page">{number}</span>'
+            )
+        else:
+            pagination_parts.append(
+                f'<a class="pagination-link" href="{_esc(page_url(number))}" '
+                f'aria-label="Page {number}">{number}</a>'
+            )
+
+    if page >= total_pages:
+        pagination_parts.append(
+            '<span class="pagination-link is-disabled" aria-disabled="true">Next</span>'
+        )
+    else:
+        pagination_parts.append(
+            f'<a class="pagination-link" href="{_esc(page_url(page + 1))}" '
+            'aria-label="Next page">Next</a>'
+        )
+
+    return (
+        f'<nav class="{class_name}" aria-label="{_esc(aria_label)}">'
+        f'{"".join(pagination_parts)}</nav>'
+    )
 
 
 def _page_shell(
@@ -799,9 +972,8 @@ def jobs_browser(
     if status not in ("active", "inactive"):
         status = "active"
 
-    offset = (page - 1) * _PER_PAGE
     where_clauses = ["status = %(status)s"]
-    params: dict[str, object] = {"status": status, "limit": _PER_PAGE, "offset": offset}
+    params: dict[str, object] = {"status": status, "limit": _PER_PAGE, "offset": 0}
 
     if source:
         where_clauses.append("source_repo = %(source)s")
@@ -821,6 +993,10 @@ def jobs_browser(
             params,
         ).fetchone()
         total = count_row["total"] if count_row else 0
+        total_pages = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
+        page = min(page, total_pages) if total else 1
+        offset = (page - 1) * _PER_PAGE
+        params["offset"] = offset
 
         rows = conn.execute(
             f"""
@@ -836,10 +1012,10 @@ def jobs_browser(
         ).fetchall()
 
     sources, industries_list = _get_filter_options()
-    total_pages = max(1, (total + _PER_PAGE - 1) // _PER_PAGE)
     result_start = offset + 1 if total else 0
     result_end = min(offset + _PER_PAGE, total) if total else 0
     active_filters = sum(1 for value in (source, industry, q) if value)
+    clear_filters_url = _query_url("/internal/jobs", status=status)
 
     source_opts = "".join(
         (
@@ -856,6 +1032,15 @@ def jobs_browser(
             f'{_esc(row["industry"])}</option>'
         )
         for row in industries_list
+    )
+    active_filter_chips = "".join(
+        chip
+        for chip in (
+            _filter_chip("Search", q) if q else "",
+            _filter_chip("Source", source) if source else "",
+            _filter_chip("Industry", industry) if industry else "",
+        )
+        if chip
     )
 
     page_title = "Active Jobs" if status == "active" else "Stale Jobs"
@@ -876,59 +1061,99 @@ def jobs_browser(
         {_summary_item("Inventory", "Active" if status == "active" else "Inactive")}
         {_summary_item("Results", f"{total:,} jobs")}
         {_summary_item("Showing", f"{result_start}-{result_end}" if total else "0")}
-        {_summary_item("Filters applied", str(active_filters))}
+        {_summary_item("Refinements", str(active_filters))}
       </div>
     </header>"""
 
+    filter_feedback = (
+        f"""
+        <div class="filter-toolbar">
+          <p class="filter-helper">
+            Showing a narrowed view of the inventory. Remove any refinement to widen the list.
+          </p>
+          <a class="button-secondary" href="{_esc(clear_filters_url)}">Clear refinements</a>
+        </div>
+        <div class="filter-chips" aria-label="Active filters">
+          {active_filter_chips}
+        </div>"""
+        if active_filters
+        else """
+        <p class="filter-helper">
+          Start broad, then narrow by source, industry, or a role/company search
+          when you need a tighter slice.
+        </p>"""
+    )
+
     filter_body = f"""
-    <form class="filters" method="get" action="/internal/jobs" role="search">
-      <div class="filter-field">
-        <label for="q">Search</label>
-        <input
-          id="q"
-          type="text"
-          name="q"
-          placeholder="Company or role"
-          value="{_esc(q)}"
-        >
-      </div>
-      <div class="filter-field">
-        <label for="status-select">Listing status</label>
-        <select id="status-select" name="status">
-          <option value="active" {"selected" if status == "active" else ""}>Active</option>
-          <option value="inactive" {"selected" if status == "inactive" else ""}>Inactive</option>
-        </select>
-      </div>
-      <div class="filter-field">
-        <label for="source-select">Source</label>
-        <select id="source-select" name="source">
-          <option value="">All sources</option>
-          {source_opts}
-        </select>
-      </div>
-      <div class="filter-field">
-        <label for="industry-select">Industry</label>
-        <select id="industry-select" name="industry">
-          <option value="">All industries</option>
-          {industry_opts}
-        </select>
-      </div>
-      <div class="filter-actions">
-        <button class="button-primary" type="submit">Apply filters</button>
-      </div>
-    </form>"""
+    <div class="filter-shell">
+      {filter_feedback}
+      <form class="filters" method="get" action="/internal/jobs" role="search">
+        <div class="filter-field">
+          <label for="q">Search</label>
+          <input
+            id="q"
+            type="text"
+            name="q"
+            placeholder="Company or role"
+            value="{_esc(q)}"
+          >
+        </div>
+        <div class="filter-field">
+          <label for="status-select">Listing status</label>
+          <select id="status-select" name="status">
+            <option value="active" {"selected" if status == "active" else ""}>Active</option>
+            <option value="inactive" {"selected" if status == "inactive" else ""}>Inactive</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="source-select">Source</label>
+          <select id="source-select" name="source">
+            <option value="">All sources</option>
+            {source_opts}
+          </select>
+        </div>
+        <div class="filter-field">
+          <label for="industry-select">Industry</label>
+          <select id="industry-select" name="industry">
+            <option value="">All industries</option>
+            {industry_opts}
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="button-primary" type="submit">Apply filters</button>
+        </div>
+      </form>
+    </div>"""
 
     filters_html = _section(
         "Browse and filter",
-        "Keep one filtering surface for search, source, industry, and listing status.",
+        "Keep one filtering surface for search, source, industry, and listing "
+        "status, with a visible read on what is currently narrowing the list.",
         filter_body,
     )
 
+    def page_url(target_page: int) -> str:
+        return _query_url(
+            "/internal/jobs",
+            page=target_page,
+            status=status,
+            source=source,
+            industry=industry,
+            q=q,
+        )
+
     if not rows:
-        jobs_body = """
+        empty_action = (
+            f'<p><a class="button-secondary" href="{_esc(clear_filters_url)}">'
+            "Clear refinements</a></p>"
+            if active_filters
+            else ""
+        )
+        jobs_body = f"""
         <div class="empty">
           <p>No jobs matched the current filters.</p>
           <p class="soft">Try widening source, industry, or text search.</p>
+          {empty_action}
         </div>"""
     else:
         desktop_rows: list[str] = []
@@ -1017,7 +1242,22 @@ def jobs_browser(
                 </li>"""
             )
 
+        results_toolbar = f"""
+        <div class="results-toolbar">
+          <p class="results-meta">
+            Showing {result_start:,}-{result_end:,} of {total:,} jobs · Page {page} of {total_pages}
+          </p>
+          {_pagination_nav(
+              page=page,
+              total_pages=total_pages,
+              page_url=page_url,
+              aria_label="Pagination",
+              compact=True,
+          ) if total_pages > 1 else ""}
+        </div>"""
+
         jobs_body = f"""
+        {results_toolbar}
         <div class="table-wrap mobile-hidden">
           <table>
             <caption class="sr-only">{page_title} results</caption>
@@ -1045,56 +1285,19 @@ def jobs_browser(
         jobs_body,
     )
 
-    def page_url(target_page: int) -> str:
-        return _query_url(
-            "/internal/jobs",
-            page=target_page,
-            status=status,
-            source=source,
-            industry=industry,
-            q=q,
+    pagination_html = ""
+    if total_pages > 1:
+        pagination_html = _section(
+            "Result pages",
+            "Paging keeps your current filters, clamps invalid page numbers, and "
+            "uses real disabled states at the boundaries.",
+            _pagination_nav(
+                page=page,
+                total_pages=total_pages,
+                page_url=page_url,
+                aria_label="Pagination",
+            ),
         )
-
-    pagination_parts: list[str] = []
-    if page <= 1:
-        pagination_parts.append(
-            '<span class="pagination-link is-disabled" aria-disabled="true">Prev</span>'
-        )
-    else:
-        pagination_parts.append(
-            f'<a class="pagination-link" href="{_esc(page_url(page - 1))}" '
-            'aria-label="Previous page">Prev</a>'
-        )
-
-    start_page = max(1, page - 3)
-    end_page = min(total_pages, start_page + 6)
-    start_page = max(1, end_page - 6)
-    for number in range(start_page, end_page + 1):
-        if number == page:
-            pagination_parts.append(
-                f'<span class="pagination-current" aria-current="page">{number}</span>'
-            )
-        else:
-            pagination_parts.append(
-                f'<a class="pagination-link" href="{_esc(page_url(number))}" '
-                f'aria-label="Page {number}">{number}</a>'
-            )
-
-    if page >= total_pages:
-        pagination_parts.append(
-            '<span class="pagination-link is-disabled" aria-disabled="true">Next</span>'
-        )
-    else:
-        pagination_parts.append(
-            f'<a class="pagination-link" href="{_esc(page_url(page + 1))}" '
-            'aria-label="Next page">Next</a>'
-        )
-
-    pagination_html = _section(
-        "Result pages",
-        "Paging keeps your current filters and uses real disabled states at the boundaries.",
-        f'<nav class="pagination" aria-label="Pagination">{"".join(pagination_parts)}</nav>',
-    )
 
     content_html = f"{filters_html}{jobs_section}{pagination_html}"
     nav_active = "stale" if status == "inactive" else "jobs"
@@ -1301,8 +1504,15 @@ def pipeline_status():
             """
             SELECT
               COUNT(*) FILTER (
-                WHERE enriched_at IS NULL AND status = 'active'
-              ) AS pending_enrich,
+                WHERE status = 'active'
+                  AND (job_description IS NULL OR job_description = '')
+                  AND primary_url IS NOT NULL
+                  AND primary_url NOT LIKE 'https://jobright.ai/%'
+                  AND jd_fetch_attempted_at IS NULL
+              ) AS pending_jd_queue,
+              COUNT(*) FILTER (
+                WHERE jd_fetch_source = 'failed'
+              ) AS failed_fetches,
               COUNT(*) FILTER (
                 WHERE embedded_at IS NULL
                   AND enriched_at IS NOT NULL
@@ -1315,24 +1525,63 @@ def pipeline_status():
             """
         ).fetchone()
 
-    pending_enrich = row["pending_enrich"] if row else 0
+        source_rows = conn.execute(
+            """
+            SELECT
+              COALESCE(jd_fetch_source, 'null') AS source,
+              COUNT(*) FILTER (
+                WHERE job_description IS NOT NULL AND job_description != ''
+              ) AS with_jd,
+              COUNT(*) FILTER (
+                WHERE job_description IS NULL OR job_description = ''
+              ) AS without_jd
+            FROM jobs
+            WHERE status = 'active'
+            GROUP BY COALESCE(jd_fetch_source, 'null')
+            ORDER BY source
+            """
+        ).fetchall()
+
+        quality = conn.execute(
+            """
+            SELECT
+              COUNT(*) FILTER (
+                WHERE data_quality_score < 50
+              ) AS below_50,
+              COUNT(*) FILTER (
+                WHERE data_quality_score >= 50 AND data_quality_score < 80
+              ) AS between_50_79,
+              COUNT(*) FILTER (
+                WHERE data_quality_score >= 80
+              ) AS at_least_80,
+              COUNT(*) FILTER (
+                WHERE data_quality_score IS NULL
+              ) AS not_scored
+            FROM jobs
+            WHERE status = 'active'
+            """
+        ).fetchone()
+
+    pending_jd_queue = row["pending_jd_queue"] if row else 0
+    failed_fetches = row["failed_fetches"] if row else 0
     pending_embed = row["pending_embed"] if row else 0
     last_scrape = _fmt_timestamp(row["last_scrape"]) if row else "Not yet"
     last_enriched = _fmt_timestamp(row["last_enriched"]) if row else "Not yet"
     last_embedded = _fmt_timestamp(row["last_embedded"]) if row else "Not yet"
+    quality = quality or {}
 
     intro_html = f"""
     <header class="page-hero">
       <p class="page-kicker">Pipeline Health</p>
       <h1 class="page-title">Pipeline</h1>
       <p class="page-summary">
-        Show what work is still waiting, when each processing stage last completed,
-        and what the numbers mean in product language instead of raw operational shorthand.
+        Show JD coverage, queue depth, quality, and stage freshness in product language
+        instead of raw operational shorthand.
       </p>
       <div class="summary-strip" aria-label="Pipeline summary">
-        {_summary_item("Waiting for enrichment", f"{pending_enrich:,}")}
+        {_summary_item("Waiting for JD fetch", f"{pending_jd_queue:,}")}
+        {_summary_item("Failed attempts", f"{failed_fetches:,}")}
         {_summary_item("Waiting for embedding", f"{pending_embed:,}")}
-        {_summary_item("Last scrape", last_scrape)}
         {_summary_item("Last embed", last_embedded)}
       </div>
     </header>"""
@@ -1340,16 +1589,65 @@ def pipeline_status():
     backlog_body = f"""
     <div class="stats-grid">
       {_metric_card(
-          "Jobs waiting for metadata",
-          f"{pending_enrich:,}",
-          "Active listings that still need enrichment before they can be described well.",
-          "success" if pending_enrich == 0 else "warning",
+          "Jobs waiting for JD fetch",
+          f"{pending_jd_queue:,}",
+          "Active listings still missing a fetched description and not yet attempted.",
+          "success" if pending_jd_queue == 0 else "warning",
+      )}
+      {_metric_card(
+          "Failed JD attempts",
+          f"{failed_fetches:,}",
+          "Listings already attempted once but still missing fetched job-description content.",
+          "danger" if failed_fetches else "success",
       )}
       {_metric_card(
           "Jobs waiting for embeddings",
           f"{pending_embed:,}",
           "Listings that already have metadata but are not ready for semantic matching yet.",
           "success" if pending_embed == 0 else "warning",
+      )}
+    </div>"""
+
+    coverage_table = [
+        "<div class=\"table-wrap\"><table>",
+        "<caption class=\"sr-only\">JD coverage by source</caption>",
+        "<thead><tr><th>Source</th><th>With JD</th><th>Without JD</th></tr></thead><tbody>",
+    ]
+    for source_row in source_rows:
+        coverage_table.append(
+            "<tr>"
+            f"<td>{_badge(source_row['source'], 'info')}</td>"
+            f"<td>{source_row['with_jd']:,}</td>"
+            f"<td>{source_row['without_jd']:,}</td>"
+            "</tr>"
+        )
+    coverage_table.append("</tbody></table></div>")
+
+    quality_body = f"""
+    <div class="stats-grid">
+      {_metric_card(
+          "Below 50",
+          f"{quality.get('below_50', 0):,}",
+          "Low-confidence descriptions that still need operator attention.",
+          "danger" if quality.get("below_50", 0) else "success",
+      )}
+      {_metric_card(
+          "50-79",
+          f"{quality.get('between_50_79', 0):,}",
+          "Usable descriptions with some missing structure or missing salary detail.",
+          "warning",
+      )}
+      {_metric_card(
+          "80+",
+          f"{quality.get('at_least_80', 0):,}",
+          "High-quality descriptions ready for downstream use.",
+          "success",
+      )}
+      {_metric_card(
+          "Not scored",
+          f"{quality.get('not_scored', 0):,}",
+          "Active jobs that still have no JD quality score recorded.",
+          "info",
       )}
     </div>"""
 
@@ -1392,6 +1690,17 @@ def pipeline_status():
                 "Lead with the queues that matter so people can tell immediately "
                 "whether the system is keeping up.",
                 backlog_body,
+            ),
+            _section(
+                "JD coverage by source",
+                "Separate successful JD coverage from remaining gaps by fetch source so "
+                "operators can see where the pipeline is strong or weak.",
+                "".join(coverage_table),
+            ),
+            _section(
+                "Quality distribution",
+                "Bucket JD quality scores so low-confidence fetches surface immediately.",
+                quality_body,
             ),
             _section(
                 "Recent pipeline activity",

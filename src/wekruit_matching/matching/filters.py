@@ -50,10 +50,10 @@ LOCATION_ALIASES: dict[str, str] = {
     "remote": "remote",
 }
 
-# Source-repo to JobType mapping
-_SOURCE_REPO_MAP: dict[JobType, str] = {
-    JobType.INTERN: "Summer2026-Internships",
-    JobType.NEW_GRAD: "New-Grad-Positions",
+# Source-repo to JobType mapping (multiple repos per type)
+_SOURCE_REPO_SET: dict[JobType, set[str]] = {
+    JobType.INTERN: {"Summer2026-Internships", "jobright-intern"},
+    JobType.NEW_GRAD: {"New-Grad-Positions", "jobright-newgrad"},
 }
 
 
@@ -125,8 +125,8 @@ def filter_by_job_type(jobs: list[dict], job_type: JobType) -> list[dict]:
     """
     if job_type is JobType.ANY:
         return jobs
-    expected_repo = _SOURCE_REPO_MAP[job_type]
-    return [job for job in jobs if job.get("source_repo") == expected_repo]
+    allowed_repos = _SOURCE_REPO_SET[job_type]
+    return [job for job in jobs if job.get("source_repo") in allowed_repos]
 
 
 def filter_by_sponsorship(jobs: list[dict], requires_sponsorship: bool) -> list[dict]:

@@ -1,0 +1,217 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "LifeMD · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: LifeMD
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "Intern, Call Center" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Greenville, South Carolina, United States
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $20/hr - $20/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: LifeMD
+                    - text: is a leading provider of virtual primary care committed to enhancing access to quality and affordable virtual and in-home healthcare. The core function of this internship is to gain experience in SEO copywriting and blog editing while developing skills in proofreading, fact-checking, and content optimization.
+                  - generic [ref=e82]:
+                    - generic [ref=e83]: Advertising
+                    - generic [ref=e84]: E-Commerce
+                    - generic [ref=e85]: E-Commerce Platforms
+              - separator [ref=e86]
+              - generic [ref=e87]:
+                - heading "Responsibilities" [level=2] [ref=e89]
+                - generic [ref=e90]:
+                  - generic [ref=e95]: Check text to ensure it is well-written and logically structured
+                  - generic [ref=e100]: Correct spelling and grammatical errors
+                  - generic [ref=e105]: Check sources, facts and quotations for accuracy
+                  - generic [ref=e110]: Review headline(s) to ensure they reflect the story
+                  - generic [ref=e115]: Ensure the text conforms to LifeMD's style and brand voice
+                  - generic [ref=e120]: Communicate with writers regarding errors and areas for improvement
+                  - generic [ref=e125]: Upload content to Contentful CMS
+                  - generic [ref=e130]: Participate in collaborative meetings
+              - separator [ref=e131]
+              - generic [ref=e132]:
+                - heading "Qualification" [level=2] [ref=e134]
+                - generic [ref=e135]:
+                  - generic [ref=e136] [cursor=pointer]: SEO
+                  - generic [ref=e137] [cursor=pointer]: Proofreading
+                  - generic [ref=e138] [cursor=pointer]: Healthcare Knowledge
+                  - generic [ref=e139] [cursor=pointer]: Internet Research
+                  - generic [ref=e140] [cursor=pointer]: Contentful CMS
+                - generic [ref=e141]:
+                  - heading "Required" [level=4] [ref=e142]
+                  - generic [ref=e146]: Exceptional written communication skills
+                  - generic [ref=e150]: Interest in healthcare
+                  - generic [ref=e154]: Exceptional internet research skills to investigate claims
+                  - generic [ref=e158]: Basic knowledge of SEO
+                  - generic [ref=e162]: Team player with excellent interpersonal/collaboration skills
+                  - generic [ref=e166]: 3.0 GPA or higher
+            - separator [ref=e167]
+            - generic [ref=e168]:
+              - heading "Company" [level=2] [ref=e170]
+              - generic [ref=e172]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - generic [ref=e177]:
+                      - heading "LifeMD" [level=2] [ref=e178]
+                      - generic [ref=e179]:
+                        - link "twitter" [ref=e180] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/11770217
+                          - img "twitter" [ref=e181]
+                        - link "twitter" [ref=e182] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/conversion-labs
+                          - img "twitter" [ref=e183]
+                    - img "company-logo" [ref=e185]
+                  - generic [ref=e186]: LifeMD is a telehealth company that provides a high-quality, cost-effective, and convenient way to access primary and specialized healthcare from the comfort of one’s home.
+                - generic [ref=e189]:
+                  - generic [ref=e190]:
+                    - img "date" [ref=e191]
+                    - text: Founded in 2016
+                  - generic [ref=e192]:
+                    - img "location" [ref=e193]
+                    - generic [ref=e194]: Huntington Beach, California, USA
+                  - generic [ref=e195]:
+                    - img "people-size" [ref=e196]
+                    - text: 201-500 employees
+                  - generic [ref=e197]:
+                    - img "web-link" [ref=e198]
+                    - link "http://www.conversionlabs.com/" [ref=e200] [cursor=pointer]:
+                      - /url: http://www.conversionlabs.com/
+              - generic [ref=e201]:
+                - generic [ref=e202]:
+                  - heading "Funding" [level=2] [ref=e204]
+                  - generic [ref=e205]:
+                    - generic [ref=e207]:
+                      - generic [ref=e208]:
+                        - generic [ref=e209]: Current Stage
+                        - text: Public Company
+                      - generic [ref=e210]:
+                        - generic [ref=e211]: Total Funding
+                        - text: unknown
+                    - generic [ref=e215]:
+                      - generic [ref=e216]: 2018-06-22
+                      - generic [ref=e217]: IPO
+                - generic [ref=e218]:
+                  - heading "Leadership Team" [level=2] [ref=e220]
+                  - generic [ref=e221]:
+                    - generic [ref=e223] [cursor=pointer]:
+                      - img "leader-logo" [ref=e225]
+                      - generic [ref=e226]:
+                        - generic [ref=e227]: Justin Schreiber
+                        - generic [ref=e228]: Chairman & CEO
+                      - link "linkedin" [ref=e229]:
+                        - /url: https://www.linkedin.com/in/justinschreiber
+                        - img "linkedin" [ref=e230]
+                    - generic [ref=e232] [cursor=pointer]:
+                      - img "leader-logo" [ref=e234]
+                      - generic [ref=e235]:
+                        - generic [ref=e236]: Marc Benathen
+                        - generic [ref=e237]: Chief Financial Officer
+                      - link "linkedin" [ref=e238]:
+                        - /url: https://www.linkedin.com/in/marc-benathen-968a8010
+                        - img "linkedin" [ref=e239]
+                - generic [ref=e241]: Company data provided by crunchbase
+        - complementary [ref=e242]:
+          - generic [ref=e245]:
+            - generic [ref=e246]: Boost Your Interview Chances
+            - generic [ref=e247]:
+              - generic [ref=e248]:
+                - generic [ref=e249]: Improve Resume Match Score
+                - generic [ref=e250]: FREE
+              - generic [ref=e251]:
+                - generic [ref=e252]:
+                  - generic [ref=e255]:
+                    - img [ref=e256]
+                    - paragraph [ref=e270]: "?"
+                  - generic [ref=e271]: Your Score
+                - generic [ref=e273]:
+                  - generic [ref=e276]:
+                    - img [ref=e277]
+                    - paragraph [ref=e280]: "-"
+                  - generic [ref=e281]: Top Applicants
+              - generic [ref=e282]:
+                - generic [ref=e283]:
+                  - img "skill icon" [ref=e285]
+                  - generic [ref=e286]: Must-Have Skills for This Role
+                - generic [ref=e288]:
+                  - generic [ref=e289] [cursor=pointer]: SEO
+                  - generic [ref=e290] [cursor=pointer]: Proofreading
+                  - generic [ref=e291] [cursor=pointer]: Healthcare Knowledge
+                  - generic [ref=e292] [cursor=pointer]: Internet Research
+                  - generic [ref=e293] [cursor=pointer]: Contentful CMS
+              - button "Optimize my Resume" [ref=e295] [cursor=pointer]:
+                - generic [ref=e296]: Optimize my Resume
+            - generic [ref=e297]:
+              - generic [ref=e298]:
+                - generic [ref=e299]: Get Referral Via linkedIn
+                - generic [ref=e300]: FREE
+              - generic [ref=e301]: 3× Higher Response via Email Outreach
+              - generic [ref=e302]:
+                - generic [ref=e304]:
+                  - generic [ref=e305]:
+                    - generic [ref=e309] [cursor=pointer]: L
+                    - generic [ref=e311]:
+                      - generic [ref=e312]: Lea M.
+                      - generic [ref=e313]: Head of Talent Acquisition
+                  - generic [ref=e314]:
+                    - img "email" [ref=e316] [cursor=pointer]
+                    - img "linkedin" [ref=e318] [cursor=pointer]
+                - generic [ref=e320]:
+                  - generic [ref=e321]:
+                    - generic [ref=e325] [cursor=pointer]: K
+                    - generic [ref=e327]:
+                      - generic [ref=e328]: Kyle S.
+                      - generic [ref=e329]: Human Resources Director
+                  - generic [ref=e330]:
+                    - img "email" [ref=e332] [cursor=pointer]
+                    - img "linkedin" [ref=e334] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e336] [cursor=pointer]:
+                - generic [ref=e337]: Draft Message to Connect
+            - generic [ref=e338]:
+              - generic [ref=e339]:
+                - generic [ref=e340]: Apply Faster with Autofill Plugin
+                - generic [ref=e341]: FREE
+              - img "autofill" [ref=e343]
+              - button "Apply With Autofill" [ref=e345] [cursor=pointer]:
+                - generic [ref=e346]: Apply With Autofill
+  - alert [ref=e347]

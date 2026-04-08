@@ -6,14 +6,14 @@ Run with: uv run pytest tests/test_scraper_upsert.py -v
 Tests skip automatically if DATABASE_URL is not set or DB is unreachable.
 """
 import os
-import pytest
+
 import psycopg
+import pytest
 from psycopg.rows import dict_row
 
-from wekruit_matching.models.job import Job, JobStatus
-from wekruit_matching.scraper.id_utils import compute_content_hash, generate_job_id
+from wekruit_matching.models.job import Job
+from wekruit_matching.scraper.id_utils import compute_content_hash
 from wekruit_matching.scraper.upsert import mark_stale_jobs, upsert_jobs
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -117,7 +117,11 @@ def test_upsert_updates_changed_content_hash():
     # Read first_seen_at after insert
     with _connect() as conn:
         row_v1 = conn.execute(
-            "SELECT first_seen_at, last_seen_at, content_hash FROM jobs WHERE job_id = 'test-job-001'"
+            """
+            SELECT first_seen_at, last_seen_at, content_hash
+            FROM jobs
+            WHERE job_id = 'test-job-001'
+            """
         ).fetchone()
     first_seen_original = row_v1["first_seen_at"]
     old_hash = row_v1["content_hash"]
@@ -139,7 +143,11 @@ def test_upsert_updates_changed_content_hash():
 
     with _connect() as conn:
         row_v2 = conn.execute(
-            "SELECT first_seen_at, last_seen_at, content_hash FROM jobs WHERE job_id = 'test-job-001'"
+            """
+            SELECT first_seen_at, last_seen_at, content_hash
+            FROM jobs
+            WHERE job_id = 'test-job-001'
+            """
         ).fetchone()
 
     # content_hash must change
@@ -177,6 +185,56 @@ def test_upsert_noop_on_unchanged_hash():
 
     # content_hash must not change
     assert row_after["content_hash"] == row_before["content_hash"]
+
+
+def test_upsert_changed_content_hash_clears_embedding_state():
+    """Changed content_hash must force a fresh embed by clearing old embedding state."""
+    job_v1 = make_job(
+        job_id="test-job-embed-reset",
+        company_name="TestCo",
+        role_title="SWE Intern",
+        content_hash=compute_content_hash("TestCo", "SWE Intern"),
+    )
+    job_v2 = make_job(
+        job_id="test-job-embed-reset",
+        company_name="TestCo",
+        role_title="Senior SWE",
+        content_hash=compute_content_hash("TestCo", "Senior SWE"),
+    )
+
+    with _connect() as conn:
+        upsert_jobs([job_v1], conn)
+        conn.execute(
+            """
+            UPDATE jobs
+            SET embedding = array_fill(0.1::float4, ARRAY[1536])::vector,
+                embedding_model = 'text-embedding-3-small',
+                enriched_at = NOW(),
+                embedded_at = NOW()
+            WHERE job_id = 'test-job-embed-reset'
+            """
+        )
+        conn.commit()
+
+    with _connect() as conn:
+        upsert_jobs([job_v2], conn)
+
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT enriched_at,
+                   embedded_at,
+                   embedding_model,
+                   embedding IS NULL AS embedding_is_null
+            FROM jobs
+            WHERE job_id = 'test-job-embed-reset'
+            """
+        ).fetchone()
+
+    assert row["enriched_at"] is None
+    assert row["embedded_at"] is None
+    assert row["embedding_model"] is None
+    assert row["embedding_is_null"] is True
 
 
 def test_mark_stale_jobs_marks_missing_ids_inactive():
@@ -239,4 +297,6 @@ def test_mark_stale_jobs_does_not_affect_other_repos():
         ).fetchone()
 
     assert intern_row["status"] == "inactive", "Internship job should be inactive"
-    assert newgrad_row["status"] == "active", "New-grad job must NOT be affected by internships stale run"
+    assert newgrad_row["status"] == "active", (
+        "New-grad job must NOT be affected by internships stale run"
+    )

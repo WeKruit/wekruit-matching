@@ -1,0 +1,312 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Granite Telecommunications · 13 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Granite Telecommunications
+                        - generic [ref=e52]: · 13 hours ago
+                      - heading "Help Desk Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Quincy, MA
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Granite Telecommunications
+                    - text: is seeking a
+                    - strong [ref=e76]: Help Desk Intern
+                    - text: to support their technical support operations. The role involves resolving inbound technical support requests, logging calls, and assisting with the maintenance of the company’s network and user accounts.
+                  - generic [ref=e78]:
+                    - generic [ref=e79]:
+                      - generic [ref=e80]: Professional Services
+                      - generic [ref=e81]: Wellness
+                      - generic [ref=e82]: Telecom & Communications
+                      - generic [ref=e83]: Business Development
+                      - generic [ref=e84]: Fitness
+                      - generic [ref=e85]: Telecommunications
+                    - generic [ref=e87]:
+                      - img "check" [ref=e89]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e90]
+              - separator [ref=e91]
+              - generic [ref=e92]:
+                - heading "Responsibilities" [level=2] [ref=e94]
+                - generic [ref=e95]:
+                  - generic [ref=e100]: Set up user accounts—creation/password reset/enabling-disability accounts in Active Directory
+                  - generic [ref=e105]: Troubleshoot printing issues
+                  - generic [ref=e110]: Excellent written communication skills for composing internal and external e-mails
+                  - generic [ref=e115]: Answer, evaluate and prioritize incoming telephone, voice mail, e-mail and in-person requests for assistance from users experiencing problems with hardware, software, networking, and other computer-related technologies
+                  - generic [ref=e120]: Logging and tracking calls using Numara Track-IT management software
+                  - generic [ref=e125]: Configure and setup PDA’s for the company
+                  - generic [ref=e130]: Run phone lines for Granites telephone PBX
+                  - generic [ref=e135]: Ability to multi-task in a fast paced, customer-oriented technical environment
+                  - generic [ref=e140]: Ability to work in a team environment
+              - separator [ref=e141]
+              - generic [ref=e142]:
+                - heading "Qualification" [level=2] [ref=e144]
+                - generic [ref=e145]:
+                  - generic [ref=e146] [cursor=pointer]: Active Directory
+                  - generic [ref=e147] [cursor=pointer]: Troubleshooting hardware
+                  - generic [ref=e148] [cursor=pointer]: Troubleshooting software
+                  - generic [ref=e149] [cursor=pointer]: Troubleshooting networking
+                  - generic [ref=e150] [cursor=pointer]: Numara Track-IT
+                  - generic [ref=e151] [cursor=pointer]: Printer configuration
+                  - generic [ref=e152] [cursor=pointer]: Computer setup
+                  - generic [ref=e153] [cursor=pointer]: Configuration
+                  - generic [ref=e154] [cursor=pointer]: PBX telephone systems
+                  - generic [ref=e155] [cursor=pointer]: Multitasking
+                - generic [ref=e156]:
+                  - heading "Required" [level=4] [ref=e157]
+                  - generic [ref=e161]: Resolving inbound technical support requests
+                  - generic [ref=e165]: Accurately logging and tracking all calls
+                  - generic [ref=e169]: Providing accurate and professional resolution on all supported issues
+                  - generic [ref=e173]: Accurately resolving all assigned 'trouble' tickets
+                  - generic [ref=e177]: Installing, configuring and supporting new and upgraded computer/laptops and printers
+                  - generic [ref=e181]: Assisting with the operation and maintenance of the Company's network(s)
+                  - generic [ref=e185]: Setting up user accounts—creation/password reset/enabling-disability accounts in Active Directory
+                  - generic [ref=e189]: Troubleshooting printing issues
+                  - generic [ref=e193]: Excellent written communication skills for composing internal and external e-mails
+                  - generic [ref=e197]: Answering, evaluating and prioritizing incoming telephone, voice mail, e-mail and in-person requests for assistance from users experiencing problems with hardware, software, networking, and other computer-related technologies
+                  - generic [ref=e201]: Logging and tracking calls using Numara Track-IT management software
+                  - generic [ref=e205]: Configuring and setting up PDA's for the company
+                  - generic [ref=e209]: Running phone lines for Granites telephone PBX
+                  - generic [ref=e213]: Ability to multi-task in a fast paced, customer-oriented technical environment
+                  - generic [ref=e217]: Ability to work in a team environment
+            - separator [ref=e218]
+            - generic [ref=e219]:
+              - heading "Company" [level=2] [ref=e221]
+              - generic [ref=e223]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]:
+                    - generic [ref=e228]:
+                      - heading "Granite Telecommunications" [level=2] [ref=e229]
+                      - generic [ref=e230]:
+                        - link "twitter" [ref=e231] [cursor=pointer]:
+                          - /url: https://x.com/GraniteTelecom
+                          - img "twitter" [ref=e232]
+                        - link "twitter" [ref=e233] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/21554
+                          - img "twitter" [ref=e234]
+                        - link "twitter" [ref=e235] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/granite-telecommunications
+                          - img "twitter" [ref=e236]
+                        - link "Glassdoor 3.1" [ref=e237] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Granite-Telecommunications-EI_IE134533.11,37.htm
+                          - generic [ref=e238]:
+                            - generic [ref=e239]: Glassdoor
+                            - generic "3.1 Stars" [ref=e240]:
+                              - img [ref=e242]
+                              - img [ref=e245]
+                              - img [ref=e248]
+                              - img [ref=e251]
+                              - img [ref=e254]
+                            - generic [ref=e256]: "3.1"
+                    - img "company-logo" [ref=e258]
+                  - generic [ref=e259]: Granite is a leading communications services provider for businesses with multiple locations.
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - img "date" [ref=e264]
+                    - text: Founded in 2002
+                  - generic [ref=e265]:
+                    - img "location" [ref=e266]
+                    - generic [ref=e267]: Quincy, Massachusetts, USA
+                  - generic [ref=e268]:
+                    - img "people-size" [ref=e269]
+                    - text: 1001-5000 employees
+                  - generic [ref=e270]:
+                    - img "web-link" [ref=e271]
+                    - link "http://www.granitenet.com/" [ref=e273] [cursor=pointer]:
+                      - /url: http://www.granitenet.com/
+              - generic [ref=e274]:
+                - generic [ref=e275]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e277]
+                  - generic [ref=e279]:
+                    - text: Granite Telecommunications has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e280]: (Data Powered by US Department of Labor)
+                  - generic [ref=e281]:
+                    - generic [ref=e282]:
+                      - generic [ref=e283]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e290]: Represents job field similar to this job
+                    - generic [ref=e291]:
+                      - generic [ref=e292]: Trends of Total Sponsorships
+                      - generic [ref=e293]:
+                        - generic [ref=e294]:
+                          - text: "2025"
+                          - generic [ref=e295]: (11)
+                        - progressbar [ref=e296]
+                      - generic [ref=e300]:
+                        - generic [ref=e301]:
+                          - text: "2024"
+                          - generic [ref=e302]: (17)
+                        - progressbar [ref=e303]
+                      - generic [ref=e307]:
+                        - generic [ref=e308]:
+                          - text: "2023"
+                          - generic [ref=e309]: (11)
+                        - progressbar [ref=e310]
+                      - generic [ref=e314]:
+                        - generic [ref=e315]:
+                          - text: "2022"
+                          - generic [ref=e316]: (11)
+                        - progressbar [ref=e317]
+                      - generic [ref=e321]:
+                        - generic [ref=e322]:
+                          - text: "2021"
+                          - generic [ref=e323]: (5)
+                        - progressbar [ref=e324]
+                      - generic [ref=e328]:
+                        - generic [ref=e329]:
+                          - text: "2020"
+                          - generic [ref=e330]: (8)
+                        - progressbar [ref=e331]
+                - generic [ref=e335]:
+                  - heading "Funding" [level=2] [ref=e337]
+                  - generic [ref=e338]:
+                    - generic [ref=e340]:
+                      - generic [ref=e341]:
+                        - generic [ref=e342]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e343]:
+                        - generic [ref=e344]: Total Funding
+                        - text: $4.85M
+                    - generic [ref=e347]:
+                      - generic [ref=e348]:
+                        - generic [ref=e349]: 2016-06-06
+                        - generic [ref=e350]: Grant· $0.6M
+                      - generic [ref=e351]:
+                        - generic [ref=e352]: 2016-03-29
+                        - generic [ref=e353]: Series Unknown· $4.25M
+                - generic [ref=e354]:
+                  - heading "Leadership Team" [level=2] [ref=e356]
+                  - generic [ref=e357]:
+                    - generic [ref=e359] [cursor=pointer]:
+                      - img "leader-logo" [ref=e361]
+                      - generic [ref=e362]:
+                        - generic [ref=e363]: Mark Palmer
+                        - generic [ref=e364]: VP - Managed Services
+                      - link "linkedin" [ref=e365]:
+                        - /url: https://www.linkedin.com/in/mark-palmer-14b4a07/
+                        - img "linkedin" [ref=e366]
+                    - generic [ref=e368] [cursor=pointer]:
+                      - img "leader-logo" [ref=e370]
+                      - generic [ref=e371]:
+                        - generic [ref=e372]: Brad Dupee
+                        - generic [ref=e373]: Head of National Channel Sales
+                      - link "linkedin" [ref=e374]:
+                        - /url: http://www.linkedin.com/in/dupee
+                        - img "linkedin" [ref=e375]
+                - generic [ref=e376]:
+                  - heading "Recent News" [level=2] [ref=e378]
+                  - generic [ref=e379]:
+                    - generic [ref=e381]:
+                      - generic [ref=e382]:
+                        - generic [ref=e383]: PR Newswire
+                        - link "Granite's Charlie Pagliazzo Recognized as 2026 CRN® Channel Chief" [ref=e385] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/granites-charlie-pagliazzo-recognized-as-2026-crn-channel-chief-302676538.html
+                          - generic [ref=e386]: Granite's Charlie Pagliazzo Recognized as 2026 CRN® Channel Chief
+                      - generic [ref=e387]: 2026-02-03
+                    - generic [ref=e389]:
+                      - generic [ref=e390]:
+                        - generic [ref=e391]: PR Newswire
+                        - link "Granite360 Wins 2025 Fierce Network Innovation Award for Best BSS/OSS Innovation" [ref=e393] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/granite360-wins-2025-fierce-network-innovation-award-for-best-bssoss-innovation-302643897.html
+                          - generic [ref=e394]: Granite360 Wins 2025 Fierce Network Innovation Award for Best BSS/OSS Innovation
+                      - generic [ref=e395]: 2025-12-17
+                    - generic [ref=e397]:
+                      - generic [ref=e398]:
+                        - generic [ref=e399]: Fierce Network
+                        - link "2025 Fierce Network Innovation Awards - Meet the winners!" [ref=e401] [cursor=pointer]:
+                          - /url: https://www.fiercetelecom.com/cloud/2025-fierce-network-innovation-awards-meet-winners
+                          - generic [ref=e402]: 2025 Fierce Network Innovation Awards - Meet the winners!
+                      - generic [ref=e403]: 2025-12-11
+                - generic [ref=e405]: Company data provided by crunchbase
+        - complementary [ref=e406]:
+          - generic [ref=e409]:
+            - generic [ref=e410]: Boost Your Interview Chances
+            - generic [ref=e411]:
+              - generic [ref=e412]:
+                - generic [ref=e413]: Improve Resume Match Score
+                - generic [ref=e414]: FREE
+              - generic [ref=e415]:
+                - generic [ref=e416]:
+                  - generic [ref=e419]:
+                    - img [ref=e420]
+                    - paragraph [ref=e434]: "?"
+                  - generic [ref=e435]: Your Score
+                - generic [ref=e437]:
+                  - generic [ref=e440]:
+                    - img [ref=e441]
+                    - paragraph [ref=e444]: "-"
+                  - generic [ref=e445]: Top Applicants
+              - generic [ref=e446]:
+                - generic [ref=e447]:
+                  - img "skill icon" [ref=e449]
+                  - generic [ref=e450]: Must-Have Skills for This Role
+                - generic [ref=e452]:
+                  - generic [ref=e453] [cursor=pointer]: Active Directory
+                  - generic [ref=e454] [cursor=pointer]: Troubleshooting hardware
+                  - generic [ref=e455] [cursor=pointer]: Troubleshooting software
+                  - generic [ref=e456] [cursor=pointer]: Troubleshooting networking
+                  - generic [ref=e457] [cursor=pointer]: Numara Track-IT
+              - button "Optimize my Resume" [ref=e459] [cursor=pointer]:
+                - generic [ref=e460]: Optimize my Resume
+            - generic [ref=e461]:
+              - generic [ref=e462]:
+                - generic [ref=e463]: Get Referral Via linkedIn
+                - generic [ref=e464]: FREE
+              - generic [ref=e465]: 3× Higher Response via Email Outreach
+              - generic [ref=e468]:
+                - generic [ref=e469]:
+                  - generic [ref=e473] [cursor=pointer]: S
+                  - generic [ref=e475]:
+                    - generic [ref=e476]: Sirirat V.
+                    - generic [ref=e477]: Help Desk Technician
+                - generic [ref=e478]:
+                  - img "email" [ref=e480] [cursor=pointer]
+                  - img "linkedin" [ref=e482] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e484] [cursor=pointer]:
+                - generic [ref=e485]: Draft Message to Connect
+            - generic [ref=e486]:
+              - generic [ref=e487]:
+                - generic [ref=e488]: Apply Faster with Autofill Plugin
+                - generic [ref=e489]: FREE
+              - img "autofill" [ref=e491]
+              - button "Apply With Autofill" [ref=e493] [cursor=pointer]:
+                - generic [ref=e494]: Apply With Autofill
+  - alert [ref=e495]

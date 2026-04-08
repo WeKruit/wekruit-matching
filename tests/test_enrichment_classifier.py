@@ -26,39 +26,74 @@ def _make_job(**kwargs) -> Job:
 class TestEnrichmentResultValidation:
     def test_valid_industry_accepted(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
-        r = EnrichmentResult(industry="tech", company_size="startup", required_skills=[], sponsorship=None)
+        r = EnrichmentResult(
+            industry="tech",
+            company_size="startup",
+            required_skills=[],
+            sponsorship=None,
+        )
         assert r.industry == "tech"
 
     def test_unknown_industry_accepted(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
-        r = EnrichmentResult(industry="unknown", company_size="unknown", required_skills=[], sponsorship=None)
+        r = EnrichmentResult(
+            industry="unknown",
+            company_size="unknown",
+            required_skills=[],
+            sponsorship=None,
+        )
         assert r.industry == "unknown"
 
     def test_invalid_industry_rejected(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
         with pytest.raises(ValidationError):
-            EnrichmentResult(industry="unicorn_industry", company_size="startup", required_skills=[], sponsorship=None)
+            EnrichmentResult(
+                industry="unicorn_industry",
+                company_size="startup",
+                required_skills=[],
+                sponsorship=None,
+            )
 
     def test_invalid_company_size_rejected(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
         with pytest.raises(ValidationError):
-            EnrichmentResult(industry="tech", company_size="giant", required_skills=[], sponsorship=None)
+            EnrichmentResult(
+                industry="tech",
+                company_size="giant",
+                required_skills=[],
+                sponsorship=None,
+            )
 
     def test_sponsorship_bool_or_none_accepted(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
-        r_true = EnrichmentResult(industry="tech", company_size="startup", required_skills=[], sponsorship=True)
-        r_false = EnrichmentResult(industry="tech", company_size="startup", required_skills=[], sponsorship=False)
-        r_none = EnrichmentResult(industry="tech", company_size="startup", required_skills=[], sponsorship=None)
+        r_true = EnrichmentResult(
+            industry="tech",
+            company_size="startup",
+            required_skills=[],
+            sponsorship=True,
+        )
+        r_false = EnrichmentResult(
+            industry="tech",
+            company_size="startup",
+            required_skills=[],
+            sponsorship=False,
+        )
+        r_none = EnrichmentResult(
+            industry="tech",
+            company_size="startup",
+            required_skills=[],
+            sponsorship=None,
+        )
         assert r_true.sponsorship is True
         assert r_false.sponsorship is False
         assert r_none.sponsorship is None
 
 
 class TestClassifyJob:
-    def _mock_anthropic_response(self, payload: dict) -> MagicMock:
-        """Return a mock that looks like anthropic SDK messages.create() response."""
+    def _mock_llm_response(self, payload: dict) -> MagicMock:
+        """Return a mock that matches the OpenAI-compatible chat response shape."""
         msg = MagicMock()
-        msg.content = [MagicMock(text=json.dumps(payload))]
+        msg.choices = [MagicMock(message=MagicMock(content=json.dumps(payload)))]
         return msg
 
     def test_valid_response_produces_enrichment_result(self):
@@ -71,7 +106,7 @@ class TestClassifyJob:
             "likely_sponsors_visa": True,
         }
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = self._mock_anthropic_response(payload)
+        mock_client.chat.completions.create.return_value = self._mock_llm_response(payload)
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
         assert result.industry == "tech"
@@ -83,8 +118,8 @@ class TestClassifyJob:
         from wekruit_matching.enrichment.classifier import classify_job
         mock_client = MagicMock()
         bad_msg = MagicMock()
-        bad_msg.content = [MagicMock(text="not json at all {{{")]
-        mock_client.messages.create.return_value = bad_msg
+        bad_msg.choices = [MagicMock(message=MagicMock(content="not json at all {{{"))]
+        mock_client.chat.completions.create.return_value = bad_msg
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
         assert result.industry == "unknown"
@@ -101,7 +136,7 @@ class TestClassifyJob:
             "likely_sponsors_visa": False,
         }
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = self._mock_anthropic_response(payload)
+        mock_client.chat.completions.create.return_value = self._mock_llm_response(payload)
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
         assert "not_a_real_skill_xyz" not in result.required_skills
@@ -116,7 +151,7 @@ class TestClassifyJob:
             "likely_sponsors_visa": None,
         }
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = self._mock_anthropic_response(payload)
+        mock_client.chat.completions.create.return_value = self._mock_llm_response(payload)
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
         assert result.industry == "unknown"
@@ -124,7 +159,8 @@ class TestClassifyJob:
         assert result.sponsorship is None
 
     def test_429_triggers_retry(self):
-        import anthropic
+        import openai
+
         from wekruit_matching.enrichment.classifier import KNOWN_SKILLS, classify_job
         skill = next(iter(KNOWN_SKILLS))
         good_payload = {
@@ -133,16 +169,39 @@ class TestClassifyJob:
             "skills_inferred": [skill],
             "likely_sponsors_visa": False,
         }
-        good_response = self._mock_anthropic_response(good_payload)
-        rate_limit_exc = anthropic.RateLimitError(
+        good_response = self._mock_llm_response(good_payload)
+        rate_limit_exc = openai.RateLimitError(
             message="rate limited",
             response=MagicMock(status_code=429, headers={}),
             body={},
         )
         mock_client = MagicMock()
-        mock_client.messages.create.side_effect = [rate_limit_exc, good_response]
+        mock_client.chat.completions.create.side_effect = [rate_limit_exc, good_response]
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             # With min wait=0 in tests, retry should succeed on second call
             result = classify_job(_make_job())
-        assert mock_client.messages.create.call_count == 2
+        assert mock_client.chat.completions.create.call_count == 2
         assert result.industry == "fintech"
+
+    def test_job_description_is_included_in_prompt_when_available(self):
+        from wekruit_matching.enrichment.classifier import classify_job
+
+        payload = {
+            "industry": "tech",
+            "company_size": "startup",
+            "skills_inferred": ["python"],
+            "likely_sponsors_visa": None,
+        }
+        prompt_capture: dict[str, str] = {}
+
+        def fake_call(_client, prompt: str) -> str:
+            prompt_capture["prompt"] = prompt
+            return json.dumps(payload)
+
+        with (
+            patch("wekruit_matching.enrichment.classifier._get_client", return_value=MagicMock()),
+            patch("wekruit_matching.enrichment.classifier._call_llm", side_effect=fake_call),
+        ):
+            classify_job(_make_job(job_description="Full JD text for ranking pipelines."))
+
+        assert "Job Description: Full JD text for ranking pipelines." in prompt_capture["prompt"]

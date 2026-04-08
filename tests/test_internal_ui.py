@@ -123,21 +123,34 @@ def patch_stats_queries(monkeypatch):
 def patch_pipeline_queries(monkeypatch):
     """Patch pipeline page query."""
     handlers = {
-        "COUNT(*) FILTER ( WHERE enriched_at IS NULL AND status = 'active' ) AS pending_enrich,": [
+        (
+            "COUNT(*) FILTER ( WHERE status = 'active' AND"
+            " (job_description IS NULL OR job_description = '')"
+        ): [
             {
-                "pending_enrich": 12,
+                "pending_jd_queue": 12,
+                "failed_fetches": 3,
                 "pending_embed": 4,
                 "last_scrape": "2026-03-31 06:00:00",
                 "last_enriched": "2026-03-31 06:10:00",
                 "last_embedded": "2026-03-31 06:20:00",
             }
-        ]
+        ],
+        "SELECT COALESCE(jd_fetch_source, 'null') AS source,": [
+            {"source": "greenhouse", "with_jd": 120, "without_jd": 4},
+            {"source": "lever", "with_jd": 90, "without_jd": 2},
+            {"source": "firecrawl", "with_jd": 30, "without_jd": 6},
+            {"source": "failed", "with_jd": 0, "without_jd": 3},
+        ],
+        "COUNT(*) FILTER ( WHERE data_quality_score < 50 ) AS below_50,": [
+            {"below_50": 7, "between_50_79": 40, "at_least_80": 165, "not_scored": 9}
+        ],
     }
     monkeypatch.setattr(internal_ui, "get_connection", lambda: fake_connection_ctx(handlers))
 
 
 def test_jobs_browser_renders_shared_shell_and_filters(monkeypatch):
-    """Jobs page has shared shell, page heading, labels, and encoded pagination URLs."""
+    """Jobs page exposes active filters, reset affordances, and encoded pagination URLs."""
     patch_jobs_queries(monkeypatch)
 
     html = internal_ui.jobs_browser(
@@ -154,6 +167,12 @@ def test_jobs_browser_renders_shared_shell_and_filters(monkeypatch):
     assert '<label for="q">Search</label>' in html
     assert '<label for="status-select">Listing status</label>' in html
     assert 'surface-pill">internal</span>' in html
+    assert "Showing a narrowed view of the inventory." in html
+    assert '<strong>Search</strong><span>ml intern</span>' in html
+    assert '<strong>Source</strong><span>Summer2026-Internships</span>' in html
+    assert '<strong>Industry</strong><span>software</span>' in html
+    assert 'href="/internal/jobs?status=active"' in html
+    assert "Showing 1-50 of 52 jobs · Page 1 of 2" in html
     assert 'href="/internal/jobs?page=2&amp;status=active&amp;source=Summer2026-Internships' in html
     assert 'q=ml+intern' in html
 
@@ -183,6 +202,17 @@ def test_jobs_browser_uses_real_disabled_pagination(monkeypatch):
     assert 'aria-current="page">1</span>' in html
 
 
+def test_jobs_browser_clamps_out_of_range_pages(monkeypatch):
+    """Out-of-range pages clamp to the last real page instead of rendering an empty phantom page."""
+    patch_jobs_queries(monkeypatch)
+
+    html = internal_ui.jobs_browser(page=9, status="active", source="", industry="", q="")
+
+    assert "Showing 51-52 of 52 jobs · Page 2 of 2" in html
+    assert 'aria-current="page">2</span>' in html
+    assert 'aria-label="Next page"' not in html
+
+
 def test_stats_dashboard_renders_consistent_sections(monkeypatch):
     """Stats page keeps the shared hierarchy and section naming."""
     patch_stats_queries(monkeypatch)
@@ -206,7 +236,11 @@ def test_pipeline_status_uses_friendly_operational_copy(monkeypatch):
 
     assert '<h1 class="page-title">Pipeline</h1>' in html
     assert "Processing backlog" in html
-    assert "Jobs waiting for metadata" in html
+    assert "Jobs waiting for JD fetch" in html
+    assert "Failed JD attempts" in html
+    assert "JD coverage by source" in html
+    assert "Quality distribution" in html
+    assert "Below 50" in html
     assert "Recent pipeline activity" in html
     assert "Latest time the source inventory was refreshed." in html
     assert "/tmp/matching-daily-update.log" in html

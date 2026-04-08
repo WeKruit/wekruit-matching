@@ -1,0 +1,209 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "info-icon" [ref=e33]
+                  - generic [ref=e34]: This job has closed.
+                - button "APPLY to similar jobs arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY to similar jobs
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "City of Denison · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: City of Denison
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Tourism Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Denison, TX
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: City of Denison
+                    - text: is seeking a
+                    - strong [ref=e76]: Tourism Intern
+                    - text: to serve as a point of contact for visitors at the Discover Denison Visitor Center. The intern will assist with directions, information requests, and promote local attractions while providing administrative support for the Marketing and Tourism Department.
+                  - generic [ref=e79]:
+                    - generic [ref=e80]: Education
+                    - generic [ref=e81]: Government
+              - separator [ref=e82]
+              - generic [ref=e83]:
+                - heading "Responsibilities" [level=2] [ref=e85]
+                - generic [ref=e86]:
+                  - generic [ref=e91]: Staff the Discover Denison Visitors Center, providing a welcoming and professional experience for visitors
+                  - generic [ref=e96]: Assist guests with directions and information on local attractions, events, dining, and activities
+                  - generic [ref=e101]: Answer phone and email inquiries related to tourism and visitor services
+                  - generic [ref=e106]: Fulfill Visitor Guide requests and assist with maintaining accurate printed materials
+                  - generic [ref=e111]: Assist with organizing and distributing visitor bags for group tours and meetings
+                  - generic [ref=e116]: Help maintain an inviting, organized lobby stocked with current brochures and materials
+                  - generic [ref=e121]: Assist with social media content creation, including photos, videos, captions, and reels
+                  - generic [ref=e126]: Assist with reviewing, updating, and maintaining the Discover Denison website to ensure tourism information, event listings, business details, and visitor resources remain accurate, current, and visually engaging
+                  - generic [ref=e131]: Help cover events through stories or real-time content (as schedule allows)
+                  - generic [ref=e136]: Capture and organize photos and videos for marketing and promotional use
+                  - generic [ref=e141]: Assist with collecting upcoming events, new business spotlights, and community stories for the Discover Denison newsletter
+                  - generic [ref=e146]: Research tourism, hospitality, and destination marketing trends
+                  - generic [ref=e151]: Assist visitors with merchandise purchases, admissions, or other applicable transactions at the Discover Denison Visitor Center using established point-of-sale procedures
+                  - generic [ref=e156]: Support the Discover Denison team with additional tasks as needed
+              - separator [ref=e157]
+              - generic [ref=e158]:
+                - heading "Qualification" [level=2] [ref=e160]
+                - generic [ref=e161]:
+                  - generic [ref=e162] [cursor=pointer]: Customer Service
+                  - generic [ref=e163] [cursor=pointer]: Tourism Knowledge
+                  - generic [ref=e164] [cursor=pointer]: Hospitality Knowledge
+                  - generic [ref=e165] [cursor=pointer]: Marketing Knowledge
+                  - generic [ref=e166] [cursor=pointer]: Microsoft Office
+                  - generic [ref=e167] [cursor=pointer]: Record Keeping
+                  - generic [ref=e168] [cursor=pointer]: Point-of-Sale Procedures
+                  - generic [ref=e169] [cursor=pointer]: Sound Judgment
+                  - generic [ref=e170] [cursor=pointer]: Poise
+                  - generic [ref=e171] [cursor=pointer]: Tact
+                  - generic [ref=e172] [cursor=pointer]: Patience
+                  - generic [ref=e173] [cursor=pointer]: Pleasant Demeanor
+                - generic [ref=e174]:
+                  - heading "Required" [level=4] [ref=e175]
+                  - generic [ref=e179]: Must have High School diploma or equivalent
+                  - generic [ref=e183]: Pursuing a degree in Hospitality, Tourism, Marketing, Communications, or a related field
+                  - generic [ref=e187]: Poise, tact, patience and pleasant demeanor for public and interoffice contact
+                  - generic [ref=e191]: Valid Driver's License with driving record sufficient for coverage by City's auto liability carrier
+                  - generic [ref=e195]: Ability to work with the public and co-workers in a professional manner using excellent customer service and interpersonal skills
+                  - generic [ref=e199]: Knowledge of tourism, hospitality, marketing, or visitor experience and willingness to learn more
+                  - generic [ref=e203]: Proficiency in Microsoft Office (Word, Excel, Outlook) and the ability to quickly learn other software tools as needed
+                  - generic [ref=e207]: Ability to use strong organizational skills in order to manage multiple tasks and provide accurate, timely information
+                  - generic [ref=e211]: Knowledge of Denison's attractions, events, and tourism assets and willingness to learn more
+                  - generic [ref=e215]: Ability to maintain detailed records and reports
+                  - generic [ref=e219]: Ability to communicate effectively in written and oral formats
+                  - generic [ref=e223]: Ability to manage interruptions while ensuring a positive visitor experience
+                  - generic [ref=e227]: Ability to establish and maintain effective working relationship with other employees and the general public
+                  - generic [ref=e231]: Ability to use sound judgment in directing public and fulfilling customer service needs/requests
+                  - generic [ref=e235]: Highly skilled in customer service practices to quickly and efficiently tend to visitor's needs
+                  - generic [ref=e239]: Ability to maintain consistent and timely attendance
+                  - generic [ref=e243]: Combination of sitting, standing, and walking
+                  - generic [ref=e247]: Ability to lift and carry materials such as brochures or visitor bags (up to 50 lbs occasionally)
+                  - generic [ref=e251]: Intermittent periods of standing and walking
+                  - generic [ref=e255]: Constant talking, hearing, concentrating, judgment and writing ability
+                  - generic [ref=e259]: Fluctuating schedule (evenings and weekends) to accommodate events and activities at which standing and professional interaction is required
+            - separator [ref=e260]
+            - generic [ref=e261]:
+              - heading "Company" [level=2] [ref=e263]
+              - generic [ref=e265]:
+                - generic [ref=e268]:
+                  - generic [ref=e269]:
+                    - generic [ref=e270]:
+                      - heading "City of Denison" [level=2] [ref=e271]
+                      - generic [ref=e272]:
+                        - link "twitter" [ref=e273] [cursor=pointer]:
+                          - /url: https://x.com/cityofdenison
+                          - img "twitter" [ref=e274]
+                        - link "twitter" [ref=e275] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/67563942
+                          - img "twitter" [ref=e276]
+                        - link "twitter" [ref=e277] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/denison-public-library
+                          - img "twitter" [ref=e278]
+                    - img "company-logo" [ref=e280]
+                  - generic [ref=e281]: Welcome to the official LinkedIn page for the City of Denison, Texas. Follow for job postings, local news, events, and more.
+                - generic [ref=e284]:
+                  - generic [ref=e285]:
+                    - img "date" [ref=e286]
+                    - text: Founded in 1935
+                  - generic [ref=e287]:
+                    - img "location" [ref=e288]
+                    - generic [ref=e289]: Denison, Texas, USA
+                  - generic [ref=e290]:
+                    - img "people-size" [ref=e291]
+                    - text: 201-500 employees
+                  - generic [ref=e292]:
+                    - img "web-link" [ref=e293]
+                    - link "https://www.denisontx.gov/" [ref=e295] [cursor=pointer]:
+                      - /url: https://www.denisontx.gov/
+              - generic [ref=e296]:
+                - generic [ref=e297]:
+                  - heading "Funding" [level=2] [ref=e299]
+                  - generic [ref=e303]:
+                    - generic [ref=e304]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e306]: Company data provided by crunchbase
+        - complementary [ref=e307]:
+          - generic [ref=e310]:
+            - generic [ref=e311]: Boost Your Interview Chances
+            - generic [ref=e312]:
+              - generic [ref=e313]:
+                - generic [ref=e314]: Improve Resume Match Score
+                - generic [ref=e315]: FREE
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e320]:
+                    - img [ref=e321]
+                    - paragraph [ref=e335]: "?"
+                  - generic [ref=e336]: Your Score
+                - generic [ref=e338]:
+                  - generic [ref=e341]:
+                    - img [ref=e342]
+                    - paragraph [ref=e356]: "8.6"
+                  - generic [ref=e357]: Top Applicants
+              - generic [ref=e358]:
+                - generic [ref=e359]:
+                  - img "skill icon" [ref=e361]
+                  - generic [ref=e362]: Must-Have Skills for This Role
+                - generic [ref=e364]:
+                  - generic [ref=e365] [cursor=pointer]: Customer Service
+                  - generic [ref=e366] [cursor=pointer]: Tourism Knowledge
+                  - generic [ref=e367] [cursor=pointer]: Hospitality Knowledge
+                  - generic [ref=e368] [cursor=pointer]: Marketing Knowledge
+                  - generic [ref=e369] [cursor=pointer]: Microsoft Office
+              - button "Optimize my Resume" [ref=e371] [cursor=pointer]:
+                - generic [ref=e372]: Optimize my Resume
+            - generic [ref=e373]:
+              - generic [ref=e374]:
+                - generic [ref=e375]: Get Referral Via linkedIn
+                - generic [ref=e376]: FREE
+              - generic [ref=e377]: 3× Higher Response via Email Outreach
+              - generic [ref=e380]:
+                - generic [ref=e381]:
+                  - generic [ref=e385] [cursor=pointer]: L
+                  - generic [ref=e387]:
+                    - generic [ref=e388]: Linda L.
+                    - generic [ref=e389]: Technical Recruiter
+                - generic [ref=e390]:
+                  - img "email" [ref=e392] [cursor=pointer]
+                  - img "linkedin" [ref=e394] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e396] [cursor=pointer]:
+                - generic [ref=e397]: Draft Message to Connect
+            - generic [ref=e398]:
+              - generic [ref=e399]:
+                - generic [ref=e400]: Apply Faster with Autofill Plugin
+                - generic [ref=e401]: FREE
+              - img "autofill" [ref=e403]
+              - button "Apply With Autofill" [ref=e405] [cursor=pointer]:
+                - generic [ref=e406]: Apply With Autofill
+  - alert [ref=e407]

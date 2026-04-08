@@ -71,15 +71,16 @@ def score_skills_overlap(
     user_skills: list[str],
     job_skills: list[str],
 ) -> float:
-    """Geometric mean of coverage and relevance for better discrimination.
+    """Coverage-dominant skill overlap score.
 
     coverage  = what fraction of job's required skills does user have (0-1)
     relevance = what fraction of user's skills does this job use (0-1)
-    score     = sqrt(coverage * relevance)
+    score     = coverage * 0.85 + relevance * 0.15
 
-    This discriminates better than pure coverage for users with many skills:
-    - User has 50 skills, job needs [Python] → coverage=1.0, relevance=0.02 → score=0.14
-    - User has 50 skills, job needs [Python,React,TS,Docker,AWS] → cov=1.0, rel=0.10 → score=0.32
+    Coverage is what matters for job matching ("do I qualify?"). Relevance
+    provides a small tiebreaker bonus for jobs that use more of the user's
+    skillset. The old geometric mean formula (sqrt(cov * rel)) punished
+    users with many skills: 5/6 match with 53 skills → only 28%. Now → 72%.
 
     Returns 0.0 if job or user has no skills.
     Case-insensitive comparison.
@@ -94,7 +95,7 @@ def score_skills_overlap(
     coverage = matched / len(job_set)
     relevance = matched / len(user_set)
 
-    return (coverage * relevance) ** 0.5
+    return coverage * 0.85 + relevance * 0.15
 
 
 def score_industry_match(

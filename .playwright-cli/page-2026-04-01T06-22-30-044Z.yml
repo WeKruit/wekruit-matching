@@ -1,0 +1,251 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Oklahoma Medical Research Foundation · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Oklahoma Medical Research Foundation
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "IT Operations & Infrastructure Intern (temporary)" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Oklahoma City, OK
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Oklahoma Medical Research Foundation
+                    - text: (OMRF) is a respected nonprofit biomedical research institute dedicated to advancing treatments for human diseases. The IT Operations & Infrastructure Intern will support the IT team in preparing technology for summer students and researchers while gaining hands-on experience in IT operations and helpdesk support.
+                  - generic [ref=e77]:
+                    - generic [ref=e79]: Research
+                    - generic [ref=e80]:
+                      - generic [ref=e81]:
+                        - img "check" [ref=e83]
+                        - text: Culture & Values
+                      - generic [ref=e84]:
+                        - img "check" [ref=e86]
+                        - text: H1B Sponsor Likely
+                        - img "note" [ref=e87]
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Device Imaging & DeploymentImage, configure, and prepare 50+ laptops (Windows PCs and Apple Macs) for incoming summer students
+                  - generic [ref=e102]: Install operating systems, security tools, and required applications
+                  - generic [ref=e107]: Verify systems are properly configured and ready for deployment
+                  - generic [ref=e112]: Hardware PreparationInventory, label, and stage laptops and related peripherals
+                  - generic [ref=e117]: Perform basic troubleshooting and hardware setupIT Helpdesk SupportAssist IT staff deploy laptops and setup summer students
+                  - generic [ref=e122]: Assist IT staff with basic support requests
+                  - generic [ref=e127]: Learn ticketing workflows and troubleshooting processes
+                  - generic [ref=e132]: Observe and participate in resolving common technical issues
+                  - generic [ref=e137]: Infrastructure ExposureGain introductory experience with enterprise IT environments including:Device managementNetwork connectivityUser account provisioningSystem deployment processesDocumentationAssist with updating setup documentation and internal procedures
+                  - generic [ref=e142]: Maintain records of device imaging and deployment
+                  - generic [ref=e147]: Support other IT projects and operational tasks aligned with the intern�s current experience and skill level
+              - separator [ref=e148]
+              - generic [ref=e149]:
+                - heading "Qualification" [level=2] [ref=e151]
+                - generic [ref=e152]:
+                  - generic [ref=e153] [cursor=pointer]: Windows
+                  - generic [ref=e154] [cursor=pointer]: MacOS
+                  - generic [ref=e155] [cursor=pointer]: Computer hardware
+                  - generic [ref=e156] [cursor=pointer]: Operating system installation
+                  - generic [ref=e157] [cursor=pointer]: IT support
+                  - generic [ref=e158] [cursor=pointer]: Systems administration
+                  - generic [ref=e159] [cursor=pointer]: IT certifications A+
+                  - generic [ref=e160] [cursor=pointer]: IT certifications similar
+                  - generic [ref=e161] [cursor=pointer]: Willingness to learn
+                - generic [ref=e162]:
+                  - heading "Required" [level=4] [ref=e163]
+                  - generic [ref=e167]: High school senior or early college student pursuing an interest in Information Technology, Computer Science, or related field
+                  - generic [ref=e171]: Basic familiarity with computers (Windows and/or macOS)
+                  - generic [ref=e175]: Strong willingness to learn and take initiative
+                  - generic [ref=e179]: Good organizational skills and attention to detail
+                  - generic [ref=e183]: Ability to communicate clearly and professionally
+                - generic [ref=e184]:
+                  - heading "Preferred" [level=4] [ref=e185]
+                  - generic [ref=e189]: Entry level IT certifications earned or close to completion (A+ or similar)
+                  - generic [ref=e193]: Basic knowledge of computer hardware or operating system installation
+                  - generic [ref=e197]: Interest in IT support, systems administration, or infrastructure
+                  - generic [ref=e201]: Previous experience building, configuring, or troubleshooting computers (personal or academic)
+            - separator [ref=e202]
+            - generic [ref=e203]:
+              - heading "Company" [level=2] [ref=e205]
+              - generic [ref=e207]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - generic [ref=e212]:
+                      - heading "Oklahoma Medical Research Foundation" [level=2] [ref=e213]
+                      - link "twitter" [ref=e215] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/company/12240
+                        - img "twitter" [ref=e216]
+                    - img "company-logo" [ref=e218]
+                  - generic [ref=e219]: Established in 1946, OMRF is an independent, nonprofit biomedical research institute with more than 450 staff and over 50 labs studying cancer, heart disease, autoimmune disorders, and diseases of aging.
+                - generic [ref=e222]:
+                  - generic [ref=e223]:
+                    - img "date" [ref=e224]
+                    - text: Founded in 1946
+                  - generic [ref=e225]:
+                    - img "location" [ref=e226]
+                    - generic [ref=e227]: Oklahoma City, OK, US
+                  - generic [ref=e228]:
+                    - img "people-size" [ref=e229]
+                    - text: 201-500 employees
+                  - generic [ref=e230]:
+                    - img "web-link" [ref=e231]
+                    - link "http://www.omrf.org" [ref=e233] [cursor=pointer]:
+                      - /url: http://www.omrf.org
+              - generic [ref=e234]:
+                - generic [ref=e235]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e237]
+                  - generic [ref=e239]:
+                    - text: Oklahoma Medical Research Foundation has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e240]: (Data Powered by US Department of Labor)
+                  - generic [ref=e241]:
+                    - generic [ref=e242]:
+                      - generic [ref=e243]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e250]: Represents job field similar to this job
+                    - generic [ref=e251]:
+                      - generic [ref=e252]: Trends of Total Sponsorships
+                      - generic [ref=e253]:
+                        - generic [ref=e254]:
+                          - text: "2025"
+                          - generic [ref=e255]: (9)
+                        - progressbar [ref=e256]
+                      - generic [ref=e260]:
+                        - generic [ref=e261]:
+                          - text: "2024"
+                          - generic [ref=e262]: (14)
+                        - progressbar [ref=e263]
+                      - generic [ref=e267]:
+                        - generic [ref=e268]:
+                          - text: "2023"
+                          - generic [ref=e269]: (11)
+                        - progressbar [ref=e270]
+                      - generic [ref=e274]:
+                        - generic [ref=e275]:
+                          - text: "2022"
+                          - generic [ref=e276]: (13)
+                        - progressbar [ref=e277]
+                      - generic [ref=e281]:
+                        - generic [ref=e282]:
+                          - text: "2021"
+                          - generic [ref=e283]: (16)
+                        - progressbar [ref=e284]
+                      - generic [ref=e288]:
+                        - generic [ref=e289]:
+                          - text: "2020"
+                          - generic [ref=e290]: (14)
+                        - progressbar [ref=e291]
+                - generic [ref=e295]:
+                  - heading "Funding" [level=2] [ref=e297]
+                  - generic [ref=e301]:
+                    - generic [ref=e302]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e303]:
+                  - heading "Leadership Team" [level=2] [ref=e305]
+                  - generic [ref=e306]:
+                    - generic [ref=e308] [cursor=pointer]:
+                      - img "leader-logo" [ref=e310]
+                      - generic [ref=e311]:
+                        - generic [ref=e312]: Tim Hassen
+                        - generic [ref=e313]: Vice President and Chief Financial Officer
+                      - link "linkedin" [ref=e314]:
+                        - /url: https://www.linkedin.com/in/tim-hassen-78047b2b
+                        - img "linkedin" [ref=e315]
+                    - generic [ref=e317] [cursor=pointer]:
+                      - img "leader-logo" [ref=e319]
+                      - generic [ref=e320]:
+                        - generic [ref=e321]: Brent Keck
+                        - generic [ref=e322]: Associate Vice President and Chief Information Officer
+                      - link "linkedin" [ref=e323]:
+                        - /url: https://www.linkedin.com/in/brent-keck-2a97509
+                        - img "linkedin" [ref=e324]
+                - generic [ref=e326]: Company data provided by crunchbase
+        - complementary [ref=e327]:
+          - generic [ref=e330]:
+            - generic [ref=e331]: Boost Your Interview Chances
+            - generic [ref=e332]:
+              - generic [ref=e333]:
+                - generic [ref=e334]: Improve Resume Match Score
+                - generic [ref=e335]: FREE
+              - generic [ref=e336]:
+                - generic [ref=e337]:
+                  - generic [ref=e340]:
+                    - img [ref=e341]
+                    - paragraph [ref=e355]: "?"
+                  - generic [ref=e356]: Your Score
+                - generic [ref=e358]:
+                  - generic [ref=e361]:
+                    - img [ref=e362]
+                    - paragraph [ref=e376]: "9.5"
+                  - generic [ref=e377]: Top Applicants
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - img "skill icon" [ref=e381]
+                  - generic [ref=e382]: Must-Have Skills for This Role
+                - generic [ref=e384]:
+                  - generic [ref=e385] [cursor=pointer]: Windows
+                  - generic [ref=e386] [cursor=pointer]: macOS
+                  - generic [ref=e387] [cursor=pointer]: Computer hardware
+                  - generic [ref=e388] [cursor=pointer]: Operating system installation
+                  - generic [ref=e389] [cursor=pointer]: IT support
+              - button "Optimize my Resume" [ref=e391] [cursor=pointer]:
+                - generic [ref=e392]: Optimize my Resume
+            - generic [ref=e393]:
+              - generic [ref=e394]:
+                - generic [ref=e395]: Get Referral Via linkedIn
+                - generic [ref=e396]: FREE
+              - generic [ref=e397]: 3× Higher Response via Email Outreach
+              - generic [ref=e400]:
+                - generic [ref=e401]:
+                  - generic [ref=e405] [cursor=pointer]: L
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: Linda L.
+                    - generic [ref=e409]: Technical Recruiter
+                - generic [ref=e410]:
+                  - img "email" [ref=e412] [cursor=pointer]
+                  - img "linkedin" [ref=e414] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e416] [cursor=pointer]:
+                - generic [ref=e417]: Draft Message to Connect
+            - generic [ref=e418]:
+              - generic [ref=e419]:
+                - generic [ref=e420]: Apply Faster with Autofill Plugin
+                - generic [ref=e421]: FREE
+              - img "autofill" [ref=e423]
+              - button "Apply With Autofill" [ref=e425] [cursor=pointer]:
+                - generic [ref=e426]: Apply With Autofill
+  - alert [ref=e427]

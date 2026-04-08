@@ -1,0 +1,263 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Wonderful Pistachios & Almonds · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Wonderful Pistachios & Almonds
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "Wonderful Scholar Summer Internship, IT" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Lost Hills, CA
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $19/hr - $20/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Wonderful Pistachios & Almonds
+                    - text: is the largest vertically integrated pistachio and almond processor in the world, located in California's Central Valley. They are seeking a Wonderful Scholar Summer Intern in IT to provide hands-on experience and contribute to a key project focused on process improvement within the department.
+                  - generic [ref=e81]:
+                    - generic [ref=e82]:
+                      - generic [ref=e83]: Agriculture
+                      - generic [ref=e84]: Food and Beverage
+                      - generic [ref=e85]: Farming
+                      - generic [ref=e86]: Organic Food
+                      - generic [ref=e87]: Snack Food
+                    - generic [ref=e89]:
+                      - img "check" [ref=e91]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e92]
+              - separator [ref=e93]
+              - generic [ref=e94]:
+                - heading "Responsibilities" [level=2] [ref=e96]
+                - generic [ref=e97]:
+                  - generic [ref=e102]: Offer technical support to company staff and troubleshoot computer/system issues
+                  - generic [ref=e107]: Assist with providing support to production areas for all IT-related needs
+                  - generic [ref=e112]: Follow Standard Operating Procedures to perform daily technical tasks and resolve issues
+                  - generic [ref=e117]: Assist in configuring desktops, laptops, and peripheral devices
+                  - generic [ref=e122]: Track, log, and manage user requests and issues in a ticketing system
+                  - generic [ref=e127]: Prioritize and escalate issues as necessary, ensuring prompt resolution
+                  - generic [ref=e132]: Keep users informed of the status of their requests and update them on ongoing issues
+                  - generic [ref=e137]: Collaborate with team members to validate and refine procedures
+                  - generic [ref=e142]: Work on a designated project aimed at improving efficiency and effectiveness
+                  - generic [ref=e147]: Collaborate with team members to implement and test process improvements
+                  - generic [ref=e152]: Track and report key performance indicators related to the processes
+                  - generic [ref=e157]: Follow safety protocols and guidelines to ensure a secure working environment
+                  - generic [ref=e162]: Perform additional duties as assigned
+              - separator [ref=e163]
+              - generic [ref=e164]:
+                - heading "Qualification" [level=2] [ref=e166]
+                - generic [ref=e167]:
+                  - generic [ref=e168] [cursor=pointer]: Computer knowledge
+                  - generic [ref=e169] [cursor=pointer]: Microsoft Office
+                  - generic [ref=e170] [cursor=pointer]: Data collection
+                  - generic [ref=e171] [cursor=pointer]: Data analysis
+                  - generic [ref=e172] [cursor=pointer]: Analytical skills
+                  - generic [ref=e173] [cursor=pointer]: Eagerness to learn
+                  - generic [ref=e174] [cursor=pointer]: Bilingual English
+                  - generic [ref=e175] [cursor=pointer]: Spanish
+                - generic [ref=e176]:
+                  - heading "Required" [level=4] [ref=e177]
+                  - generic [ref=e181]: Must be Wonderful Scholar enrolled in the College Success program
+                  - generic [ref=e185]: Must be 18 years of age
+                  - generic [ref=e189]: Knowledge of computers
+                  - generic [ref=e193]: Knowledge in Microsoft Office Applications
+                  - generic [ref=e197]: Analytical and problem-solving skills
+                  - generic [ref=e201]: Proficiency in data collection and analysis tools
+                  - generic [ref=e205]: Excellent written and verbal communication skills
+                  - generic [ref=e209]: Ability to adapt to a dynamic and fast-paced manufacturing environment
+                  - generic [ref=e213]: Must be able to work flexible schedules
+                  - generic [ref=e217]: Eagerness to learn and contribute to continuous improvement initiatives
+                  - generic [ref=e221]: Be prepared to work in a manufacturing environment characterized by varying temperatures (hot or cold) and loud machinery
+                - generic [ref=e222]:
+                  - heading "Preferred" [level=4] [ref=e223]
+                  - generic [ref=e227]: Preferred bilingual in English and Spanish
+            - separator [ref=e228]
+            - generic [ref=e229]:
+              - heading "Company" [level=2] [ref=e231]
+              - generic [ref=e233]:
+                - generic [ref=e236]:
+                  - generic [ref=e237]:
+                    - generic [ref=e238]:
+                      - heading "Wonderful Pistachios & Almonds" [level=2] [ref=e239]
+                      - generic [ref=e240]:
+                        - link "twitter" [ref=e241] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/30977
+                          - img "twitter" [ref=e242]
+                        - link "twitter" [ref=e243] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/wonderful-pistachios-almonds
+                          - img "twitter" [ref=e244]
+                    - img "company-logo" [ref=e246]
+                  - generic [ref=e247]: Wonderful Pistachios & Almonds is the world's largest vertically integrated grower and processer of almonds and pistachios.
+                - generic [ref=e250]:
+                  - generic [ref=e251]:
+                    - img "date" [ref=e252]
+                    - text: Founded in 1989
+                  - generic [ref=e253]:
+                    - img "location" [ref=e254]
+                    - generic [ref=e255]: Los Angeles, California, USA
+                  - generic [ref=e256]:
+                    - img "people-size" [ref=e257]
+                    - text: 1001-5000 employees
+                  - generic [ref=e258]:
+                    - img "web-link" [ref=e259]
+                    - link "https://www.wonderfulpistachiosandalmonds.com/#ourdifference" [ref=e261] [cursor=pointer]:
+                      - /url: https://www.wonderfulpistachiosandalmonds.com/#ourdifference
+              - generic [ref=e262]:
+                - generic [ref=e263]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e265]
+                  - generic [ref=e267]:
+                    - text: Wonderful Pistachios & Almonds has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e268]: (Data Powered by US Department of Labor)
+                  - generic [ref=e269]:
+                    - generic [ref=e270]:
+                      - generic [ref=e271]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e278]: Represents job field similar to this job
+                    - generic [ref=e279]:
+                      - generic [ref=e280]: Trends of Total Sponsorships
+                      - generic [ref=e281]:
+                        - generic [ref=e282]:
+                          - text: "2025"
+                          - generic [ref=e283]: (3)
+                        - progressbar [ref=e284]
+                      - generic [ref=e288]:
+                        - generic [ref=e289]:
+                          - text: "2024"
+                          - generic [ref=e290]: (1)
+                        - progressbar [ref=e291]
+                      - generic [ref=e295]:
+                        - generic [ref=e296]:
+                          - text: "2023"
+                          - generic [ref=e297]: (4)
+                        - progressbar [ref=e298]
+                      - generic [ref=e302]:
+                        - generic [ref=e303]:
+                          - text: "2022"
+                          - generic [ref=e304]: (2)
+                        - progressbar [ref=e305]
+                      - generic [ref=e309]:
+                        - generic [ref=e310]:
+                          - text: "2020"
+                          - generic [ref=e311]: (4)
+                        - progressbar [ref=e312]
+                - generic [ref=e316]:
+                  - heading "Funding" [level=2] [ref=e318]
+                  - generic [ref=e322]:
+                    - generic [ref=e323]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e324]:
+                  - heading "Recent News" [level=2] [ref=e326]
+                  - generic [ref=e327]:
+                    - generic [ref=e329]:
+                      - generic [ref=e330]:
+                        - generic [ref=e331]: GlobeNewswire
+                        - link "Wonderful® Pistachios Serving Big Dill Energy as the “Official Snack” of Combo Breaker 2025 Video Game Festival and Tournament Series" [ref=e333] [cursor=pointer]:
+                          - /url: https://www.tradingview.com/news/reuters.com,2025-04-17:newsml_GNX8F49XC:0-wonderful-pistachios-serving-big-dill-energy-as-the-official-snack-of-combo-breaker-2025-video-game-festival-and-tournament-series/
+                          - generic [ref=e334]: Wonderful® Pistachios Serving Big Dill Energy as the “Official Snack” of Combo Breaker 2025 Video Game Festival and Tournament Series
+                      - generic [ref=e335]: 2025-04-17
+                    - generic [ref=e337]:
+                      - generic [ref=e338]:
+                        - generic [ref=e339]: Market Research Blog
+                        - link "Almond Product Market's 6.3% CAGR Forecasts Growth ..." [ref=e341] [cursor=pointer]:
+                          - /url: https://marketresearchblog.org/2023/12/almond-product-markets-6-3-cagr-forecasts-growth-reaching-us-152484-billion-by-2033-fueled-by-heightened-demand/
+                          - generic [ref=e342]: Almond Product Market's 6.3% CAGR Forecasts Growth ...
+                      - generic [ref=e343]: 2023-12-23
+                    - generic [ref=e345]:
+                      - generic [ref=e346]:
+                        - generic [ref=e347]: FreshPlaza
+                        - link "First new in-shell pistachio flavor launched in 10 years" [ref=e349] [cursor=pointer]:
+                          - /url: https://www.freshplaza.com/north-america/article/9557328/first-new-in-shell-pistachio-flavor-launched-in-10-years/
+                          - generic [ref=e350]: First new in-shell pistachio flavor launched in 10 years
+                      - generic [ref=e351]: 2023-12-23
+                - generic [ref=e353]: Company data provided by crunchbase
+        - complementary [ref=e354]:
+          - generic [ref=e357]:
+            - generic [ref=e358]: Boost Your Interview Chances
+            - generic [ref=e359]:
+              - generic [ref=e360]:
+                - generic [ref=e361]: Improve Resume Match Score
+                - generic [ref=e362]: FREE
+              - generic [ref=e363]:
+                - generic [ref=e364]:
+                  - generic [ref=e367]:
+                    - img [ref=e368]
+                    - paragraph [ref=e382]: "?"
+                  - generic [ref=e383]: Your Score
+                - generic [ref=e385]:
+                  - generic [ref=e388]:
+                    - img [ref=e389]
+                    - paragraph [ref=e392]: "-"
+                  - generic [ref=e393]: Top Applicants
+              - generic [ref=e394]:
+                - generic [ref=e395]:
+                  - img "skill icon" [ref=e397]
+                  - generic [ref=e398]: Must-Have Skills for This Role
+                - generic [ref=e400]:
+                  - generic [ref=e401] [cursor=pointer]: Computer knowledge
+                  - generic [ref=e402] [cursor=pointer]: Microsoft Office
+                  - generic [ref=e403] [cursor=pointer]: Data collection
+                  - generic [ref=e404] [cursor=pointer]: Data analysis
+                  - generic [ref=e405] [cursor=pointer]: Analytical skills
+              - button "Optimize my Resume" [ref=e407] [cursor=pointer]:
+                - generic [ref=e408]: Optimize my Resume
+            - generic [ref=e409]:
+              - generic [ref=e410]:
+                - generic [ref=e411]: Get Referral Via linkedIn
+                - generic [ref=e412]: FREE
+              - generic [ref=e413]: 3× Higher Response via Email Outreach
+              - generic [ref=e416]:
+                - generic [ref=e417]:
+                  - generic [ref=e421] [cursor=pointer]: M
+                  - generic [ref=e423]:
+                    - generic [ref=e424]: Mario R.
+                    - generic [ref=e425]: Human Resources Generalist
+                - generic [ref=e426]:
+                  - img "email" [ref=e428] [cursor=pointer]
+                  - img "linkedin" [ref=e430] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e432] [cursor=pointer]:
+                - generic [ref=e433]: Draft Message to Connect
+            - generic [ref=e434]:
+              - generic [ref=e435]:
+                - generic [ref=e436]: Apply Faster with Autofill Plugin
+                - generic [ref=e437]: FREE
+              - img "autofill" [ref=e439]
+              - button "Apply With Autofill" [ref=e441] [cursor=pointer]:
+                - generic [ref=e442]: Apply With Autofill
+  - alert [ref=e443]

@@ -22,6 +22,8 @@ def mock_settings(monkeypatch):
         anthropic_api_key="x",
         openai_api_key="x",
         github_token="test-token",
+        api_secret_key="test-secret",
+        siliconflow_api_key="sf-test",
     )
     # Patch get_settings to return our test settings
     with patch("wekruit_matching.scraper.fetcher.get_settings", return_value=settings):

@@ -10,6 +10,7 @@ Replaces the fragmented daily-update.sh + inline launchd commands.
 """
 import sys
 import time
+from datetime import UTC, datetime
 
 from loguru import logger
 
@@ -20,6 +21,7 @@ from wekruit_matching.notifications.email import (
     send_pipeline_complete_email,
     send_pipeline_start_email,
 )
+from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 from wekruit_matching.pipeline.run_url_resolution import run_url_resolution
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
@@ -31,6 +33,7 @@ def run_daily_pipeline() -> dict:
 
     Returns a dict with all stage stats and any errors encountered.
     """
+    run_started_at = datetime.now(UTC)
     start = time.monotonic()
     errors: list[str] = []
 
@@ -74,7 +77,13 @@ def run_daily_pipeline() -> dict:
 
     # --- Stage 2.5: URL Resolution ---
     logger.info("=== Stage 2.5: URL Resolution ===")
-    url_stats = {"simplify": {}, "slug_registry": {}, "serper": {}, "total_resolved": 0, "resolution_rate": 0.0}
+    url_stats = {
+        "simplify": {},
+        "slug_registry": {},
+        "serper": {},
+        "total_resolved": 0,
+        "resolution_rate": 0.0,
+    }
     try:
         with get_connection() as conn:
             url_stats = run_url_resolution(conn=conn, batch_size=500)
@@ -102,6 +111,16 @@ def run_daily_pipeline() -> dict:
         logger.error("Embedding crashed: {}", e)
         embed_stats = {"embedded": 0, "failed": 0, "skipped": 0}
         errors.append(f"Embedding crash: {e}")
+
+    # --- Stage 4: Sync active/inactive jobs to Firebase ---
+    logger.info("=== Stage 4: Firebase Job Sync ===")
+    try:
+        sync_stats = sync_jobs_to_firebase(since=run_started_at, full_sync=False)
+        logger.info("Firebase sync stats: {}", sync_stats)
+    except Exception as e:
+        logger.error("Job sync crashed: {}", e)
+        sync_stats = {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0}
+        errors.append(f"Job sync crash: {e}")
 
     duration = time.monotonic() - start
 
@@ -142,6 +161,7 @@ def run_daily_pipeline() -> dict:
         "url_resolution": url_stats,
         "enrich": enrich_stats,
         "embed": embed_stats,
+        "sync": sync_stats,
         "errors": errors,
         "duration_seconds": duration,
     }

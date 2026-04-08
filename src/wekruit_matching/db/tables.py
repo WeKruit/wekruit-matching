@@ -18,8 +18,18 @@ jobs_table = sa.Table(
     "jobs",
     metadata,
     # Identity
-    sa.Column("job_id", sa.String(64), primary_key=True, comment="SHA-256 of normalized company+title+url"),
-    sa.Column("source_repo", sa.String(128), nullable=False, comment="SimplifyJobs repo slug"),
+    sa.Column(
+        "job_id",
+        sa.String(64),
+        primary_key=True,
+        comment="SHA-256 of normalized company+title+url",
+    ),
+    sa.Column(
+        "source_repo",
+        sa.String(128),
+        nullable=False,
+        comment="SimplifyJobs repo slug",
+    ),
     # Raw scraped fields
     sa.Column("company_name", sa.Text, nullable=False),
     sa.Column("role_title", sa.Text, nullable=False),
@@ -28,10 +38,86 @@ jobs_table = sa.Table(
     sa.Column("date_posted_raw", sa.Text, nullable=True),
     # Status tracking
     sa.Column("status", sa.String(16), nullable=False, server_default="active"),
-    sa.Column("first_seen_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-    sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
+    sa.Column(
+        "first_seen_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
+    sa.Column(
+        "last_seen_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
     # Content hash for enrichment gating (Phase 3)
     sa.Column("content_hash", sa.String(64), nullable=True, index=True),
+    # Full JD text and LLM-extracted structured fields (Phase 3 enrichment)
+    sa.Column(
+        "job_description",
+        sa.Text,
+        nullable=True,
+        comment="Full job description text",
+    ),
+    sa.Column(
+        "core_responsibilities",
+        sa.ARRAY(sa.Text),
+        nullable=False,
+        server_default="{}",
+        comment="LLM-extracted list of core responsibilities",
+    ),
+    sa.Column(
+        "salary_range",
+        sa.Text,
+        nullable=True,
+        comment="Salary info string",
+    ),
+    sa.Column(
+        "seniority_level",
+        sa.Text,
+        nullable=True,
+        comment="entry/mid/senior",
+    ),
+    sa.Column(
+        "benefits",
+        sa.ARRAY(sa.Text),
+        nullable=False,
+        server_default="{}",
+        comment="LLM-extracted list of benefits",
+    ),
+    sa.Column(
+        "qualifications",
+        sa.ARRAY(sa.Text),
+        nullable=False,
+        server_default="{}",
+        comment="LLM-extracted list of qualifications",
+    ),
+    # JD fetch tracking (Phase 14)
+    sa.Column(
+        "jd_fetch_source",
+        sa.Text,
+        nullable=True,
+        comment="greenhouse | lever | ashby | workday | firecrawl | failed",
+    ),
+    sa.Column(
+        "jd_fetch_attempted_at",
+        sa.DateTime(timezone=True),
+        nullable=True,
+        comment="Last time JD fetch was attempted",
+    ),
+    sa.Column(
+        "ats_content_hash",
+        sa.String(64),
+        nullable=True,
+        index=True,
+        comment="SHA-256 of normalized ATS-sourced JD text",
+    ),
+    sa.Column(
+        "data_quality_score",
+        sa.Integer,
+        nullable=True,
+        comment="0-100 quality score for ATS-sourced JD completeness",
+    ),
     # LLM-enriched fields (Phase 3)
     sa.Column("industry", sa.Text, nullable=True),
     sa.Column("company_size", sa.String(32), nullable=True),
@@ -42,7 +128,12 @@ jobs_table = sa.Table(
     # NOTE: HNSW index with vector_cosine_ops is created in the alembic migration via op.execute(),
     # NOT here. SQLAlchemy cannot express pgvector index operator classes declaratively.
     sa.Column("embedding", Vector(1536), nullable=True),
-    sa.Column("embedding_model", sa.String(64), nullable=True, comment="e.g. text-embedding-3-small"),
+    sa.Column(
+        "embedding_model",
+        sa.String(64),
+        nullable=True,
+        comment="e.g. text-embedding-3-small",
+    ),
     sa.Column("enriched_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("embedded_at", sa.DateTime(timezone=True), nullable=True),
 )
@@ -62,8 +153,18 @@ user_profiles_table = sa.Table(
     sa.Column("disliked_companies", sa.ARRAY(sa.Text), nullable=False, server_default="{}"),
     # Affinity embedding (rolling average of liked job embeddings — Phase 7)
     sa.Column("affinity_embedding", Vector(1536), nullable=True),
-    sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-    sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
+    sa.Column(
+        "created_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
+    sa.Column(
+        "updated_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
 )
 
 feedback_table = sa.Table(
@@ -72,7 +173,17 @@ feedback_table = sa.Table(
     sa.Column("feedback_id", sa.Integer, primary_key=True, autoincrement=True),
     sa.Column("user_id", sa.Text, sa.ForeignKey("user_profiles.user_id"), nullable=False),
     sa.Column("job_id", sa.String(64), sa.ForeignKey("jobs.job_id"), nullable=False),
-    sa.Column("reaction", sa.String(16), nullable=False, comment="like | dislike | applied"),
-    sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
+    sa.Column(
+        "reaction",
+        sa.String(16),
+        nullable=False,
+        comment="like | dislike | applied",
+    ),
+    sa.Column(
+        "recorded_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
     sa.Index("ix_feedback_user_job", "user_id", "job_id"),
 )

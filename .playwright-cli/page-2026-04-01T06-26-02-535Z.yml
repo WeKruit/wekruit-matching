@@ -1,0 +1,236 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Foundation Health Partners · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Foundation Health Partners
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Intern Pharmacist" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Fairbanks, AK, US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $49.50/hr - $49.50/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Foundation Health Partners
+                    - text: is seeking an
+                    - strong [ref=e80]: Intern Pharmacist
+                    - text: to join their Hospital Pharmacy team. This role involves working under the supervision of a pharmacist to perform routine duties in medication preparation, distribution, and record keeping, while assisting in the preparation of compounded and intravenous medications.
+                  - generic [ref=e82]:
+                    - generic [ref=e83]:
+                      - generic [ref=e84]: Healthcare
+                      - generic [ref=e85]: Health Care
+                      - generic [ref=e86]: Primary and Urgent Care
+                    - generic [ref=e88]:
+                      - img "bad" [ref=e89]
+                      - text: No H1B
+                      - img "note" [ref=e90]
+              - separator [ref=e91]
+              - generic [ref=e92]:
+                - heading "Responsibilities" [level=2] [ref=e94]
+                - generic [ref=e95]:
+                  - generic [ref=e100]: Selects and/or prepares medications, under direct supervision, as indicated on the patient medication orders. Places medications in patient boxes or in designated area for pharmacist to review, sends/delivers medications to nursing units as required. Investigates missing medication requests Charges/credits patients for medications and intravenous solutions as appropriate. Restocks unused and credited returned medications
+                  - generic [ref=e105]: Attends to customers and answers telephones in a courteous and timely manner. Serves as a liaison between the customer and the pharmacist
+                  - generic [ref=e110]: Using automated dispensing technology or requisition, restocks medications to nursing and ancillary areas after checked by a pharmacist. Restocks medications to all areas outside automated dispensing technology which may include but not be limited to trays, code carts and emergency boxes. Adds users to the automatic dispensing technology database as per policy. Investigates discrepancies in automated dispensing technology. Troubleshoots automated technology malfunctions
+                  - generic [ref=e115]: Identifies medications and other items for reorder as necessary to maintain a continuous inventory of medications and supplies. Receives, checks-in, and restocks medications ordered through wholesaler and other vendors
+                  - generic [ref=e120]: Compounds specialty drug products. Repackages bulk medications into unit of use packaging. Completes accurate documentation of items compounded and repackaged
+                  - generic [ref=e125]: Assists in preparing and labeling of intravenous medication orders including total parenteral nutrition products and chemotherapy products using proper sterile and aseptic technique
+                  - generic [ref=e130]: Under the supervision of a pharmacist, utilizes education and pharmacy skills in assessing and formulating potential recommendations to physicians to help ensure quality and economical drug therapy, and positive patient outcomes. May provide information (under pharmacist supervision) to physicians, nurses, and others regarding medication therapy, medication systems, drug product guidelines, laws and regulations, medication formulary, and other topics related to the medication use system. Medication assessments may be performed with special consideration given to medication safety and the needs of the specific patient age groups served
+                  - generic [ref=e135]: Performs quality control activities such as monthly nursing unit checks and pharmacy section checks in a timely manner. Completes documentation on refrigerator temperatures, intravenous hood cleaning, and equipment maintenance activities as required
+                  - generic [ref=e140]: Performs all functions according to established policies, procedures, regulatory and accreditation requirements, as well as applicable professional standards. Provides all customers of Foundation Health Partners with an excellent service experience by consistently demonstrating our core and leader behaviors each and every day
+              - separator [ref=e141]
+              - generic [ref=e142]:
+                - heading "Qualification" [level=2] [ref=e144]
+                - generic [ref=e145]:
+                  - generic [ref=e146] [cursor=pointer]: Pharmacy
+                  - generic [ref=e147] [cursor=pointer]: Medication management information systems
+                  - generic [ref=e148] [cursor=pointer]: Automated dispensing systems
+                  - generic [ref=e149] [cursor=pointer]: Microsoft applications
+                  - generic [ref=e150] [cursor=pointer]: Medication compounding
+                  - generic [ref=e151] [cursor=pointer]: Intravenous medication preparation
+                  - generic [ref=e152] [cursor=pointer]: Sterile
+                  - generic [ref=e153] [cursor=pointer]: Aseptic technique
+                  - generic [ref=e154] [cursor=pointer]: Pharmacist Intern License
+                - generic [ref=e155]:
+                  - heading "Required" [level=4] [ref=e156]
+                  - generic [ref=e160]: Must be in the final year, or recently graduated from, an accredited school of Pharmacy program
+                  - generic [ref=e164]: Requires a current Alaska Pharmacist Intern License
+                  - generic [ref=e168]: Must possess good organizational, problem solving and computer skills
+                  - generic [ref=e172]: Must have good written and verbal communication skills for interfacing with all levels of Staff, physicians, patients and other contacts
+                  - generic [ref=e176]: Must have knowledge of computer software, particularly medication management information system software, Microsoft applications and automated dispensing systems
+                - generic [ref=e177]:
+                  - heading "Preferred" [level=4] [ref=e178]
+                  - generic [ref=e182]: Pharmacy technician experience preferred
+                  - generic [ref=e186]: Additional training in specialty areas (such as automatic dispensing technology, controlled substances and satellite pharmacy) preferred
+                  - generic [ref=e190]: Additional related education and/or experience preferred
+              - separator [ref=e191]
+              - generic [ref=e192]:
+                - heading "Benefits" [level=2] [ref=e194]
+                - generic [ref=e195]:
+                  - generic [ref=e199]: "Retention Bonus: $40,000 Retention Bonus for eligible new hires"
+                  - generic [ref=e203]: "Relocation Assistance: up to $7,500 Relocation Assistance"
+                  - generic [ref=e207]: "Temporary Housing: 90 Days Temporary Housing Provided"
+                  - generic [ref=e211]: "Additional Pay: Shift Differential, Annual Increases, Paid Time Off"
+                  - generic [ref=e215]: "Benefits: medical, vision, dental, 401k with employer match"
+                  - generic [ref=e219]: "Education Benefits: FHP Tuition Assistance, Student Loan Forgiveness"
+                  - generic [ref=e223]: "Other Benefits: Onsite Gym, Wellness Programs, Discount programs"
+            - separator [ref=e224]
+            - generic [ref=e225]:
+              - heading "Company" [level=2] [ref=e227]
+              - generic [ref=e229]:
+                - generic [ref=e232]:
+                  - generic [ref=e233]:
+                    - generic [ref=e234]:
+                      - heading "Foundation Health Partners" [level=2] [ref=e235]
+                      - generic [ref=e236]:
+                        - link "twitter" [ref=e237] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/24785388
+                          - img "twitter" [ref=e238]
+                        - link "twitter" [ref=e239] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/foundation-health-partners
+                          - img "twitter" [ref=e240]
+                    - img "company-logo" [ref=e242]
+                  - generic [ref=e243]: Foundation Health Partners is an independent health system that offers Urgent Care/1st Care/Emergency Care, Internal Medicine, etc.
+                - generic [ref=e246]:
+                  - generic [ref=e247]:
+                    - img "date" [ref=e248]
+                    - text: Founded in 1960
+                  - generic [ref=e249]:
+                    - img "location" [ref=e250]
+                    - generic [ref=e251]: Fairbanks, Alaska, USA
+                  - generic [ref=e252]:
+                    - img "people-size" [ref=e253]
+                    - text: 1001-5000 employees
+                  - generic [ref=e254]:
+                    - img "web-link" [ref=e255]
+                    - link "https://www.foundationhealth.org/" [ref=e257] [cursor=pointer]:
+                      - /url: https://www.foundationhealth.org/
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - heading "Funding" [level=2] [ref=e261]
+                  - generic [ref=e265]:
+                    - generic [ref=e266]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e267]:
+                  - heading "Leadership Team" [level=2] [ref=e269]
+                  - generic [ref=e270]:
+                    - generic [ref=e272] [cursor=pointer]:
+                      - img "leader-logo" [ref=e274]
+                      - generic [ref=e275]:
+                        - generic [ref=e276]: Anthony Sudduth, FHFMA/FACHE
+                        - generic [ref=e277]: System Chief Financial Officer
+                      - link "linkedin" [ref=e278]:
+                        - /url: https://www.linkedin.com/in/anthony-sudduth-fhfma-fache-47b5022b
+                        - img "linkedin" [ref=e279]
+                    - generic [ref=e281] [cursor=pointer]:
+                      - img "leader-logo" [ref=e283]
+                      - generic [ref=e284]:
+                        - generic [ref=e285]: Asyata Davis
+                        - generic [ref=e286]: Executive Assistant To Chief Financial Officer
+                      - link "linkedin" [ref=e287]:
+                        - /url: https://www.linkedin.com/in/asyata-davis-09402a22a
+                        - img "linkedin" [ref=e288]
+                - generic [ref=e290]: Company data provided by crunchbase
+        - complementary [ref=e291]:
+          - generic [ref=e294]:
+            - generic [ref=e295]: Boost Your Interview Chances
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - generic [ref=e298]: Improve Resume Match Score
+                - generic [ref=e299]: FREE
+              - generic [ref=e300]:
+                - generic [ref=e301]:
+                  - generic [ref=e304]:
+                    - img [ref=e305]
+                    - paragraph [ref=e319]: "?"
+                  - generic [ref=e320]: Your Score
+                - generic [ref=e322]:
+                  - generic [ref=e325]:
+                    - img [ref=e326]
+                    - paragraph [ref=e329]: "-"
+                  - generic [ref=e330]: Top Applicants
+              - generic [ref=e331]:
+                - generic [ref=e332]:
+                  - img "skill icon" [ref=e334]
+                  - generic [ref=e335]: Must-Have Skills for This Role
+                - generic [ref=e337]:
+                  - generic [ref=e338] [cursor=pointer]: Pharmacy
+                  - generic [ref=e339] [cursor=pointer]: Medication management information systems
+                  - generic [ref=e340] [cursor=pointer]: Automated dispensing systems
+                  - generic [ref=e341] [cursor=pointer]: Microsoft applications
+                  - generic [ref=e342] [cursor=pointer]: Medication compounding
+              - button "Optimize my Resume" [ref=e344] [cursor=pointer]:
+                - generic [ref=e345]: Optimize my Resume
+            - generic [ref=e346]:
+              - generic [ref=e347]:
+                - generic [ref=e348]: Get Referral Via linkedIn
+                - generic [ref=e349]: FREE
+              - generic [ref=e350]: 3× Higher Response via Email Outreach
+              - generic [ref=e351]:
+                - generic [ref=e353]:
+                  - generic [ref=e354]:
+                    - generic [ref=e358] [cursor=pointer]: "N"
+                    - generic [ref=e360]:
+                      - generic [ref=e361]: Nicole S.
+                      - generic [ref=e362]: Recruiter
+                  - generic [ref=e363]:
+                    - img "email" [ref=e365] [cursor=pointer]
+                    - img "linkedin" [ref=e367] [cursor=pointer]
+                - generic [ref=e369]:
+                  - generic [ref=e370]:
+                    - generic [ref=e374] [cursor=pointer]: T
+                    - generic [ref=e376]:
+                      - generic [ref=e377]: Tiffany B.
+                      - generic [ref=e378]: Pediatric Hospitalist
+                  - generic [ref=e379]:
+                    - img "email" [ref=e381] [cursor=pointer]
+                    - img "linkedin" [ref=e383] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e385] [cursor=pointer]:
+                - generic [ref=e386]: Draft Message to Connect
+            - generic [ref=e387]:
+              - generic [ref=e388]:
+                - generic [ref=e389]: Apply Faster with Autofill Plugin
+                - generic [ref=e390]: FREE
+              - img "autofill" [ref=e392]
+              - button "Apply With Autofill" [ref=e394] [cursor=pointer]:
+                - generic [ref=e395]: Apply With Autofill
+  - alert [ref=e396]

@@ -1,0 +1,251 @@
+"""Stage 2b orchestrator for ATS JD enrichment."""
+from __future__ import annotations
+
+import asyncio
+import time
+from collections import defaultdict
+from hashlib import sha256
+from types import SimpleNamespace
+from urllib.parse import urlparse
+
+from loguru import logger
+
+from wekruit_matching.config import get_settings
+from wekruit_matching.db.connection import get_connection
+from wekruit_matching.pipeline.ats_enricher import (
+    AtsJobData,
+    fetch_ashby_job,
+    fetch_greenhouse_job,
+    fetch_lever_job,
+)
+from wekruit_matching.pipeline.firecrawl_enricher import (
+    fetch_firecrawl_job,
+    fetch_workday_job,
+    search_canonical_job_url,
+)
+from wekruit_matching.pipeline.url_classifier import FetchRoute, classify_job_url, normalize_job_url
+
+_AGGREGATOR_HOSTS = (
+    "linkedin.com",
+    "indeed.com",
+    "glassdoor.com",
+    "ziprecruiter.com",
+    "simplyhired.com",
+)
+
+
+def _is_aggregator_url(url: str) -> bool:
+    hostname = urlparse(normalize_job_url(url)).netloc.lower()
+    return any(host in hostname for host in _AGGREGATOR_HOSTS)
+
+
+def _throttle_domain(
+    last_request_at: dict[str, float],
+    domain: str,
+    *,
+    min_interval_seconds: float,
+) -> None:
+    """Ensure requests to the same domain are spaced out."""
+    if not domain or min_interval_seconds <= 0:
+        return
+
+    now = time.monotonic()
+    previous = last_request_at.get(domain)
+    if previous is not None:
+        remaining = min_interval_seconds - (now - previous)
+        if remaining > 0:
+            time.sleep(remaining)
+    last_request_at[domain] = time.monotonic()
+
+
+async def _search_url(row: dict, settings) -> str | None:
+    """Use Firecrawl search to find a direct employer URL."""
+    if not settings.firecrawl_api_key:
+        return None
+    return await search_canonical_job_url(
+        company_name=row["company_name"],
+        role_title=row["role_title"],
+        api_key=settings.firecrawl_api_key,
+        base_url=settings.firecrawl_base_url,
+    )
+
+
+async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
+    """Fetch one job description using the correct free or paid tier."""
+    classification = classify_job_url(url)
+    route = classification.route
+    if route is FetchRoute.GREENHOUSE:
+        return fetch_greenhouse_job(url), 0
+    if route is FetchRoute.LEVER:
+        return fetch_lever_job(url), 0
+    if route is FetchRoute.ASHBY:
+        return fetch_ashby_job(url), 0
+    if route is FetchRoute.WORKDAY:
+        # Skip CXS discovery (45s timeout, ~95% failure rate) — go straight to Firecrawl
+        if not settings.firecrawl_api_key:
+            return None, 0
+        firecrawl = await fetch_firecrawl_job(
+            url,
+            api_key=settings.firecrawl_api_key,
+            base_url=settings.firecrawl_base_url,
+        )
+        return (firecrawl.job_data, firecrawl.credits_used) if firecrawl else (None, 0)
+    if not settings.firecrawl_api_key:
+        return None, 0
+    firecrawl = await fetch_firecrawl_job(
+        url,
+        api_key=settings.firecrawl_api_key,
+        base_url=settings.firecrawl_base_url,
+    )
+    return (firecrawl.job_data, firecrawl.credits_used) if firecrawl else (None, 0)
+
+
+def _write_success(conn, job_id: str, result: AtsJobData) -> None:
+    """Persist a successful JD fetch result."""
+    conn.execute(
+        """
+        UPDATE jobs
+        SET
+          job_description = %(job_description)s,
+          core_responsibilities = %(core_responsibilities)s,
+          qualifications = %(qualifications)s,
+          benefits = %(benefits)s,
+          salary_range = %(salary_range)s,
+          data_quality_score = %(data_quality_score)s,
+          ats_content_hash = %(ats_content_hash)s,
+          jd_fetch_source = %(jd_fetch_source)s,
+          jd_fetch_attempted_at = NOW()
+        WHERE job_id = %(job_id)s
+        """,
+        {
+            "job_id": job_id,
+            "job_description": result.description_plain,
+            "core_responsibilities": result.core_responsibilities,
+            "qualifications": result.qualifications,
+            "benefits": result.benefits,
+            "salary_range": result.salary_range,
+            "data_quality_score": result.data_quality_score,
+            "ats_content_hash": sha256(result.description_plain.encode("utf-8")).hexdigest(),
+            "jd_fetch_source": result.source,
+        },
+    )
+
+
+def _write_failure(conn, job_id: str) -> None:
+    """Persist a failed JD attempt."""
+    conn.execute(
+        """
+        UPDATE jobs
+        SET
+          jd_fetch_source = %(jd_fetch_source)s,
+          jd_fetch_attempted_at = NOW()
+        WHERE job_id = %(job_id)s
+        """,
+        {"job_id": job_id, "jd_fetch_source": "failed"},
+    )
+
+
+def run_jd_enrichment(
+    *,
+    conn=None,
+    settings=None,
+    batch_size: int = 500,
+    domain_min_interval: float = 0.5,
+    dry_run: bool = False,
+) -> dict:
+    """Process the JD enrichment queue in batches of at most 500 rows."""
+    if conn is None:
+        with get_connection() as owned_conn:
+            return run_jd_enrichment(
+                conn=owned_conn,
+                settings=settings,
+                batch_size=batch_size,
+                domain_min_interval=domain_min_interval,
+                dry_run=dry_run,
+            )
+
+    settings = settings or get_settings()
+    if not hasattr(settings, "firecrawl_api_key"):
+        settings = SimpleNamespace(
+            firecrawl_api_key="",
+            firecrawl_base_url="https://api.firecrawl.dev",
+            **settings.__dict__,
+        )
+
+    source_counts: dict[str, int] = defaultdict(int)
+    failed_by_source: dict[str, int] = defaultdict(int)
+    processed = failed = skipped = credits_used = 0
+    last_request_at: dict[str, float] = {}
+    effective_batch_size = min(batch_size, 500)
+
+    while True:
+        rows = conn.execute(
+            """
+            SELECT job_id, company_name, role_title, primary_url
+            FROM jobs
+            WHERE status = 'active'
+              AND (job_description IS NULL OR job_description = '')
+              AND primary_url IS NOT NULL
+              AND primary_url NOT LIKE 'https://jobright.ai/%%'
+              AND jd_fetch_attempted_at IS NULL
+            ORDER BY first_seen_at DESC
+            LIMIT %(limit)s
+            """,
+            {"limit": effective_batch_size},
+        ).fetchall()
+        if not rows:
+            break
+
+        for row in rows:
+            original_url = row["primary_url"] or ""
+            target_url = original_url
+            route = classify_job_url(original_url).route
+            if _is_aggregator_url(original_url):
+                resolved = asyncio.run(_search_url(row, settings))
+                if resolved:
+                    target_url = resolved
+                    route = classify_job_url(target_url).route
+
+            source_counts[route.value] += 1
+            processed += 1
+
+            if dry_run:
+                continue
+
+            domain = urlparse(normalize_job_url(target_url)).netloc.lower()
+            _throttle_domain(
+                last_request_at,
+                domain,
+                min_interval_seconds=domain_min_interval,
+            )
+
+            try:
+                result, spend = asyncio.run(_fetch_for_url(target_url, settings))
+                credits_used += spend
+                if result is None:
+                    if route is FetchRoute.FIRECRAWL and not settings.firecrawl_api_key:
+                        skipped += 1
+                        continue
+                    _write_failure(conn, row["job_id"])
+                    failed_by_source[route.value] += 1
+                    failed += 1
+                    continue
+                _write_success(conn, row["job_id"], result)
+            except Exception as exc:
+                logger.warning("JD enrichment failed for {}: {}", row["job_id"], exc)
+                _write_failure(conn, row["job_id"])
+                failed_by_source[route.value] += 1
+                failed += 1
+
+        if not dry_run:
+            conn.commit()
+
+    return {
+        "processed": processed,
+        "failed": failed,
+        "skipped": skipped,
+        "credits_used": credits_used,
+        "sources": dict(source_counts),
+        "failed_by_source": dict(failed_by_source),
+        "dry_run": dry_run,
+    }

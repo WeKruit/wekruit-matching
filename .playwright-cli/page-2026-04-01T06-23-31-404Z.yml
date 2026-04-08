@@ -1,0 +1,278 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Cleveland Clinic · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Cleveland Clinic
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "IT Summer Intern - Interoperability" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: United States
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Remote
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Cleveland Clinic
+                    - text: is recognized as one of the top hospitals in the nation, committed to transforming the patient experience. We are seeking a motivated Intern to support initiatives in advancing health information interoperability, providing hands-on experience at the intersection of healthcare, technology, and policy.
+                  - generic [ref=e77]:
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: Healthcare
+                      - generic [ref=e80]: Hospital
+                      - generic [ref=e81]: Non Profit
+                      - generic [ref=e82]: Health Care
+                      - generic [ref=e83]: Medical
+                    - generic [ref=e85]:
+                      - img "bad" [ref=e86]
+                      - text: No H1B
+                      - img "note" [ref=e87]
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Research, compile, tabulate, and analyze data and processes for a variety of administrative and departmental matters
+                  - generic [ref=e102]: Assist department personnel in assigned administrative, planning, organizational, technical, and professional tasks
+                  - generic [ref=e107]: Provide suggestions or recommendations with regard to department specific projects
+                  - generic [ref=e112]: Prepare and present reports
+                  - generic [ref=e117]: Draft policies and procedures
+                  - generic [ref=e122]: Respond to requests for information
+                  - generic [ref=e127]: Other duties as assigned
+              - separator [ref=e128]
+              - generic [ref=e129]:
+                - heading "Qualification" [level=2] [ref=e131]
+                - generic [ref=e132]:
+                  - generic [ref=e133] [cursor=pointer]: Healthcare knowledge
+                  - generic [ref=e134] [cursor=pointer]: Health IT concepts
+                  - generic [ref=e135] [cursor=pointer]: Electronic Health Records (EHRs)
+                  - generic [ref=e136] [cursor=pointer]: Health Information Exchange (HIE)
+                  - generic [ref=e137] [cursor=pointer]: Interoperability standards
+                  - generic [ref=e138] [cursor=pointer]: HL7
+                  - generic [ref=e139] [cursor=pointer]: FHIR
+                  - generic [ref=e140] [cursor=pointer]: Clinical data review
+                  - generic [ref=e141] [cursor=pointer]: Federal health policy
+                  - generic [ref=e142] [cursor=pointer]: Analytical skills
+                - generic [ref=e143]:
+                  - heading "Required" [level=4] [ref=e144]
+                  - generic [ref=e148]: Current college enrollment
+                  - generic [ref=e152]: Ability to discuss and weigh pros and cons and separate critical issues
+                  - generic [ref=e156]: Ability to make definitive choices, expresses opinions on issues and explain logical path decisions
+                - generic [ref=e157]:
+                  - heading "Preferred" [level=4] [ref=e158]
+                  - generic [ref=e162]: Background in healthcare and familiarity with health IT concepts (EHRs, HIE, interoperability standards like HL7 or FHIR)
+                  - generic [ref=e166]: Strong analytical and communication skills, with attention to detail in reviewing clinical data and policy materials
+                  - generic [ref=e170]: Interest in federal health policies and advocacy
+            - separator [ref=e171]
+            - generic [ref=e172]:
+              - heading "Company" [level=2] [ref=e174]
+              - generic [ref=e176]:
+                - generic [ref=e179]:
+                  - generic [ref=e180]:
+                    - generic [ref=e181]:
+                      - heading "Cleveland Clinic" [level=2] [ref=e182]
+                      - generic [ref=e183]:
+                        - link "twitter" [ref=e184] [cursor=pointer]:
+                          - /url: https://x.com/ClevelandClinic
+                          - img "twitter" [ref=e185]
+                        - link "twitter" [ref=e186] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/5656
+                          - img "twitter" [ref=e187]
+                        - link "twitter" [ref=e188] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/cleveland-clinic
+                          - img "twitter" [ref=e189]
+                        - link "Glassdoor 3.7" [ref=e190] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Cleveland-Clinic-EI_IE17787.11,27.htm
+                          - generic [ref=e191]:
+                            - generic [ref=e192]: Glassdoor
+                            - generic "3.7 Stars" [ref=e193]:
+                              - img [ref=e195]
+                              - img [ref=e198]
+                              - img [ref=e201]
+                              - img [ref=e204]
+                              - img [ref=e207]
+                            - generic [ref=e209]: "3.7"
+                    - img "company-logo" [ref=e211]
+                  - generic [ref=e212]: Cleveland Clinic is a non-profit medical center that combines clinical and hospital care with research and education. It is a sub-organization of Ashtabula Regional Medical Center.
+                - generic [ref=e215]:
+                  - generic [ref=e216]:
+                    - img "date" [ref=e217]
+                    - text: Founded in 1921
+                  - generic [ref=e218]:
+                    - img "location" [ref=e219]
+                    - generic [ref=e220]: Cleveland, Ohio, USA
+                  - generic [ref=e221]:
+                    - img "people-size" [ref=e222]
+                    - text: 10001+ employees
+                  - generic [ref=e223]:
+                    - img "web-link" [ref=e224]
+                    - link "http://my.clevelandclinic.org" [ref=e226] [cursor=pointer]:
+                      - /url: http://my.clevelandclinic.org
+              - generic [ref=e227]:
+                - generic [ref=e228]:
+                  - heading "Funding" [level=2] [ref=e230]
+                  - generic [ref=e231]:
+                    - generic [ref=e233]:
+                      - generic [ref=e234]:
+                        - generic [ref=e235]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e236]:
+                        - generic [ref=e237]: Total Funding
+                        - text: $362.54M
+                    - generic [ref=e239]:
+                      - generic [ref=e240]: Key Investors
+                      - generic [ref=e241]:
+                        - generic [ref=e242]: National Institutes of Health
+                        - generic [ref=e243]: National Cancer Institute
+                        - generic [ref=e244]: Agency for Healthcare Research and Quality
+                    - generic [ref=e247]:
+                      - generic [ref=e248]:
+                        - generic [ref=e249]: 2023-02-21
+                        - generic [ref=e250]: Grant· $3.14M
+                      - generic [ref=e251]:
+                        - generic [ref=e252]: 2022-09-22
+                        - generic [ref=e253]: Grant· $7.9M
+                      - generic [ref=e254]:
+                        - generic [ref=e255]: 2022-06-30
+                        - generic [ref=e256]: Grant· $14.2M
+                - generic [ref=e257]:
+                  - heading "Leadership Team" [level=2] [ref=e259]
+                  - generic [ref=e260]:
+                    - generic [ref=e262] [cursor=pointer]:
+                      - img "leader-logo" [ref=e264]
+                      - generic [ref=e265]:
+                        - generic [ref=e266]: Delos Cosgrove
+                        - generic [ref=e267]: CEO & President
+                      - link "linkedin" [ref=e268]:
+                        - /url: https://www.linkedin.com/in/toby-cosgrove-76094158
+                        - img "linkedin" [ref=e269]
+                    - generic [ref=e271] [cursor=pointer]:
+                      - img "leader-logo" [ref=e273]
+                      - generic [ref=e274]:
+                        - generic [ref=e275]: Tomislav Mihaljevic
+                        - generic [ref=e276]: President & Chief Executive Officer, Cleveland Clinic
+                      - link "linkedin" [ref=e277]:
+                        - /url: https://www.linkedin.com/in/tmihaljevic/
+                        - img "linkedin" [ref=e278]
+                - generic [ref=e279]:
+                  - heading "Recent News" [level=2] [ref=e281]
+                  - generic [ref=e282]:
+                    - generic [ref=e284]:
+                      - generic [ref=e285]:
+                        - generic [ref=e286]: EIN Presswire
+                        - link "Cleveland Clinic Launches Polycystic Kidney Disease Study using KetoCitra and Ren-Nu Ketogenic Nutrition Program" [ref=e288] [cursor=pointer]:
+                          - /url: https://www.einpresswire.com/article/902410360/cleveland-clinic-launches-polycystic-kidney-disease-study-using-ketocitra-and-ren-nu-ketogenic-nutrition-program
+                          - generic [ref=e289]: Cleveland Clinic Launches Polycystic Kidney Disease Study using KetoCitra and Ren-Nu Ketogenic Nutrition Program
+                      - generic [ref=e290]: 2026-03-30
+                    - generic [ref=e292]:
+                      - generic [ref=e293]:
+                        - generic [ref=e294]: Zawya.com
+                        - 'link "Can Gio: The Emerging Catalyst in Southern Vietnam’s Tourism Transformation" [ref=e296] [cursor=pointer]':
+                          - /url: https://www.zawya.com/en/economy/global/can-gio-the-emerging-catalyst-in-southern-vietnams-tourism-transformation-d3jf1td9
+                          - generic [ref=e297]: "Can Gio: The Emerging Catalyst in Southern Vietnam’s Tourism Transformation"
+                      - generic [ref=e298]: 2026-03-19
+                    - generic [ref=e300]:
+                      - generic [ref=e301]:
+                        - generic [ref=e302]: Newsweek
+                        - link "Accountability to Patients Makes Cleveland Clinic Weston a Top Hospital" [ref=e304] [cursor=pointer]:
+                          - /url: https://www.newsweek.com/cleveland-clinic-weston-worlds-best-hospitals-interview-11595299
+                          - generic [ref=e305]: Accountability to Patients Makes Cleveland Clinic Weston a Top Hospital
+                      - generic [ref=e306]: 2026-03-06
+                - generic [ref=e308]: Company data provided by crunchbase
+        - complementary [ref=e309]:
+          - generic [ref=e312]:
+            - generic [ref=e313]: Boost Your Interview Chances
+            - generic [ref=e314]:
+              - generic [ref=e315]:
+                - generic [ref=e316]: Improve Resume Match Score
+                - generic [ref=e317]: FREE
+              - generic [ref=e318]:
+                - generic [ref=e319]:
+                  - generic [ref=e322]:
+                    - img [ref=e323]
+                    - paragraph [ref=e337]: "?"
+                  - generic [ref=e338]: Your Score
+                - generic [ref=e340]:
+                  - generic [ref=e343]:
+                    - img [ref=e344]
+                    - paragraph [ref=e358]: "9.7"
+                  - generic [ref=e359]: Top Applicants
+              - generic [ref=e360]:
+                - generic [ref=e361]:
+                  - img "skill icon" [ref=e363]
+                  - generic [ref=e364]: Must-Have Skills for This Role
+                - generic [ref=e366]:
+                  - generic [ref=e367] [cursor=pointer]: Healthcare knowledge
+                  - generic [ref=e368] [cursor=pointer]: Health IT concepts
+                  - generic [ref=e369] [cursor=pointer]: Electronic Health Records (EHRs)
+                  - generic [ref=e370] [cursor=pointer]: Health Information Exchange (HIE)
+                  - generic [ref=e371] [cursor=pointer]: Interoperability standards
+              - button "Optimize my Resume" [ref=e373] [cursor=pointer]:
+                - generic [ref=e374]: Optimize my Resume
+            - generic [ref=e375]:
+              - generic [ref=e376]:
+                - generic [ref=e377]: Get Referral Via linkedIn
+                - generic [ref=e378]: FREE
+              - generic [ref=e379]: 3× Higher Response via Email Outreach
+              - generic [ref=e380]:
+                - generic [ref=e382]:
+                  - generic [ref=e383]:
+                    - generic [ref=e387] [cursor=pointer]: J
+                    - generic [ref=e389]:
+                      - generic [ref=e390]: James S.
+                      - generic [ref=e391]: Lead Systems Analyst, Epic Release and Change Management
+                  - generic [ref=e392]:
+                    - img "email" [ref=e394] [cursor=pointer]
+                    - img "linkedin" [ref=e396] [cursor=pointer]
+                - generic [ref=e398]:
+                  - generic [ref=e399]:
+                    - generic [ref=e403] [cursor=pointer]: T
+                    - generic [ref=e405]:
+                      - generic [ref=e406]: Tiana G.
+                      - generic [ref=e407]: Epic Systems Analyst
+                  - generic [ref=e408]:
+                    - img "email" [ref=e410] [cursor=pointer]
+                    - img "linkedin" [ref=e412] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e414] [cursor=pointer]:
+                - generic [ref=e415]: Draft Message to Connect
+            - generic [ref=e416]:
+              - generic [ref=e417]:
+                - generic [ref=e418]: Apply Faster with Autofill Plugin
+                - generic [ref=e419]: FREE
+              - img "autofill" [ref=e421]
+              - button "Apply With Autofill" [ref=e423] [cursor=pointer]:
+                - generic [ref=e424]: Apply With Autofill
+  - alert [ref=e425]

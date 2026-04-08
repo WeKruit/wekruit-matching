@@ -1,0 +1,226 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Kirby · 11 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Kirby
+                        - generic [ref=e52]: · 11 hours ago
+                      - heading "IT Service Desk Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Houston, TX, US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Kirby
+                    - text: Corporate Services LLC is seeking an
+                    - strong [ref=e76]: IT Service Desk Intern
+                    - text: to provide clerical and administrative support to the assigned department manager. The role involves maintaining quality control, assisting in project reports, and participating in training and staff meetings.
+                  - generic [ref=e78]:
+                    - generic [ref=e80]: Transportation/Trucking/Railroad
+                    - generic [ref=e81]:
+                      - generic [ref=e82]:
+                        - img "check" [ref=e84]
+                        - text: Growth Opportunities
+                      - generic [ref=e85]:
+                        - img "check" [ref=e87]
+                        - text: H1B Sponsor Likely
+                        - img "note" [ref=e88]
+              - separator [ref=e89]
+              - generic [ref=e90]:
+                - heading "Responsibilities" [level=2] [ref=e92]
+                - generic [ref=e93]:
+                  - generic [ref=e98]: Provide clerical and administrative support to the assigned department manager
+                  - generic [ref=e103]: Maintain knowledge and ensure the protection of policies, practices, and requirements
+                  - generic [ref=e108]: Assist in preparing project reports, progress summaries, spreadsheets, general letters, and other written material
+                  - generic [ref=e113]: Maintain high degree of quality control and validation of the completed work
+                  - generic [ref=e118]: Participates in projects and programs designed to develop professional skills and expertise appropriate to the needs of the organization
+                  - generic [ref=e123]: Participate in various phases of a planned training
+                  - generic [ref=e128]: Attend and participate in staff meetings and trainings/workshops which provide for an increasing awareness of general knowledge of programs and current practices
+                  - generic [ref=e133]: Uses acquired knowledge and skills to carry out and complete project activities
+                  - generic [ref=e138]: Attend staff meetings and serve on project teams as required
+                  - generic [ref=e143]: Coordinate all paperwork according to procedures
+                  - generic [ref=e148]: Answer and route telephone calls, take messages, and arrange travel for manager or appropriate personnel
+                  - generic [ref=e153]: Perform other duties as assigned
+              - separator [ref=e154]
+              - generic [ref=e155]:
+                - heading "Qualification" [level=2] [ref=e157]
+                - generic [ref=e158]:
+                  - generic [ref=e159] [cursor=pointer]: Microsoft Word
+                  - generic [ref=e160] [cursor=pointer]: Microsoft PowerPoint
+                  - generic [ref=e161] [cursor=pointer]: Microsoft Excel
+                  - generic [ref=e162] [cursor=pointer]: Office equipment operation
+                  - generic [ref=e163] [cursor=pointer]: Computer skills
+                  - generic [ref=e164] [cursor=pointer]: Customer service
+                - generic [ref=e165]:
+                  - heading "Required" [level=4] [ref=e166]
+                  - generic [ref=e170]: High school diploma or GED supplemented by secretarial and computer courses
+                  - generic [ref=e174]: Customer service focus, extroverted personality that will have a positive impact on our customers
+                  - generic [ref=e178]: Strong communication and organizational skills
+                  - generic [ref=e182]: Good attitude. Ability to get along with various personalities
+                  - generic [ref=e186]: Advanced ability to operate standard office equipment and a personal computer
+                  - generic [ref=e190]: Highly proficient with Microsoft, Word, Power Point, Excel
+                - generic [ref=e191]:
+                  - heading "Preferred" [level=4] [ref=e192]
+                  - generic [ref=e196]: College preferred
+            - separator [ref=e197]
+            - generic [ref=e198]:
+              - heading "Company" [level=2] [ref=e200]
+              - generic [ref=e202]:
+                - generic [ref=e205]:
+                  - generic [ref=e206]:
+                    - generic [ref=e207]:
+                      - heading "Kirby" [level=2] [ref=e208]
+                      - link "twitter" [ref=e210] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/company/12072
+                        - img "twitter" [ref=e211]
+                    - img "company-logo" [ref=e213]
+                  - generic [ref=e214]: Kirby Corporation is a diversified business with operations in the marine transportation and engine services industries.
+                - generic [ref=e217]:
+                  - generic [ref=e218]:
+                    - img "location" [ref=e219]
+                    - generic [ref=e220]: US
+                  - generic [ref=e221]:
+                    - img "people-size" [ref=e222]
+                    - text: 1001-5000 employees
+                  - generic [ref=e223]:
+                    - img "web-link" [ref=e224]
+                    - link "http://www.kirbycorp.com/" [ref=e226] [cursor=pointer]:
+                      - /url: http://www.kirbycorp.com/
+              - generic [ref=e227]:
+                - generic [ref=e228]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e230]
+                  - generic [ref=e232]:
+                    - text: Kirby has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e233]: (Data Powered by US Department of Labor)
+                  - generic [ref=e234]:
+                    - generic [ref=e235]:
+                      - generic [ref=e236]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e243]: Represents job field similar to this job
+                    - generic [ref=e244]:
+                      - generic [ref=e245]: Trends of Total Sponsorships
+                      - generic [ref=e246]:
+                        - generic [ref=e247]:
+                          - text: "2022"
+                          - generic [ref=e248]: (2)
+                        - progressbar [ref=e249]
+                      - generic [ref=e253]:
+                        - generic [ref=e254]:
+                          - text: "2020"
+                          - generic [ref=e255]: (1)
+                        - progressbar [ref=e256]
+                - generic [ref=e260]:
+                  - heading "Funding" [level=2] [ref=e262]
+                  - generic [ref=e266]:
+                    - generic [ref=e267]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e268]:
+                  - heading "Leadership Team" [level=2] [ref=e270]
+                  - generic [ref=e271]:
+                    - generic [ref=e273] [cursor=pointer]:
+                      - img "leader-logo" [ref=e275]
+                      - generic [ref=e276]:
+                        - generic [ref=e277]: D. Jason Hume
+                        - generic [ref=e278]: Vice President of Finance (Divisional CFO) for KDS
+                      - link "linkedin" [ref=e279]:
+                        - /url: https://www.linkedin.com/in/d-jason-hume-54392b71
+                        - img "linkedin" [ref=e280]
+                    - generic [ref=e282] [cursor=pointer]:
+                      - img "leader-logo" [ref=e284]
+                      - generic [ref=e285]:
+                        - generic [ref=e286]: Christian O'Neil
+                        - generic [ref=e287]: Chief Operating Officer
+                      - link "linkedin" [ref=e288]:
+                        - /url: https://www.linkedin.com/in/christian-o-neil-06081769
+                        - img "linkedin" [ref=e289]
+                - generic [ref=e291]: Company data provided by crunchbase
+        - complementary [ref=e292]:
+          - generic [ref=e295]:
+            - generic [ref=e296]: Boost Your Interview Chances
+            - generic [ref=e297]:
+              - generic [ref=e298]:
+                - generic [ref=e299]: Improve Resume Match Score
+                - generic [ref=e300]: FREE
+              - generic [ref=e301]:
+                - generic [ref=e302]:
+                  - generic [ref=e305]:
+                    - img [ref=e306]
+                    - paragraph [ref=e320]: "?"
+                  - generic [ref=e321]: Your Score
+                - generic [ref=e323]:
+                  - generic [ref=e326]:
+                    - img [ref=e327]
+                    - paragraph [ref=e341]: "8.6"
+                  - generic [ref=e342]: Top Applicants
+              - generic [ref=e343]:
+                - generic [ref=e344]:
+                  - img "skill icon" [ref=e346]
+                  - generic [ref=e347]: Must-Have Skills for This Role
+                - generic [ref=e349]:
+                  - generic [ref=e350] [cursor=pointer]: Microsoft Word
+                  - generic [ref=e351] [cursor=pointer]: Microsoft PowerPoint
+                  - generic [ref=e352] [cursor=pointer]: Microsoft Excel
+                  - generic [ref=e353] [cursor=pointer]: Office equipment operation
+                  - generic [ref=e354] [cursor=pointer]: Computer skills
+              - button "Optimize my Resume" [ref=e356] [cursor=pointer]:
+                - generic [ref=e357]: Optimize my Resume
+            - generic [ref=e358]:
+              - generic [ref=e359]:
+                - generic [ref=e360]: Get Referral Via linkedIn
+                - generic [ref=e361]: FREE
+              - generic [ref=e362]: 3× Higher Response via Email Outreach
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - generic [ref=e370] [cursor=pointer]: M
+                  - generic [ref=e372]:
+                    - generic [ref=e373]: Mark R.
+                    - generic [ref=e374]: IT Support Analyst II
+                - generic [ref=e375]:
+                  - img "email" [ref=e377] [cursor=pointer]
+                  - img "linkedin" [ref=e379] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e381] [cursor=pointer]:
+                - generic [ref=e382]: Draft Message to Connect
+            - generic [ref=e383]:
+              - generic [ref=e384]:
+                - generic [ref=e385]: Apply Faster with Autofill Plugin
+                - generic [ref=e386]: FREE
+              - img "autofill" [ref=e388]
+              - button "Apply With Autofill" [ref=e390] [cursor=pointer]:
+                - generic [ref=e391]: Apply With Autofill
+  - alert [ref=e392]

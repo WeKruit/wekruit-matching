@@ -1,0 +1,220 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Beanfield · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Beanfield
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "Customer Operations Analyst Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Montréal, QC, CA
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Hybrid
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: CA$18.10/hr - CA$18.10/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Beanfield
+                    - text: is a company that connects people through a robust, independently owned fibre-optic network. As a
+                    - strong [ref=e80]: Customer Operations Analyst Intern
+                    - text: ", you will contribute to initiatives that enhance the customer journey and operational excellence by analyzing customer interactions, collaborating with teams to optimize processes, and supporting project implementations."
+                  - generic [ref=e83]:
+                    - generic [ref=e84]: Telecom & Communications
+                    - generic [ref=e85]: Internet
+                    - generic [ref=e86]: Telecommunications
+                    - generic [ref=e87]: Wired Telecommunications
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Analyzing customer interactions and trends to generate insights that inform decision-making and improve overall service delivery
+                  - generic [ref=e102]: Collaborating with cross-functional teams to optimize processes across the customer lifecycle, including onboarding, billing, and account management
+                  - generic [ref=e107]: Contributing to billing and risk management efforts by identifying potential process gaps, or compliance risks, and ensuring appropriate escalation and mitigation
+                  - generic [ref=e112]: Supporting to the implementation of new projects and initiatives, while building expertise in customer strategy, product knowledge, and operational best practices
+              - separator [ref=e113]
+              - generic [ref=e114]:
+                - heading "Qualification" [level=2] [ref=e116]
+                - generic [ref=e117]:
+                  - generic [ref=e118] [cursor=pointer]: Data Modeling
+                  - generic [ref=e119] [cursor=pointer]: Forecasting
+                  - generic [ref=e120] [cursor=pointer]: Data Interpretation
+                  - generic [ref=e121] [cursor=pointer]: Data Visualization
+                  - generic [ref=e122] [cursor=pointer]: Customer Strategy
+                  - generic [ref=e123] [cursor=pointer]: Process Improvement
+                  - generic [ref=e124] [cursor=pointer]: Process Optimization
+                  - generic [ref=e125] [cursor=pointer]: Billing
+                  - generic [ref=e126] [cursor=pointer]: Risk Management
+                - generic [ref=e127]:
+                  - heading "Required" [level=4] [ref=e128]
+                  - generic [ref=e132]: Strong analytical skills with experience in data modeling, forecasting, and interpreting datasets to uncover trends, risks, and opportunities for process improvement
+                  - generic [ref=e136]: Proficiency in data visualization tools to translate data into clear, actionable insights that support decision-making and continuous improvement initiatives
+                  - generic [ref=e140]: Strong communication skills with the ability to present complex data and process findings in a clear, concise, and compelling manner
+                  - generic [ref=e144]: Demonstrated mindset for process excellence, with the ability to evaluate current workflows, identify inefficiencies, and recommend practical, scalable solutions
+                  - generic [ref=e148]: Ability to contribute to cross-functional projects focused on process optimization, including defining requirements, tracking progress, and ensuring successful implementation
+                  - generic [ref=e152]: "Education preferred in Data Science, Statistics, Computer Science, Mathematics, or Economics. Alternative Majors: Business Analytics, Finance, or even Psychology"
+              - separator [ref=e153]
+              - generic [ref=e154]:
+                - heading "Benefits" [level=2] [ref=e156]
+                - generic [ref=e157]:
+                  - generic [ref=e161]: A united, values-driven culture that genuinely cares about people, collaboration, and community.
+                  - generic [ref=e165]: Hybrid work model with purposeful, in-person collaboration from our Montreal office.
+            - separator [ref=e166]
+            - generic [ref=e167]:
+              - heading "Company" [level=2] [ref=e169]
+              - generic [ref=e171]:
+                - generic [ref=e174]:
+                  - generic [ref=e175]:
+                    - generic [ref=e176]:
+                      - heading "Beanfield" [level=2] [ref=e177]
+                      - generic [ref=e178]:
+                        - link "twitter" [ref=e179] [cursor=pointer]:
+                          - /url: https://x.com/beanfield
+                          - img "twitter" [ref=e180]
+                        - link "twitter" [ref=e181] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1745590
+                          - img "twitter" [ref=e182]
+                        - link "twitter" [ref=e183] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/beanfield-metroconnect
+                          - img "twitter" [ref=e184]
+                    - img "company-logo" [ref=e186]
+                  - generic [ref=e187]: As a leading Canadian independent Internet service provider, Beanfield offers Fibre-optic Internet with unparalleled speed and reliability to residential and commercial customers in Toronto, Montreal, and Vancouver.
+                - generic [ref=e190]:
+                  - generic [ref=e191]:
+                    - img "date" [ref=e192]
+                    - text: Founded in 1988
+                  - generic [ref=e193]:
+                    - img "location" [ref=e194]
+                    - generic [ref=e195]: Toronto, Ontario, CAN
+                  - generic [ref=e196]:
+                    - img "people-size" [ref=e197]
+                    - text: 201-500 employees
+                  - generic [ref=e198]:
+                    - img "web-link" [ref=e199]
+                    - link "https://www.beanfield.com" [ref=e201] [cursor=pointer]:
+                      - /url: https://www.beanfield.com
+              - generic [ref=e202]:
+                - generic [ref=e203]:
+                  - heading "Funding" [level=2] [ref=e205]
+                  - generic [ref=e206]:
+                    - generic [ref=e208]:
+                      - generic [ref=e209]:
+                        - generic [ref=e210]: Current Stage
+                        - text: Growth Stage
+                      - generic [ref=e211]:
+                        - generic [ref=e212]: Total Funding
+                        - text: unknown
+                    - generic [ref=e214]:
+                      - generic [ref=e215]: Key Investors
+                      - generic [ref=e217]: OMERS Infrastructure
+                    - generic [ref=e221]:
+                      - generic [ref=e222]: 2023-07-18
+                      - generic [ref=e223]: Private Equity
+                - generic [ref=e224]:
+                  - heading "Recent News" [level=2] [ref=e226]
+                  - generic [ref=e227]:
+                    - generic [ref=e229]:
+                      - generic [ref=e230]:
+                        - generic [ref=e231]: Fierce Network
+                        - link "Tech and telecom career moves – GSMA, Cloudera, VEON" [ref=e233] [cursor=pointer]:
+                          - /url: https://www.fierce-network.com/wireless/tech-and-telecom-career-moves-gsma-cloudera-veon
+                          - generic [ref=e234]: Tech and telecom career moves – GSMA, Cloudera, VEON
+                      - generic [ref=e235]: 2025-03-29
+                    - generic [ref=e237]:
+                      - generic [ref=e238]:
+                        - generic [ref=e239]: GlobeNewswire News Room
+                        - link "Beanfield proudly welcomes new Chief Financial Officer, Winnie Leung" [ref=e241] [cursor=pointer]:
+                          - /url: https://www.globenewswire.com/news-release/2025/03/24/3047940/0/en/Beanfield-proudly-welcomes-new-Chief-Financial-Officer-Winnie-Leung.html
+                          - generic [ref=e242]: Beanfield proudly welcomes new Chief Financial Officer, Winnie Leung
+                      - generic [ref=e243]: 2025-03-24
+                - generic [ref=e245]: Company data provided by crunchbase
+        - complementary [ref=e246]:
+          - generic [ref=e249]:
+            - generic [ref=e250]: Boost Your Interview Chances
+            - generic [ref=e251]:
+              - generic [ref=e252]:
+                - generic [ref=e253]: Improve Resume Match Score
+                - generic [ref=e254]: FREE
+              - generic [ref=e255]:
+                - generic [ref=e256]:
+                  - generic [ref=e259]:
+                    - img [ref=e260]
+                    - paragraph [ref=e274]: "?"
+                  - generic [ref=e275]: Your Score
+                - generic [ref=e277]:
+                  - generic [ref=e280]:
+                    - img [ref=e281]
+                    - paragraph [ref=e284]: "-"
+                  - generic [ref=e285]: Top Applicants
+              - generic [ref=e286]:
+                - generic [ref=e287]:
+                  - img "skill icon" [ref=e289]
+                  - generic [ref=e290]: Must-Have Skills for This Role
+                - generic [ref=e292]:
+                  - generic [ref=e293] [cursor=pointer]: Data Modeling
+                  - generic [ref=e294] [cursor=pointer]: Forecasting
+                  - generic [ref=e295] [cursor=pointer]: Data Interpretation
+                  - generic [ref=e296] [cursor=pointer]: Data Visualization
+                  - generic [ref=e297] [cursor=pointer]: Customer Strategy
+              - button "Optimize my Resume" [ref=e299] [cursor=pointer]:
+                - generic [ref=e300]: Optimize my Resume
+            - generic [ref=e301]:
+              - generic [ref=e302]:
+                - generic [ref=e303]: Get Referral Via linkedIn
+                - generic [ref=e304]: FREE
+              - generic [ref=e305]: 3× Higher Response via Email Outreach
+              - generic [ref=e308]:
+                - generic [ref=e309]:
+                  - generic [ref=e313] [cursor=pointer]: L
+                  - generic [ref=e315]:
+                    - generic [ref=e316]: Linda L.
+                    - generic [ref=e317]: Technical Recruiter
+                - generic [ref=e318]:
+                  - img "email" [ref=e320] [cursor=pointer]
+                  - img "linkedin" [ref=e322] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e324] [cursor=pointer]:
+                - generic [ref=e325]: Draft Message to Connect
+            - generic [ref=e326]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: Apply Faster with Autofill Plugin
+                - generic [ref=e329]: FREE
+              - img "autofill" [ref=e331]
+              - button "Apply With Autofill" [ref=e333] [cursor=pointer]:
+                - generic [ref=e334]: Apply With Autofill
+  - alert [ref=e335]

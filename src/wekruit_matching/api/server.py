@@ -29,6 +29,7 @@ from wekruit_matching.feedback.handler import record_feedback
 from wekruit_matching.models.user_profile import UserProfile
 from wekruit_matching.models.feedback import ReactionType
 from wekruit_matching.db.connection import get_connection
+from wekruit_matching.api.internal_ui import router as internal_router
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -40,6 +41,7 @@ app = FastAPI(
     openapi_url=None,
 )
 app.state.limiter = limiter
+app.include_router(internal_router)
 
 
 @app.exception_handler(RateLimitExceeded)
@@ -206,6 +208,108 @@ def jobx_recommendations(request: Request, body: JobXMatchRequest, _: None = Dep
     except Exception as e:
         logger.exception("Unhandled error in POST /api/v1/matching/recommendations: {}", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
+# ---------------------------------------------------------------------------
+# POST /analyze-url — On-demand job URL analysis (no DB write)
+# ---------------------------------------------------------------------------
+
+class AnalyzeUrlRequest(BaseModel):
+    """Request for on-demand job URL analysis."""
+    url: str = Field(..., description="Job posting URL to analyze")
+    user_skills: list[str] = Field(default_factory=list, description="User's skills for matching")
+
+
+@app.post("/analyze-url")
+@limiter.limit("30/minute")
+def analyze_url(request: Request, body: AnalyzeUrlRequest, _: None = Depends(verify_api_key)) -> dict:
+    """Scrape a job URL and classify it on-demand without storing to DB.
+
+    Returns: job title, company, required skills, matched skills, match score.
+    Uses the same Claude Haiku classifier as batch enrichment — cheap & structured.
+    """
+    import httpx
+    from wekruit_matching.enrichment.classifier import classify_job, KNOWN_SKILLS
+    from wekruit_matching.models.job import Job
+
+    # Step 1: Fetch the job page
+    try:
+        with httpx.Client(timeout=15, follow_redirects=True) as client:
+            resp = client.get(body.url, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                "Accept": "text/html,application/xhtml+xml",
+            })
+            resp.raise_for_status()
+            html = resp.text
+    except Exception as e:
+        logger.warning("Failed to fetch {}: {}", body.url, e)
+        raise HTTPException(status_code=422, detail=f"Could not fetch URL: {e}") from e
+
+    # Step 2: Extract text from HTML (strip scripts/styles, keep text)
+    import re
+    text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', html, flags=re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()[:6000]
+
+    # Step 3: Extract title/company from HTML meta tags or page text
+    title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+    page_title = title_match.group(1).strip() if title_match else ""
+
+    # Try og:title for cleaner job title
+    og_match = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\'](.*?)["\']', html, re.IGNORECASE)
+    job_title = og_match.group(1).strip() if og_match else page_title.split("|")[0].split("-")[0].strip()
+
+    # Try og:site_name for company
+    site_match = re.search(r'<meta[^>]+property=["\']og:site_name["\'][^>]+content=["\'](.*?)["\']', html, re.IGNORECASE)
+    company = site_match.group(1).strip() if site_match else ""
+
+    # Step 4: Classify using existing enrichment pipeline (Claude Haiku — cheap)
+    fake_job = Job(
+        job_id=f"analyze-{hash(body.url) % 10**8}",
+        source_repo="on-demand",
+        company_name=company or "Unknown",
+        role_title=job_title or "Unknown Role",
+        primary_url=body.url,
+        location_raw="",
+    )
+    enrichment = classify_job(fake_job)
+
+    # Step 5: Match user skills against required skills using the SAME scorer as /match
+    from wekruit_matching.matching.scorer import score_skills_overlap, WEIGHTS
+    user_skills_lower = {s.lower() for s in body.user_skills}
+    matched = [s for s in enrichment.required_skills if s.lower() in user_skills_lower]
+
+    # Use the same coverage-dominant skill overlap scorer as batch /match
+    skills_signal = score_skills_overlap(body.user_skills, enrichment.required_skills)
+    # For signals we can't compute (title embedding, location, etc.), use neutral 0.5
+    # This produces a score comparable to /match — not inflated by skill-only counting
+    neutral = 0.5
+    match_score = round(
+        (
+            WEIGHTS["skills_overlap"] * skills_signal
+            + WEIGHTS["title_similarity"] * neutral
+            + WEIGHTS["industry_match"] * (1.0 if enrichment.industry else neutral)
+            + WEIGHTS["company_size_match"] * neutral
+            + WEIGHTS["location_fit"] * neutral
+            + WEIGHTS["recency"] * 0.8  # assume recent since user just found it
+            + WEIGHTS["feedback_boost"] * neutral
+        )
+        * 100
+    )
+
+    return {
+        "jobTitle": job_title or fake_job.role_title,
+        "company": company or fake_job.company_name,
+        "jobDescription": text[:500],
+        "requiredSkills": enrichment.required_skills,
+        "preferredSkills": [],
+        "matchedSkills": matched,
+        "matchScore": match_score,
+        "industry": enrichment.industry,
+        "companySize": enrichment.company_size,
+        "sponsorship": enrichment.sponsorship,
+    }
 
 
 @app.get("/jobs/stats")

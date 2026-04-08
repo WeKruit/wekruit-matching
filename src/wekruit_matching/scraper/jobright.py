@@ -142,34 +142,131 @@ def _map_industry(raw_industries: list | None) -> str | None:
 def _extract_skills_from_qualifications(quals: str | None) -> list[str]:
     """Extract skill keywords from qualifications text.
 
-    Simple keyword matching — not LLM-based. Catches common tech skills
-    mentioned in job requirements.
+    Word-boundary regex matching — no LLM, catches common tech skills
+    mentioned in job requirements without false positives from substrings.
     """
     if not quals:
         return []
 
     text = quals.lower()
-    known_skills = [
-        "python", "java", "javascript", "typescript", "c++", "c#", "go", "golang",
-        "rust", "ruby", "swift", "kotlin", "scala", "r", "sql", "nosql",
-        "react", "angular", "vue", "node.js", "next.js", "express",
-        "django", "flask", "spring", "spring boot",
-        "aws", "gcp", "azure", "docker", "kubernetes", "terraform",
-        "git", "linux", "bash",
-        "pytorch", "tensorflow", "pandas", "numpy", "scikit-learn",
-        "machine learning", "deep learning", "nlp", "computer vision",
-        "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-        "graphql", "rest", "api",
-        "html", "css", "tailwind",
-        "figma", "sketch",
-        "agile", "scrum", "jira",
-        "excel", "tableau", "power bi",
+
+    # Skills that need word-boundary matching to avoid false positives.
+    # Format: (display_name, regex_pattern)
+    # Short/ambiguous terms like "r", "go", "rest", "css" use stricter patterns.
+    _SKILL_PATTERNS: list[tuple[str, str]] = [
+        # Languages — safe (long enough)
+        ("python", r"\bpython\b"),
+        ("java", r"\bjava\b(?!script)"),
+        ("javascript", r"\bjavascript\b"),
+        ("typescript", r"\btypescript\b"),
+        ("c++", r"\bc\+\+\b"),
+        ("c#", r"\bc#\b"),
+        ("go", r"\b(?:golang|go\s+(?:lang|programming|developer|engineer))\b"),
+        ("rust", r"\brust\b(?:\s+(?:lang|programming)|\b)"),
+        ("ruby", r"\bruby\b"),
+        ("swift", r"\bswift\b(?:\s+(?:programming|ios|ui)|\b)"),
+        ("kotlin", r"\bkotlin\b"),
+        ("scala", r"\bscala\b"),
+        ("r", r"\b(?:r\s+(?:programming|studio|language)|(?:python|sql|sas)[,/\s]+r\b|r[,/\s]+(?:python|sql|sas))\b"),
+        ("sql", r"\bsql\b"),
+        ("nosql", r"\bnosql\b"),
+        # Frontend
+        ("react", r"\breact(?:\.?js)?\b"),
+        ("angular", r"\bangular\b"),
+        ("vue", r"\bvue(?:\.?js)?\b"),
+        ("node.js", r"\bnode\.?js\b"),
+        ("next.js", r"\bnext\.?js\b"),
+        ("express", r"\bexpress\.?js\b|\bexpress\s+(?:framework|server)\b"),
+        # Backend
+        ("django", r"\bdjango\b"),
+        ("flask", r"\bflask\b"),
+        ("spring boot", r"\bspring\s*boot\b"),
+        ("spring", r"\bspring\s+(?:framework|mvc|boot|cloud|data)\b"),
+        # Cloud / DevOps
+        ("aws", r"\baws\b"),
+        ("gcp", r"\bgcp\b|\bgoogle\s+cloud\b"),
+        ("azure", r"\bazure\b"),
+        ("docker", r"\bdocker\b"),
+        ("kubernetes", r"\bkubernetes\b|\bk8s\b"),
+        ("terraform", r"\bterraform\b"),
+        ("git", r"\bgit(?:hub|lab)?\b"),
+        ("linux", r"\blinux\b"),
+        ("bash", r"\bbash\b"),
+        # ML / AI
+        ("pytorch", r"\bpytorch\b"),
+        ("tensorflow", r"\btensorflow\b"),
+        ("pandas", r"\bpandas\b"),
+        ("numpy", r"\bnumpy\b"),
+        ("scikit-learn", r"\bscikit-learn\b|\bsklearn\b"),
+        ("machine learning", r"\bmachine\s+learning\b"),
+        ("deep learning", r"\bdeep\s+learning\b"),
+        ("nlp", r"\bnlp\b|\bnatural\s+language\s+processing\b"),
+        ("computer vision", r"\bcomputer\s+vision\b"),
+        # Databases
+        ("postgresql", r"\bpostgre(?:sql|s)\b"),
+        ("mysql", r"\bmysql\b"),
+        ("mongodb", r"\bmongodb\b|\bmongo\b"),
+        ("redis", r"\bredis\b"),
+        ("elasticsearch", r"\belasticsearch\b|\belastic\s+search\b"),
+        # APIs
+        ("graphql", r"\bgraphql\b"),
+        ("rest api", r"\brest(?:ful)?\s+api\b"),
+        # Frontend tech
+        ("html", r"\bhtml5?\b"),
+        ("css", r"\bcss3?\b"),
+        ("tailwind", r"\btailwind\b"),
+        # Design
+        ("figma", r"\bfigma\b"),
+        # Process
+        ("agile", r"\bagile\b"),
+        ("scrum", r"\bscrum\b"),
+        ("jira", r"\bjira\b"),
+        # Analytics / BI
+        ("excel", r"\bexcel\b"),
+        ("tableau", r"\btableau\b"),
+        ("power bi", r"\bpower\s*bi\b"),
+        ("looker", r"\blooker\b"),
+        # Business / Finance / Accounting
+        ("financial modeling", r"\bfinancial\s+model"),
+        ("accounting", r"\baccounting\b|\bgaap\b|\bifrs\b"),
+        ("quickbooks", r"\bquickbooks\b"),
+        ("sap", r"\bsap\b"),
+        ("salesforce", r"\bsalesforce\b"),
+        ("crm", r"\bcrm\b"),
+        ("erp", r"\berp\b"),
+        ("bloomberg", r"\bbloomberg\b"),
+        # Marketing / Sales
+        ("google analytics", r"\bgoogle\s+analytics\b"),
+        ("seo", r"\bseo\b"),
+        ("sem", r"\bsem\b"),
+        ("hubspot", r"\bhubspot\b"),
+        ("social media marketing", r"\bsocial\s+media\s+marketing\b"),
+        ("content marketing", r"\bcontent\s+(?:marketing|strategy)\b"),
+        ("copywriting", r"\bcopywriting\b|\bcopy\s+writing\b"),
+        # Design
+        ("adobe creative suite", r"\badobe\s+(?:creative|cc|photoshop|illustrator|indesign)\b"),
+        ("photoshop", r"\bphotoshop\b"),
+        ("illustrator", r"\billustrator\b"),
+        ("sketch", r"\bsketch\s+(?:app|design|tool)\b"),
+        ("invision", r"\binvision\b"),
+        # HR / Legal
+        ("hris", r"\bhris\b"),
+        ("workday", r"\bworkday\b"),
+        ("compliance", r"\bcompliance\b"),
+        ("contract management", r"\bcontract\s+(?:management|drafting|review)\b"),
+        # Communication / General
+        ("public speaking", r"\bpublic\s+speaking\b|\bpresentation\s+skills\b"),
+        ("project management", r"\bproject\s+management\b|\bpmp\b"),
+        ("six sigma", r"\bsix\s+sigma\b|\blean\s+six\b"),
+        ("autocad", r"\bautocad\b"),
+        ("solidworks", r"\bsolidworks\b"),
+        ("matlab", r"\bmatlab\b"),
     ]
 
     found = []
-    for skill in known_skills:
-        if skill in text:
-            found.append(skill)
+    for display_name, pattern in _SKILL_PATTERNS:
+        if re.search(pattern, text):
+            found.append(display_name)
 
     return found[:10]  # Cap at 10 skills
 

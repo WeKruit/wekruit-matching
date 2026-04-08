@@ -1,0 +1,270 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Pearle Vision · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Pearle Vision
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Intern Optician-ThunderBay, ON-Pearle Vision" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Thunder Bay, ON
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Pearle Vision
+                    - text: is part of EssilorLuxottica, a global leader in vision care products. The Intern Optician is responsible for delivering exceptional customer experiences, assisting customers with eyewear selection, and ensuring the satisfaction of both customers and associates under the guidance of licensed opticians.
+                  - generic [ref=e78]:
+                    - generic [ref=e79]: Enterprise Software
+                    - generic [ref=e80]: Electronics
+                    - generic [ref=e81]: Healthcare
+                    - generic [ref=e82]: Contact Management
+                    - generic [ref=e83]: Eyewear
+                    - generic [ref=e84]: Health Care
+              - separator [ref=e85]
+              - generic [ref=e86]:
+                - heading "Responsibilities" [level=2] [ref=e88]
+                - generic [ref=e89]:
+                  - generic [ref=e94]: Greets customers without delay when they enter the store
+                  - generic [ref=e99]: Shows urgency in providing service to customers and satisfying their needs
+                  - generic [ref=e104]: Determines the reason for the customer's visit, exchanges names, and explains how to shop at Pearle Vision
+                  - generic [ref=e109]: Identifies and escorts the customer to the appropriate location in store
+                  - generic [ref=e114]: Under guidance, reviews prescriptions and identifies special needs
+                  - generic [ref=e119]: Performs work accurately and thoroughly despite time pressure and customer volume
+                  - generic [ref=e124]: Identifies situations involving unsatisfied customers and acts quickly for resolution
+                  - generic [ref=e129]: "Uses the Eyewear Consultation Folder to educate the customer on Pearle Vision products, guarantees and services including: eyewear care tips, complimentary adjustments and follow-up services"
+                  - generic [ref=e134]: Under guidance and instruction from an Optician handles tasks, such as taking and recording measurements and adjusting or fitting eyewear carefully and correctly
+                  - generic [ref=e139]: Under guidance and instruction from an Optician, ensures finished eyewear meets Pearle Vision' optical standards and customer requirements/requests
+                  - generic [ref=e144]: Under guidance from an Optician, troubleshoots vision issues and determine correct course of action
+                  - generic [ref=e149]: Under guidance from an Optician, repairs and adjusts eyewear according to customers visual and comfort needs
+                  - generic [ref=e154]: "Demonstrates good product knowledge; takes the initiative to accurately describe the features and benefits of various lenses and frames:"
+                  - generic [ref=e159]: Assists the customer in selecting frames and lenses that are best suited for their lifestyle, RX and price needs
+                  - generic [ref=e164]: Suggests improvements and recommends solutions to problems
+                  - generic [ref=e169]: Takes time to help the customers and answer questions giving them a better understanding of available options
+                  - generic [ref=e174]: Shows patience and courtesy to indecisive or hard-to-please customers
+                  - generic [ref=e179]: Operates the Software system by inputting customer and prescription information with accuracy and attention to detail and ensures eyewear is being processed and followed through on
+                  - generic [ref=e184]: Accurately operates the cashier terminal, when required, collecting proper payment following company security procedures and retaining proper change for a variety of transactions, such as credit cards, layaways, discounts, insurance and coupons
+                  - generic [ref=e189]: Takes pride in the appearance of the store and shows initiative in keeping the displays and inventory clean, attractive and organized. (Maintain a level of security in regards to company assets)
+                  - generic [ref=e194]: Optician may be required to be present in the store with the student while performing Optician duties based on state or provincial requirements
+              - separator [ref=e195]
+              - generic [ref=e196]:
+                - heading "Qualification" [level=2] [ref=e198]
+                - generic [ref=e199]:
+                  - generic [ref=e200] [cursor=pointer]: Optical theory
+                  - generic [ref=e201] [cursor=pointer]: Practices
+                  - generic [ref=e202] [cursor=pointer]: Optical measurements
+                  - generic [ref=e203] [cursor=pointer]: Fitting
+                  - generic [ref=e204] [cursor=pointer]: Eyewear adjustment
+                  - generic [ref=e205] [cursor=pointer]: Repair
+                  - generic [ref=e206] [cursor=pointer]: Prescription review
+                  - generic [ref=e207] [cursor=pointer]: Optical software operation
+                  - generic [ref=e208] [cursor=pointer]: Cashier operation
+                  - generic [ref=e209] [cursor=pointer]: Basic math skills
+                  - generic [ref=e210] [cursor=pointer]: State/provincial licensing
+                  - generic [ref=e211] [cursor=pointer]: Guidelines
+                  - generic [ref=e212] [cursor=pointer]: Sales
+                  - generic [ref=e213] [cursor=pointer]: Listening
+                - generic [ref=e214]:
+                  - heading "Required" [level=4] [ref=e215]
+                  - generic [ref=e219]: High School Graduate or equivalent
+                  - generic [ref=e223]: Completion of state or provincial licensure program (where applicable) or equivalent schooling
+                  - generic [ref=e227]: Licensure pending approval following completion of qualifying program
+                  - generic [ref=e231]: Previous optical and retail experience
+                  - generic [ref=e235]: Knowledge of State/Prov Licensing and Guidelines
+                  - generic [ref=e239]: Knowledge of current optical theory and practices
+                  - generic [ref=e243]: Strong communicator and listener to customers and associates
+                  - generic [ref=e247]: Strong basic math skills (addition, subtraction, multiplication, division)
+                  - generic [ref=e251]: Awareness of current fashion trends
+                  - generic [ref=e255]: Sales skills
+              - separator [ref=e256]
+              - generic [ref=e257]:
+                - heading "Benefits" [level=2] [ref=e259]
+                - generic [ref=e260]:
+                  - generic [ref=e264]: Health care
+                  - generic [ref=e268]: Retirement savings
+                  - generic [ref=e272]: Paid time off/vacation
+                  - generic [ref=e276]: Various employee discounts
+            - separator [ref=e277]
+            - generic [ref=e278]:
+              - heading "Company" [level=2] [ref=e280]
+              - generic [ref=e282]:
+                - generic [ref=e285]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]:
+                      - heading "Pearle Vision" [level=2] [ref=e288]
+                      - generic [ref=e289]:
+                        - link "twitter" [ref=e290] [cursor=pointer]:
+                          - /url: https://x.com/PearleVision
+                          - img "twitter" [ref=e291]
+                        - link "twitter" [ref=e292] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/836277
+                          - img "twitter" [ref=e293]
+                        - link "twitter" [ref=e294] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/pearle-vision
+                          - img "twitter" [ref=e295]
+                        - link "Glassdoor 3.5" [ref=e296] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Pearle-Vision-EI_IE20312.11,24.htm
+                          - generic [ref=e297]:
+                            - generic [ref=e298]: Glassdoor
+                            - generic "3.5 Stars" [ref=e299]:
+                              - img [ref=e301]
+                              - img [ref=e304]
+                              - img [ref=e307]
+                              - img [ref=e310]
+                              - img [ref=e313]
+                            - generic [ref=e315]: "3.5"
+                    - img "company-logo" [ref=e317]
+                  - generic [ref=e318]: Pearle Vision provides expert guidance on lenses, designer eyewear, and sunglasses.
+                - generic [ref=e321]:
+                  - generic [ref=e322]:
+                    - img "date" [ref=e323]
+                    - text: Founded in 1961
+                  - generic [ref=e324]:
+                    - img "location" [ref=e325]
+                    - generic [ref=e326]: Savannah, Georgia, USA
+                  - generic [ref=e327]:
+                    - img "people-size" [ref=e328]
+                    - text: 1001-5000 employees
+                  - generic [ref=e329]:
+                    - img "web-link" [ref=e330]
+                    - link "http://www.pearlevision.com" [ref=e332] [cursor=pointer]:
+                      - /url: http://www.pearlevision.com
+              - generic [ref=e333]:
+                - generic [ref=e334]:
+                  - heading "Funding" [level=2] [ref=e336]
+                  - generic [ref=e337]:
+                    - generic [ref=e339]:
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e342]:
+                        - generic [ref=e343]: Total Funding
+                        - text: unknown
+                    - generic [ref=e347]:
+                      - generic [ref=e348]: 2004-10-01
+                      - generic [ref=e349]: Acquired
+                - generic [ref=e350]:
+                  - heading "Recent News" [level=2] [ref=e352]
+                  - generic [ref=e353]:
+                    - generic [ref=e355]:
+                      - generic [ref=e356]:
+                        - generic [ref=e357]: PR Newswire
+                        - link "Pearle Vision Unveils New Retail Design, Reinventing the Eye Care Patient Experience" [ref=e359] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/pearle-vision-unveils-new-retail-design-reinventing-the-eye-care-patient-experience-302573865.html
+                          - generic [ref=e360]: Pearle Vision Unveils New Retail Design, Reinventing the Eye Care Patient Experience
+                      - generic [ref=e361]: 2025-10-02
+                    - generic [ref=e363]:
+                      - generic [ref=e364]:
+                        - generic [ref=e365]: PR Newswire
+                        - link "PEARLE VISION NAMED AMONG THE TOP 50 FRANCHISES IN ENTREPRENEUR MAGAZINE'S FRANCHISE 500® RANKING" [ref=e367] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/pearle-vision-named-among-the-top-50-franchises-in-entrepreneur-magazines-franchise-500-ranking-302358919.html
+                          - generic [ref=e368]: PEARLE VISION NAMED AMONG THE TOP 50 FRANCHISES IN ENTREPRENEUR MAGAZINE'S FRANCHISE 500® RANKING
+                      - generic [ref=e369]: 2025-01-23
+                    - generic [ref=e371]:
+                      - generic [ref=e372]:
+                        - generic [ref=e373]: 24-7 Press Release Newswire
+                        - link "Marquis Who's Who Honors Christina Blanco for Achievements in Health Care Administration and Management" [ref=e375] [cursor=pointer]:
+                          - /url: https://www.24-7pressrelease.com/press-release/516352/marquis-whos-who-honors-christina-blanco-for-achievements-in-health-care-administration-and-management
+                          - generic [ref=e376]: Marquis Who's Who Honors Christina Blanco for Achievements in Health Care Administration and Management
+                      - generic [ref=e377]: 2024-11-20
+                - generic [ref=e379]: Company data provided by crunchbase
+        - complementary [ref=e380]:
+          - generic [ref=e383]:
+            - generic [ref=e384]: Boost Your Interview Chances
+            - generic [ref=e385]:
+              - generic [ref=e386]:
+                - generic [ref=e387]: Improve Resume Match Score
+                - generic [ref=e388]: FREE
+              - generic [ref=e389]:
+                - generic [ref=e390]:
+                  - generic [ref=e393]:
+                    - img [ref=e394]
+                    - paragraph [ref=e408]: "?"
+                  - generic [ref=e409]: Your Score
+                - generic [ref=e411]:
+                  - generic [ref=e414]:
+                    - img [ref=e415]
+                    - paragraph [ref=e429]: "9.9"
+                  - generic [ref=e430]: Top Applicants
+              - generic [ref=e431]:
+                - generic [ref=e432]:
+                  - img "skill icon" [ref=e434]
+                  - generic [ref=e435]: Must-Have Skills for This Role
+                - generic [ref=e437]:
+                  - generic [ref=e438] [cursor=pointer]: Optical theory
+                  - generic [ref=e439] [cursor=pointer]: practices
+                  - generic [ref=e440] [cursor=pointer]: Optical measurements
+                  - generic [ref=e441] [cursor=pointer]: fitting
+                  - generic [ref=e442] [cursor=pointer]: Eyewear adjustment
+              - button "Optimize my Resume" [ref=e444] [cursor=pointer]:
+                - generic [ref=e445]: Optimize my Resume
+            - generic [ref=e446]:
+              - generic [ref=e447]:
+                - generic [ref=e448]: Get Referral Via linkedIn
+                - generic [ref=e449]: FREE
+              - generic [ref=e450]: 3× Higher Response via Email Outreach
+              - generic [ref=e451]:
+                - generic [ref=e453]:
+                  - generic [ref=e454]:
+                    - generic [ref=e458] [cursor=pointer]: B
+                    - generic [ref=e460]:
+                      - generic [ref=e461]: Brittany R.
+                      - generic [ref=e462]: Apprentice Optician
+                  - generic [ref=e463]:
+                    - img "email" [ref=e465] [cursor=pointer]
+                    - img "linkedin" [ref=e467] [cursor=pointer]
+                - generic [ref=e469]:
+                  - generic [ref=e470]:
+                    - generic [ref=e474] [cursor=pointer]: "Y"
+                    - generic [ref=e476]:
+                      - generic [ref=e477]: Yasmine O.
+                      - generic [ref=e478]: Apprentice Optician
+                  - generic [ref=e479]:
+                    - img "email" [ref=e481] [cursor=pointer]
+                    - img "linkedin" [ref=e483] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e485] [cursor=pointer]:
+                - generic [ref=e486]: Draft Message to Connect
+            - generic [ref=e487]:
+              - generic [ref=e488]:
+                - generic [ref=e489]: Apply Faster with Autofill Plugin
+                - generic [ref=e490]: FREE
+              - img "autofill" [ref=e492]
+              - button "Apply With Autofill" [ref=e494] [cursor=pointer]:
+                - generic [ref=e495]: Apply With Autofill
+  - alert [ref=e496]

@@ -1,0 +1,258 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Omni Hotels & Resorts · 8 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Omni Hotels & Resorts
+                        - generic [ref=e52]: · 8 hours ago
+                      - heading "Omni Care Internship | Summer 2026 | Food & Beverage" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Louisville, KY
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "workcard" [ref=e75]
+                      - generic [ref=e76]: Start in 2026 Summer
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Omni Hotels & Resorts
+                    - text: is a prominent hotel brand that transforms urban spaces into vibrant environments. They are seeking an Omni Care Intern for a hands-on training opportunity to learn various aspects of the hotel business, rotating through different food and beverage departments based on business needs.
+                  - generic [ref=e82]:
+                    - generic [ref=e83]: Consulting
+                    - generic [ref=e84]: Lifestyle
+                    - generic [ref=e85]: Food and Beverage
+                    - generic [ref=e86]: Hospitality
+                    - generic [ref=e87]: Travel
+                    - generic [ref=e88]: Events
+                    - generic [ref=e89]: Resorts
+              - separator [ref=e90]
+              - generic [ref=e91]:
+                - heading "Responsibilities" [level=2] [ref=e93]
+                - generic [ref=e94]:
+                  - generic [ref=e99]: Flexible in working various entry level service positions within the property
+                  - generic [ref=e104]: Position will rotate between front office, housekeeping, and pool/recreation
+                  - generic [ref=e109]: Additional departments/roles may be added based on business needs
+                  - generic [ref=e114]: Attend to and anticipate guest’s needs
+                  - generic [ref=e119]: Demonstrate adaptability and flexibility in scheduling
+                  - generic [ref=e124]: Demonstrate excellent teamwork
+                  - generic [ref=e129]: Attend Omni Care Internship training and enrichment seminars through the summer season
+                  - generic [ref=e134]: Maintain a clean and safe work environment
+                  - generic [ref=e139]: Perform any other duties as assigned by the Operations Leader
+              - separator [ref=e140]
+              - generic [ref=e141]:
+                - heading "Qualification" [level=2] [ref=e143]
+                - generic [ref=e144]:
+                  - generic [ref=e145] [cursor=pointer]: STAR Certification
+                  - generic [ref=e146] [cursor=pointer]: Food Handlers Certification
+                  - generic [ref=e147] [cursor=pointer]: Customer Service
+                - generic [ref=e148]:
+                  - heading "Required" [level=4] [ref=e149]
+                  - generic [ref=e153]: Strong communication skills – both written and verbal required
+                  - generic [ref=e157]: Strong customer service skills
+                  - generic [ref=e161]: Willingness to learn and take on different projects
+                  - generic [ref=e165]: Ability to adapt to changing environment
+                  - generic [ref=e169]: Must be able to walk, sit, stand, squat, and lean during daily business for extended periods of time
+                  - generic [ref=e173]: Must have STAR Certification
+                  - generic [ref=e177]: Must have Food Handlers Certification
+                - generic [ref=e178]:
+                  - heading "Preferred" [level=4] [ref=e179]
+                  - generic [ref=e183]: Previous experience in a customer service position
+              - separator [ref=e184]
+              - generic [ref=e185]:
+                - heading "Benefits" [level=2] [ref=e187]
+                - generic [ref=e188]:
+                  - generic [ref=e192]: Receive 2 FREE nights at any Omni hotel or resort after completion of the program.
+                  - generic [ref=e196]: Housing options available.
+            - separator [ref=e197]
+            - generic [ref=e198]:
+              - heading "Company" [level=2] [ref=e200]
+              - generic [ref=e202]:
+                - generic [ref=e205]:
+                  - generic [ref=e206]:
+                    - generic [ref=e207]:
+                      - heading "Omni Hotels & Resorts" [level=2] [ref=e208]
+                      - generic [ref=e209]:
+                        - link "twitter" [ref=e210] [cursor=pointer]:
+                          - /url: https://x.com/OmniHotels
+                          - img "twitter" [ref=e211]
+                        - link "twitter" [ref=e212] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/165302
+                          - img "twitter" [ref=e213]
+                        - link "twitter" [ref=e214] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/omni-hotels-resorts
+                          - img "twitter" [ref=e215]
+                        - link "Glassdoor 4.0" [ref=e216] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com.au/Overview/Working-at-EI_IE19022.htm?countryPickerRedirect=true
+                          - generic [ref=e217]:
+                            - generic [ref=e218]: Glassdoor
+                            - generic "4 Stars" [ref=e219]:
+                              - img [ref=e221]
+                              - img [ref=e224]
+                              - img [ref=e227]
+                              - img [ref=e230]
+                              - img [ref=e233]
+                            - generic [ref=e235]: "4.0"
+                    - img "company-logo" [ref=e237]
+                  - generic [ref=e238]: Omni Hotels creates memorable guest experiences at 60 luxury hotels and resorts in North America
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - img "date" [ref=e243]
+                    - text: Founded in 1983
+                  - generic [ref=e244]:
+                    - img "location" [ref=e245]
+                    - generic [ref=e246]: Dallas, Texas, USA
+                  - generic [ref=e247]:
+                    - img "people-size" [ref=e248]
+                    - text: 10001+ employees
+                  - generic [ref=e249]:
+                    - img "web-link" [ref=e250]
+                    - link "http://www.omnihotels.com/" [ref=e252] [cursor=pointer]:
+                      - /url: http://www.omnihotels.com/
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - heading "Funding" [level=2] [ref=e256]
+                  - generic [ref=e260]:
+                    - generic [ref=e261]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e262]:
+                  - heading "Leadership Team" [level=2] [ref=e264]
+                  - generic [ref=e265]:
+                    - generic [ref=e267] [cursor=pointer]:
+                      - img "leader-logo" [ref=e269]
+                      - generic [ref=e270]:
+                        - generic [ref=e271]: Jeff Doane
+                        - generic [ref=e272]: Chief Commercial Officer
+                      - link "linkedin" [ref=e273]:
+                        - /url: https://www.linkedin.com/in/jeff-doane-a972b48
+                        - img "linkedin" [ref=e274]
+                    - generic [ref=e276] [cursor=pointer]:
+                      - img "leader-logo" [ref=e278]
+                      - generic [ref=e279]:
+                        - generic [ref=e280]: Joy Rothschild
+                        - generic [ref=e281]: Senior HR executive
+                      - link "linkedin" [ref=e282]:
+                        - /url: https://www.linkedin.com/in/joy-rothschild-9591351
+                        - img "linkedin" [ref=e283]
+                - generic [ref=e284]:
+                  - heading "Recent News" [level=2] [ref=e286]
+                  - generic [ref=e287]:
+                    - generic [ref=e289]:
+                      - generic [ref=e290]:
+                        - generic [ref=e291]: NOLA.com
+                        - link "Board approves tax zone for convention center 'headquarters' hotel in New Orleans" [ref=e293] [cursor=pointer]:
+                          - /url: https://www.nola.com/news/business/real_estate/board-approves-tax-zone-for-new-orleans-morial-convention-center-headquarters-omni-hotel/article_b7619053-9a8d-407c-a649-8e6871d1641d.html
+                          - generic [ref=e294]: Board approves tax zone for convention center 'headquarters' hotel in New Orleans
+                      - generic [ref=e295]: 2026-03-27
+                    - generic [ref=e297]:
+                      - generic [ref=e298]:
+                        - generic [ref=e299]: Hotel Management Network
+                        - link "Canary Technologies unveils hospitality-specific AI Agent Studio for hotels" [ref=e301] [cursor=pointer]:
+                          - /url: https://www.hotelmanagement-network.com/news/canary-unveils-hospitality-ai-agent-studio/
+                          - generic [ref=e302]: Canary Technologies unveils hospitality-specific AI Agent Studio for hotels
+                      - generic [ref=e303]: 2026-03-05
+                    - generic [ref=e305]:
+                      - generic [ref=e306]:
+                        - generic [ref=e307]: Hotel Management Network
+                        - link "Omni Hotels & Resorts adopts Canary’s Guest Experience Platform" [ref=e309] [cursor=pointer]:
+                          - /url: https://www.hotelmanagement-network.com/news/omni-hotels-resorts-adopts-canary/
+                          - generic [ref=e310]: Omni Hotels & Resorts adopts Canary’s Guest Experience Platform
+                      - generic [ref=e311]: 2026-02-21
+                - generic [ref=e313]: Company data provided by crunchbase
+        - complementary [ref=e314]:
+          - generic [ref=e317]:
+            - generic [ref=e318]: Boost Your Interview Chances
+            - generic [ref=e319]:
+              - generic [ref=e320]:
+                - generic [ref=e321]: Improve Resume Match Score
+                - generic [ref=e322]: FREE
+              - generic [ref=e323]:
+                - generic [ref=e324]:
+                  - generic [ref=e327]:
+                    - img [ref=e328]
+                    - paragraph [ref=e342]: "?"
+                  - generic [ref=e343]: Your Score
+                - generic [ref=e345]:
+                  - generic [ref=e348]:
+                    - img [ref=e349]
+                    - paragraph [ref=e352]: "-"
+                  - generic [ref=e353]: Top Applicants
+              - generic [ref=e354]:
+                - generic [ref=e355]:
+                  - img "skill icon" [ref=e357]
+                  - generic [ref=e358]: Must-Have Skills for This Role
+                - generic [ref=e360]:
+                  - generic [ref=e361] [cursor=pointer]: STAR Certification
+                  - generic [ref=e362] [cursor=pointer]: Food Handlers Certification
+                  - generic [ref=e363] [cursor=pointer]: Customer Service
+              - button "Optimize my Resume" [ref=e365] [cursor=pointer]:
+                - generic [ref=e366]: Optimize my Resume
+            - generic [ref=e367]:
+              - generic [ref=e368]:
+                - generic [ref=e369]: Get Referral Via linkedIn
+                - generic [ref=e370]: FREE
+              - generic [ref=e371]: 3× Higher Response via Email Outreach
+              - generic [ref=e372]:
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e379] [cursor=pointer]: A
+                    - generic [ref=e381]:
+                      - generic [ref=e382]: Alex S.
+                      - generic [ref=e383]: Director of Recreation & Guest Leisure Experiences
+                  - generic [ref=e384]:
+                    - img "email" [ref=e386] [cursor=pointer]
+                    - img "linkedin" [ref=e388] [cursor=pointer]
+                - generic [ref=e390]:
+                  - generic [ref=e391]:
+                    - generic [ref=e395] [cursor=pointer]: I
+                    - generic [ref=e397]:
+                      - generic [ref=e398]: Ian J.
+                      - generic [ref=e399]: Director, Convention Services | Omni Boston Hotel at the Seaport
+                  - generic [ref=e400]:
+                    - img "email" [ref=e402] [cursor=pointer]
+                    - img "linkedin" [ref=e404] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e406] [cursor=pointer]:
+                - generic [ref=e407]: Draft Message to Connect
+            - generic [ref=e408]:
+              - generic [ref=e409]:
+                - generic [ref=e410]: Apply Faster with Autofill Plugin
+                - generic [ref=e411]: FREE
+              - img "autofill" [ref=e413]
+              - button "Apply With Autofill" [ref=e415] [cursor=pointer]:
+                - generic [ref=e416]: Apply With Autofill
+  - alert [ref=e417]

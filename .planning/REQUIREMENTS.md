@@ -10,31 +10,31 @@
 
 ### User Sync
 
-- [ ] **SYNC-01**: Cloud Function receives Supabase DB Webhook payload (INSERT/UPDATE on users table) and validates the request signature
-- [ ] **SYNC-02**: Webhook receiver maps VALET user fields (skills, preferences, workAuth, resumeSummary) to PlatformUser schema and writes to Firestore `/platform-users/{uid}`
-- [ ] **SYNC-03**: Supabase Database Webhook is configured on the users table to POST to the Firebase Cloud Function endpoint on INSERT and UPDATE events
-- [ ] **SYNC-04**: User sync completes in < 1 second end-to-end with retry handling, deduplication, and sync event logging
+- [x] **SYNC-01**: Cloud Function receives Supabase DB Webhook payload (INSERT/UPDATE on users table) and validates the request signature
+- [x] **SYNC-02**: Webhook receiver maps VALET user fields (skills, preferences, workAuth, resumeSummary) to PlatformUser schema and writes to Firestore `/platform-users/{uid}`
+- [x] **SYNC-03**: Supabase Database Webhook is configured on the users and resumes tables to POST to the Firebase Cloud Function endpoint on INSERT and UPDATE events
+- [x] **SYNC-04**: User sync completes in < 1 second end-to-end with retry handling, deduplication, and sync event logging
 
 ### Job Sync
 
-- [ ] **JSYNC-01**: Cloud Function POST `/api/sync/jobs` receives batched job payloads (up to 500 per request) and upserts to Firestore `/matching-jobs/{jobId}` using content_hash diffing
-- [ ] **JSYNC-02**: Python sync script runs after daily pipeline and POSTs new/changed active embedded jobs to the Firebase sync endpoint in batches
+- [x] **JSYNC-01**: Cloud Function POST `/api/sync/jobs` receives batched job payloads (up to 500 per request) and upserts to Firestore `/matching-jobs/{jobId}` using content_hash diffing
+- [x] **JSYNC-02**: Python sync script runs after daily pipeline and POSTs new/changed active embedded jobs to the Firebase sync endpoint in batches
 - [ ] **JSYNC-03**: One-time bulk load script syncs all ~47K active jobs (with 1536-dim embeddings) from Postgres to Firestore
-- [ ] **JSYNC-04**: Pipeline marks jobs inactive in Firestore when they become stale in Postgres (status sync)
+- [x] **JSYNC-04**: Pipeline marks jobs inactive in Firestore when they become stale in Postgres (status sync)
 
 ### Matching
 
-- [ ] **MATCH-01**: Matching Cloud Function applies hard filters via Firestore WHERE clauses (sponsorship, industry, recency, location) before any vector computation, reducing candidates to ~500 docs
+- [x] **MATCH-01**: Matching Cloud Function applies hard filters via Firestore WHERE clauses (sponsorship, industry, recency, location) before any vector computation, reducing candidates to ~500 docs
 - [ ] **MATCH-02**: In-memory cosine similarity computes distance between user query embedding and ~500 filtered job embeddings in TypeScript (< 50ms)
-- [ ] **MATCH-03**: 7-signal weighted scorer is ported from Python to TypeScript with identical weights and logic (title_similarity, skills_overlap, industry_match, company_size_match, location_fit, recency, feedback_boost)
-- [ ] **MATCH-04**: User can like/dislike/apply to jobs and bookmark them; feedback persists in Firestore and influences the feedback_boost signal in subsequent matches
+- [x] **MATCH-03**: 7-signal weighted scorer is ported from Python to TypeScript with identical weights and logic (title_similarity, skills_overlap, industry_match, company_size_match, location_fit, recency, feedback_boost)
+- [x] **MATCH-04**: User can like/dislike/apply to jobs and bookmark them; feedback persists in Firestore and influences the feedback_boost signal in subsequent matches
 
 ### Job Board API
 
-- [ ] **BOARD-01**: GET `/api/matching/jobs` returns paginated job listings with status, industry, location, and sponsorship filters
+- [x] **BOARD-01**: GET `/api/matching/jobs` returns paginated job listings with status, industry, location, and sponsorship filters
 - [ ] **BOARD-02**: Search and advanced filters allow querying by keyword (company, title), skills, salary range, and seniority level with Firestore composite indexes
-- [ ] **BOARD-03**: GET `/api/matching/jobs/:id` returns full job detail including JD text, skills, salary, apply link, qualifications, and responsibilities
-- [ ] **BOARD-04**: Handoff doc is expanded with current pipeline architecture (launchd plists, scripts, log paths), Mac Mini setup instructions, Firecrawl Docker setup, and complete infrastructure map
+- [x] **BOARD-03**: GET `/api/matching/jobs/:id` returns full job detail including JD text, skills, salary, apply link, qualifications, and responsibilities
+- [x] **BOARD-04**: Handoff doc is expanded with current pipeline architecture (launchd plists, scripts, log paths), Mac Mini setup instructions, Firecrawl Docker setup, and complete infrastructure map
 
 ### v2.0 Future Requirements
 
@@ -56,22 +56,22 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Pending |
-| SYNC-01 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-02 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-03 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-04 | Phase 20 — User Sync Cloud Function | Pending |
-| JSYNC-01 | Phase 21 — Job Sync Pipeline | Pending |
-| JSYNC-02 | Phase 21 — Job Sync Pipeline | Pending |
+| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Complete |
+| SYNC-01 | Phase 20 — User Sync Cloud Function | Implemented |
+| SYNC-02 | Phase 20 — User Sync Cloud Function | Implemented |
+| SYNC-03 | Phase 20 — User Sync Cloud Function | Complete |
+| SYNC-04 | Phase 20 — User Sync Cloud Function | Implemented |
+| JSYNC-01 | Phase 21 — Job Sync Pipeline | Implemented |
+| JSYNC-02 | Phase 21 — Job Sync Pipeline | Implemented |
 | JSYNC-03 | Phase 21 — Job Sync Pipeline | Pending |
-| JSYNC-04 | Phase 21 — Job Sync Pipeline | Pending |
-| MATCH-01 | Phase 22 — Matching Cloud Function | Pending |
+| JSYNC-04 | Phase 21 — Job Sync Pipeline | Implemented |
+| MATCH-01 | Phase 22 — Matching Cloud Function | Implemented |
 | MATCH-02 | Phase 22 — Matching Cloud Function | Pending |
-| MATCH-03 | Phase 22 — Matching Cloud Function | Pending |
-| MATCH-04 | Phase 22 — Matching Cloud Function | Pending |
-| BOARD-01 | Phase 23 — Job Board API | Pending |
+| MATCH-03 | Phase 22 — Matching Cloud Function | Implemented |
+| MATCH-04 | Phase 22 — Matching Cloud Function | Implemented |
+| BOARD-01 | Phase 23 — Job Board API | Implemented |
 | BOARD-02 | Phase 23 — Job Board API | Pending |
-| BOARD-03 | Phase 23 — Job Board API | Pending |
+| BOARD-03 | Phase 23 — Job Board API | Implemented |
 
 ---
 
@@ -153,22 +153,22 @@
 | TEST-01 | Phase 14 — DB Schema & URL Classifier | Complete |
 | TEST-02 | Phase 18 — Observability, Email Digest & Testing | Complete |
 | PIPE2-03 | Phase 17 — Pipeline Orchestrator & Daily Integration | Complete |
-| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Pending |
-| SYNC-01 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-02 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-03 | Phase 20 — User Sync Cloud Function | Pending |
-| SYNC-04 | Phase 20 — User Sync Cloud Function | Pending |
-| JSYNC-01 | Phase 21 — Job Sync Pipeline | Pending |
-| JSYNC-02 | Phase 21 — Job Sync Pipeline | Pending |
+| BOARD-04 | Phase 19 — Handoff & Infrastructure Doc | Complete |
+| SYNC-01 | Phase 20 — User Sync Cloud Function | Implemented |
+| SYNC-02 | Phase 20 — User Sync Cloud Function | Implemented |
+| SYNC-03 | Phase 20 — User Sync Cloud Function | Complete |
+| SYNC-04 | Phase 20 — User Sync Cloud Function | Implemented |
+| JSYNC-01 | Phase 21 — Job Sync Pipeline | Implemented |
+| JSYNC-02 | Phase 21 — Job Sync Pipeline | Implemented |
 | JSYNC-03 | Phase 21 — Job Sync Pipeline | Pending |
-| JSYNC-04 | Phase 21 — Job Sync Pipeline | Pending |
-| MATCH-01 | Phase 22 — Matching Cloud Function | Pending |
+| JSYNC-04 | Phase 21 — Job Sync Pipeline | Implemented |
+| MATCH-01 | Phase 22 — Matching Cloud Function | Implemented |
 | MATCH-02 | Phase 22 — Matching Cloud Function | Pending |
-| MATCH-03 | Phase 22 — Matching Cloud Function | Pending |
-| MATCH-04 | Phase 22 — Matching Cloud Function | Pending |
-| BOARD-01 | Phase 23 — Job Board API | Pending |
+| MATCH-03 | Phase 22 — Matching Cloud Function | Implemented |
+| MATCH-04 | Phase 22 — Matching Cloud Function | Implemented |
+| BOARD-01 | Phase 23 — Job Board API | Implemented |
 | BOARD-02 | Phase 23 — Job Board API | Pending |
-| BOARD-03 | Phase 23 — Job Board API | Pending |
+| BOARD-03 | Phase 23 — Job Board API | Implemented |
 
 ---
-*Last updated: 2026-04-01 after v2.0 Platform Unification roadmap creation*
+*Last updated: 2026-04-02 after production webhook cutover and direct matching E2E validation*

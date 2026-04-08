@@ -67,11 +67,22 @@ def run_url_resolution(
     registry_stats = resolve_via_slug_registry(conn, registry, batch_size=batch_size)
     logger.info("url_resolution: slug registry pass complete — {}", registry_stats)
 
-    serper_stats: dict = {"resolved": 0, "skipped": 0, "errors": 0, "queries_used": 0}
+    serper_stats: dict = {
+        "resolved": 0, "resolved_official": 0, "resolved_aggregator": 0,
+        "skipped": 0, "errors": 0, "queries_used": 0, "dead_links_filtered": 0,
+    }
     if settings.serper_api_key:
-        logger.info("url_resolution: starting Serper.dev fallback pass")
-        serper_stats = resolve_via_serper(conn, settings.serper_api_key, batch_size=batch_size)
-        logger.info("url_resolution: serper pass complete — {}", serper_stats)
+        logger.info("url_resolution: starting Serper.dev search pass (with link validation)")
+        serper_stats = resolve_via_serper(
+            conn, settings.serper_api_key, batch_size=batch_size, verify_urls=True,
+        )
+        logger.info(
+            "url_resolution: serper pass complete — resolved={} (official={}, aggregator={}), "
+            "dead_filtered={}, queries={}",
+            serper_stats["resolved"], serper_stats.get("resolved_official", 0),
+            serper_stats.get("resolved_aggregator", 0),
+            serper_stats.get("dead_links_filtered", 0), serper_stats["queries_used"],
+        )
     else:
         logger.debug("url_resolution: SERPER_API_KEY not set — skipping Serper pass")
 

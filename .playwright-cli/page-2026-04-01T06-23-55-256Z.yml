@@ -1,0 +1,206 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Michigan Orthopaedic Surgeons · 13 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Michigan Orthopaedic Surgeons
+                        - generic [ref=e52]: · 13 hours ago
+                      - heading "Clinical Support Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Beverly Hills, MI
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Michigan Orthopaedic Surgeons
+                    - text: is offering a
+                    - strong [ref=e76]: Clinical Support Intern
+                    - text: position that provides hands-on learning opportunities while supporting the clinical team. The role involves assisting with patient communication, basic clinical support tasks, and gaining practical experience in a healthcare setting.
+                  - generic [ref=e79]:
+                    - generic [ref=e80]: Healthcare
+                    - generic [ref=e81]: Hospital
+                    - generic [ref=e82]: Health Care
+                    - generic [ref=e83]: Outpatient Care
+              - separator [ref=e84]
+              - generic [ref=e85]:
+                - heading "Responsibilities" [level=2] [ref=e87]
+                - generic [ref=e88]:
+                  - generic [ref=e93]: Support the clinical team by managing patient calls under supervision, including documenting interactions and routing cases appropriately
+                  - generic [ref=e98]: Shadow and assist with rooming patients, taking vitals, and preparing exam rooms for providers
+                  - generic [ref=e103]: Assist with minor clinical procedures such as cast or splint removal under guidance
+                  - generic [ref=e108]: Help maintain exam rooms and medical supply inventory, ensuring equipment and materials are organized and readily available
+                  - generic [ref=e113]: Support clinic readiness, cleanliness, and compliance with HIPAA and organizational policies
+                  - generic [ref=e118]: Perform other duties as assigned to learn about clinical operations and patient care
+              - separator [ref=e119]
+              - generic [ref=e120]:
+                - heading "Qualification" [level=2] [ref=e122]
+                - generic [ref=e123]:
+                  - generic [ref=e124] [cursor=pointer]: High school diploma
+                  - generic [ref=e125] [cursor=pointer]: GED
+                  - generic [ref=e126] [cursor=pointer]: Currently enrolled in college
+                  - generic [ref=e127] [cursor=pointer]: Healthcare experience
+                  - generic [ref=e128] [cursor=pointer]: Clinical experience
+                  - generic [ref=e129] [cursor=pointer]: Administrative experience
+                  - generic [ref=e130] [cursor=pointer]: Interest in orthopaedics
+                  - generic [ref=e131] [cursor=pointer]: Interest in specialty clinics
+                  - generic [ref=e132] [cursor=pointer]: Interest in patient care
+                - generic [ref=e133]:
+                  - heading "Required" [level=4] [ref=e134]
+                  - generic [ref=e138]: High school diploma or general education degree (GED) required
+                  - generic [ref=e142]: Currently enrolled in college
+                - generic [ref=e143]:
+                  - heading "Preferred" [level=4] [ref=e144]
+                  - generic [ref=e148]: Previous healthcare, clinical, or administrative experience is a plus but not required
+                  - generic [ref=e152]: Interest in orthopaedics, specialty clinics, or patient care is preferred
+            - separator [ref=e153]
+            - generic [ref=e154]:
+              - heading "Company" [level=2] [ref=e156]
+              - generic [ref=e158]:
+                - generic [ref=e161]:
+                  - generic [ref=e162]:
+                    - generic [ref=e163]:
+                      - heading "Michigan Orthopaedic Surgeons" [level=2] [ref=e164]
+                      - generic [ref=e165]:
+                        - link "twitter" [ref=e166] [cursor=pointer]:
+                          - /url: https://x.com/miorthosurgeons/
+                          - img "twitter" [ref=e167]
+                        - link "twitter" [ref=e168] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/11775927
+                          - img "twitter" [ref=e169]
+                        - link "twitter" [ref=e170] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/michigan-orthopaedic-surgeons
+                          - img "twitter" [ref=e171]
+                    - img "company-logo" [ref=e173]
+                  - generic [ref=e174]: Michigan Orthopaedic Surgeons is a group of hospitals specializing in the management and treatment of orthopedic issues and conditions.
+                - generic [ref=e177]:
+                  - generic [ref=e178]:
+                    - img "date" [ref=e179]
+                    - text: Founded in 2017
+                  - generic [ref=e180]:
+                    - img "location" [ref=e181]
+                    - generic [ref=e182]: Southfield, Michigan, USA
+                  - generic [ref=e183]:
+                    - img "people-size" [ref=e184]
+                    - text: 201-500 employees
+                  - generic [ref=e185]:
+                    - img "web-link" [ref=e186]
+                    - link "https://miorthosurgeons.com/" [ref=e188] [cursor=pointer]:
+                      - /url: https://miorthosurgeons.com/
+              - generic [ref=e189]:
+                - generic [ref=e190]:
+                  - heading "Funding" [level=2] [ref=e192]
+                  - generic [ref=e196]:
+                    - generic [ref=e197]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e198]:
+                  - heading "Leadership Team" [level=2] [ref=e200]
+                  - generic [ref=e201]:
+                    - generic [ref=e203] [cursor=pointer]:
+                      - img "leader-logo" [ref=e205]
+                      - generic [ref=e206]:
+                        - generic [ref=e207]: Julie Greene
+                        - generic [ref=e208]: Chief Executive Officer
+                      - link "linkedin" [ref=e209]:
+                        - /url: https://www.linkedin.com/in/julie-greene-a5013918
+                        - img "linkedin" [ref=e210]
+                    - generic [ref=e212] [cursor=pointer]:
+                      - img "leader-logo" [ref=e214]
+                      - generic [ref=e215]:
+                        - generic [ref=e216]: Jonathan Dunford
+                        - generic [ref=e217]: Chief Operating Officer
+                      - link "linkedin" [ref=e218]:
+                        - /url: https://www.linkedin.com/in/jonathan-dunford-7697534
+                        - img "linkedin" [ref=e219]
+                - generic [ref=e220]:
+                  - heading "Recent News" [level=2] [ref=e222]
+                  - generic [ref=e225]:
+                    - generic [ref=e226]:
+                      - generic [ref=e227]: PR Newswire
+                      - link "AAOS Endorses Legislation to Improve Rural Access to Care" [ref=e229] [cursor=pointer]:
+                        - /url: https://www.prnewswire.com/news-releases/aaos-endorses-legislation-to-improve-rural-access-to-care-302406317.html
+                        - generic [ref=e230]: AAOS Endorses Legislation to Improve Rural Access to Care
+                    - generic [ref=e231]: 2025-03-19
+                - generic [ref=e233]: Company data provided by crunchbase
+        - complementary [ref=e234]:
+          - generic [ref=e237]:
+            - generic [ref=e238]: Boost Your Interview Chances
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - generic [ref=e241]: Improve Resume Match Score
+                - generic [ref=e242]: FREE
+              - generic [ref=e243]:
+                - generic [ref=e244]:
+                  - generic [ref=e247]:
+                    - img [ref=e248]
+                    - paragraph [ref=e262]: "?"
+                  - generic [ref=e263]: Your Score
+                - generic [ref=e265]:
+                  - generic [ref=e268]:
+                    - img [ref=e269]
+                    - paragraph [ref=e283]: "8.6"
+                  - generic [ref=e284]: Top Applicants
+              - generic [ref=e286]:
+                - img "skill icon" [ref=e288]
+                - generic [ref=e289]: Must-Have Skills for This Role
+              - button "Optimize my Resume" [ref=e291] [cursor=pointer]:
+                - generic [ref=e292]: Optimize my Resume
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - generic [ref=e295]: Get Referral Via linkedIn
+                - generic [ref=e296]: FREE
+              - generic [ref=e297]: 3× Higher Response via Email Outreach
+              - generic [ref=e300]:
+                - generic [ref=e301]:
+                  - generic [ref=e305] [cursor=pointer]: A
+                  - generic [ref=e307]:
+                    - generic [ref=e308]: Andrew (Drew) (.
+                    - generic [ref=e309]: Human Resources Director
+                - generic [ref=e310]:
+                  - img "email" [ref=e312] [cursor=pointer]
+                  - img "linkedin" [ref=e314] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e316] [cursor=pointer]:
+                - generic [ref=e317]: Draft Message to Connect
+            - generic [ref=e318]:
+              - generic [ref=e319]:
+                - generic [ref=e320]: Apply Faster with Autofill Plugin
+                - generic [ref=e321]: FREE
+              - img "autofill" [ref=e323]
+              - button "Apply With Autofill" [ref=e325] [cursor=pointer]:
+                - generic [ref=e326]: Apply With Autofill
+  - alert [ref=e327]

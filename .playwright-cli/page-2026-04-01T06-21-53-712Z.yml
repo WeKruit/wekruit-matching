@@ -1,0 +1,258 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Universal Scientific Industrial Co., Ltd. · 8 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Universal Scientific Industrial Co., Ltd.
+                        - generic [ref=e52]: · 8 hours ago
+                      - heading "IT Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Milpitas, California
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Universal Scientific Industrial Co., Ltd.
+                    - text: is actively looking for a highly organized and talented
+                    - strong [ref=e76]: IT Intern
+                    - text: to support the IT activities at their location in Milpitas, CA. The IT Intern will assist the IT Department with various operational tasks, including technical support, system and network assistance, and documentation.
+                  - generic [ref=e78]:
+                    - generic [ref=e79]:
+                      - generic [ref=e80]: Manufacturing
+                      - generic [ref=e81]: Telecom & Communications
+                      - generic [ref=e82]: Wireless
+                    - generic [ref=e84]:
+                      - img "check" [ref=e86]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e87]
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Assist in troubleshooting hardware and software issues
+                  - generic [ref=e102]: Help set up and configure computers, printers, and other devices
+                  - generic [ref=e107]: Respond to basic user support requests
+                  - generic [ref=e112]: Monitor system performance and report issues
+                  - generic [ref=e117]: Assist with routine maintenance tasks
+                  - generic [ref=e122]: Help with network setup and connectivity checks
+                  - generic [ref=e127]: Maintain records of IT assets and inventory
+                  - generic [ref=e132]: Document technical procedures and solutions
+                  - generic [ref=e137]: Update user guides and manuals
+                  - generic [ref=e142]: Support user account management (e.g., password resets)
+                  - generic [ref=e147]: Help enforce IT security policies
+                  - generic [ref=e152]: Assist with data backup and recovery processes
+                  - generic [ref=e157]: Help install and update software applications
+                  - generic [ref=e162]: Assist in testing new tools or features
+                  - generic [ref=e167]: Provide feedback on usability and performance
+                  - generic [ref=e172]: Attend team meetings and training sessions
+                  - generic [ref=e177]: Shadow IT professionals to learn workflows
+                  - generic [ref=e182]: Communicate effectively with users and team members
+              - separator [ref=e183]
+              - generic [ref=e184]:
+                - heading "Qualification" [level=2] [ref=e186]
+                - generic [ref=e187]:
+                  - generic [ref=e188] [cursor=pointer]: IT infrastructure
+                  - generic [ref=e189] [cursor=pointer]: Technical troubleshooting
+                  - generic [ref=e190] [cursor=pointer]: Scripting
+                  - generic [ref=e191] [cursor=pointer]: Automation
+                - generic [ref=e192]:
+                  - heading "Required" [level=4] [ref=e193]
+                  - generic [ref=e197]: Communication and teamwork
+                  - generic [ref=e201]: Documentation and reporting
+                  - generic [ref=e205]: Basic scripting or automation
+                  - generic [ref=e209]: Understanding of IT infrastructure
+                  - generic [ref=e213]: Problem solving and technical troubleshooting
+            - separator [ref=e214]
+            - generic [ref=e215]:
+              - heading "Company" [level=2] [ref=e217]
+              - generic [ref=e219]:
+                - generic [ref=e222]:
+                  - generic [ref=e223]:
+                    - generic [ref=e224]:
+                      - heading "Universal Scientific Industrial Co., Ltd." [level=2] [ref=e225]
+                      - generic [ref=e226]:
+                        - link "twitter" [ref=e227] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/638836
+                          - img "twitter" [ref=e228]
+                        - link "twitter" [ref=e229] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/usi
+                          - img "twitter" [ref=e230]
+                    - img "company-logo" [ref=e232]
+                  - generic [ref=e233]: "About USI (SSE: 601231) USI, Universal Scientific Industrial (Shanghai) Co., Ltd., is a global leader in electronic design and manufacturing as well as a leader in the field of SiP (System-in-Package) technology."
+                - generic [ref=e236]:
+                  - generic [ref=e237]:
+                    - img "date" [ref=e238]
+                    - text: Founded in 1976
+                  - generic [ref=e239]:
+                    - img "location" [ref=e240]
+                    - generic [ref=e241]: Nantou, T'ai-wan, TWN
+                  - generic [ref=e242]:
+                    - img "people-size" [ref=e243]
+                    - text: 10001+ employees
+                  - generic [ref=e244]:
+                    - img "web-link" [ref=e245]
+                    - link "https://www.usiglobal.com" [ref=e247] [cursor=pointer]:
+                      - /url: https://www.usiglobal.com
+              - generic [ref=e248]:
+                - generic [ref=e249]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e251]
+                  - generic [ref=e253]:
+                    - text: Universal Scientific Industrial Co., Ltd. has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e254]: (Data Powered by US Department of Labor)
+                  - generic [ref=e255]:
+                    - generic [ref=e256]:
+                      - generic [ref=e257]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e264]: Represents job field similar to this job
+                    - generic [ref=e265]:
+                      - generic [ref=e266]: Trends of Total Sponsorships
+                      - generic [ref=e267]:
+                        - generic [ref=e268]:
+                          - text: "2025"
+                          - generic [ref=e269]: (1)
+                        - progressbar [ref=e270]
+                      - generic [ref=e274]:
+                        - generic [ref=e275]:
+                          - text: "2023"
+                          - generic [ref=e276]: (1)
+                        - progressbar [ref=e277]
+                - generic [ref=e281]:
+                  - heading "Funding" [level=2] [ref=e283]
+                  - generic [ref=e284]:
+                    - generic [ref=e286]:
+                      - generic [ref=e287]:
+                        - generic [ref=e288]: Current Stage
+                        - text: Public Company
+                      - generic [ref=e289]:
+                        - generic [ref=e290]: Total Funding
+                        - text: unknown
+                    - generic [ref=e293]:
+                      - generic [ref=e294]:
+                        - generic [ref=e295]: 2012-02-20
+                        - generic [ref=e296]: IPO
+                      - generic [ref=e297]:
+                        - generic [ref=e298]: 2009-11-18
+                        - generic [ref=e299]: Acquired
+                - generic [ref=e300]:
+                  - heading "Leadership Team" [level=2] [ref=e302]
+                  - generic [ref=e305] [cursor=pointer]:
+                    - img "leader-logo" [ref=e307]
+                    - generic [ref=e308]:
+                      - generic [ref=e309]: Stephanie Barker
+                      - generic [ref=e310]: SENIOR DIRECTOR TRANSFORMATION, BPM, AND ePMO
+                    - link "linkedin" [ref=e311]:
+                      - /url: https://www.linkedin.com/in/stephanie-barker-4007913b
+                      - img "linkedin" [ref=e312]
+                - generic [ref=e313]:
+                  - heading "Recent News" [level=2] [ref=e315]
+                  - generic [ref=e316]:
+                    - generic [ref=e318]:
+                      - generic [ref=e319]:
+                        - generic [ref=e320]: prnasia.com
+                        - link "USI Invests in Optical Transceiver Manufacturing Capacity and Launches the Expansion Plan for the Second Plant in Vietnam" [ref=e322] [cursor=pointer]:
+                          - /url: https://en.prnasia.com/releases/apac/usi-invests-in-optical-transceiver-manufacturing-capacity-and-launches-the-expansion-plan-for-the-second-plant-in-vietnam-516275.shtml
+                          - generic [ref=e323]: USI Invests in Optical Transceiver Manufacturing Capacity and Launches the Expansion Plan for the Second Plant in Vietnam
+                      - generic [ref=e324]: 2025-12-17
+                    - generic [ref=e326]:
+                      - generic [ref=e327]:
+                        - generic [ref=e328]: prnasia.com
+                        - link "USI Integrates Vacuum Printing Encapsulation and Copper Pillar Transfer Technology to Advance System-Level Packaging Applications" [ref=e330] [cursor=pointer]:
+                          - /url: https://en.prnasia.com/releases/apac/usi-integrates-vacuum-printing-encapsulation-and-copper-pillar-transfer-technology-to-advance-system-level-packaging-applications-515420.shtml
+                          - generic [ref=e331]: USI Integrates Vacuum Printing Encapsulation and Copper Pillar Transfer Technology to Advance System-Level Packaging Applications
+                      - generic [ref=e332]: 2025-12-10
+                    - generic [ref=e334]:
+                      - generic [ref=e335]:
+                        - generic [ref=e336]: prnasia.com
+                        - link "USI Collaborates with Customer to introduce Intel® Evo™ Certified Thunderbolt™ 5 Smart Dock" [ref=e338] [cursor=pointer]:
+                          - /url: https://en.prnasia.com/releases/apac/usi-collaborates-with-customer-to-introduce-intel-evo-certified-thunderbolt-5-smart-dock-513206.shtml
+                          - generic [ref=e339]: USI Collaborates with Customer to introduce Intel® Evo™ Certified Thunderbolt™ 5 Smart Dock
+                      - generic [ref=e340]: 2025-11-24
+                - generic [ref=e342]: Company data provided by crunchbase
+        - complementary [ref=e343]:
+          - generic [ref=e346]:
+            - generic [ref=e347]: Boost Your Interview Chances
+            - generic [ref=e348]:
+              - generic [ref=e349]:
+                - generic [ref=e350]: Improve Resume Match Score
+                - generic [ref=e351]: FREE
+              - generic [ref=e352]:
+                - generic [ref=e353]:
+                  - generic [ref=e356]:
+                    - img [ref=e357]
+                    - paragraph [ref=e371]: "?"
+                  - generic [ref=e372]: Your Score
+                - generic [ref=e374]:
+                  - generic [ref=e377]:
+                    - img [ref=e378]
+                    - paragraph [ref=e392]: "9.6"
+                  - generic [ref=e393]: Top Applicants
+              - generic [ref=e394]:
+                - generic [ref=e395]:
+                  - img "skill icon" [ref=e397]
+                  - generic [ref=e398]: Must-Have Skills for This Role
+                - generic [ref=e400]:
+                  - generic [ref=e401] [cursor=pointer]: IT infrastructure
+                  - generic [ref=e402] [cursor=pointer]: Technical troubleshooting
+                  - generic [ref=e403] [cursor=pointer]: Scripting
+                  - generic [ref=e404] [cursor=pointer]: Automation
+              - button "Optimize my Resume" [ref=e406] [cursor=pointer]:
+                - generic [ref=e407]: Optimize my Resume
+            - generic [ref=e408]:
+              - generic [ref=e409]:
+                - generic [ref=e410]: Get Referral Via linkedIn
+                - generic [ref=e411]: FREE
+              - generic [ref=e412]: 3× Higher Response via Email Outreach
+              - generic [ref=e415]:
+                - generic [ref=e416]:
+                  - generic [ref=e420] [cursor=pointer]: L
+                  - generic [ref=e422]:
+                    - generic [ref=e423]: Linda L.
+                    - generic [ref=e424]: Technical Recruiter
+                - generic [ref=e425]:
+                  - img "email" [ref=e427] [cursor=pointer]
+                  - img "linkedin" [ref=e429] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e431] [cursor=pointer]:
+                - generic [ref=e432]: Draft Message to Connect
+            - generic [ref=e433]:
+              - generic [ref=e434]:
+                - generic [ref=e435]: Apply Faster with Autofill Plugin
+                - generic [ref=e436]: FREE
+              - img "autofill" [ref=e438]
+              - button "Apply With Autofill" [ref=e440] [cursor=pointer]:
+                - generic [ref=e441]: Apply With Autofill
+  - alert [ref=e442]

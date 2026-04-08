@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # Serper.dev (optional — URL resolution fallback, 2500 free queries/month)
     serper_api_key: str = Field("", repr=False)
 
+    # Firebase job sync (Phase 21)
+    firebase_sync_url: str = Field("")
+    firebase_sync_api_key: str = Field("", repr=False)
+    firebase_sync_batch_size: int = Field(200)
+    firebase_sync_timeout_seconds: float = Field(30.0)
+    firebase_sync_collection: str = Field("matching-jobs")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

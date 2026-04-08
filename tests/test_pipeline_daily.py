@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -41,6 +41,7 @@ _URL_STATS = {
 }
 _ENRICH_STATS = {"enriched": 0, "failed": 0, "skipped": 0}
 _EMBED_STATS = {"embedded": 0, "failed": 0, "skipped": 0}
+_SYNC_STATS = {"active_jobs": 3, "inactive_jobs": 2, "batches": 1, "synced": 5}
 
 
 @contextmanager
@@ -86,7 +87,11 @@ def _patch_all_stages(monkeypatch, *, url_resolution_override=None):
     )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.embed_all",
-        lambda: _EMBED_STATS,
+        lambda: (call_order.append("embed"), _EMBED_STATS)[1],
+    )
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
+        lambda **kw: (call_order.append("job_sync"), _SYNC_STATS)[1],
     )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.send_pipeline_start_email",
@@ -141,9 +146,27 @@ def test_run_daily_pipeline_returns_url_resolution_key(monkeypatch):
 
     result = run_daily_pipeline()
 
-    assert "url_resolution" in result, "'url_resolution' key missing from run_daily_pipeline return dict"
+    assert "url_resolution" in result, (
+        "'url_resolution' key missing from run_daily_pipeline return dict"
+    )
     assert result["url_resolution"]["total_resolved"] == 7
     assert result["url_resolution"]["resolution_rate"] == pytest.approx(0.42)
+
+
+def test_job_sync_called_after_embed_and_returned(monkeypatch):
+    """Daily pipeline must append Firebase sync after embedding."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+
+    result = run_daily_pipeline()
+
+    assert "embed" in call_order, "embed_all was not called"
+    assert "job_sync" in call_order, "sync_jobs_to_firebase was not called"
+    assert call_order.index("embed") < call_order.index("job_sync"), (
+        "job sync must run after embedding completes"
+    )
+    assert result["sync"] == _SYNC_STATS
 
 
 def test_url_resolution_stats_forwarded_to_email(monkeypatch):
@@ -221,6 +244,27 @@ def test_url_resolution_crash_is_isolated(monkeypatch):
     assert result["embed"] == _EMBED_STATS
 
 
+def test_job_sync_crash_is_isolated(monkeypatch):
+    """Sync crash must not abort the pipeline after embed."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+
+    def _crashing_job_sync(**kw):
+        raise RuntimeError("simulated job sync crash")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
+        _crashing_job_sync,
+    )
+
+    result = run_daily_pipeline()
+
+    assert isinstance(result, dict)
+    assert any("job sync" in error.lower() for error in result["errors"]), result["errors"]
+    assert result["embed"] == _EMBED_STATS
+
+
 # ---------------------------------------------------------------------------
 # Smoke test (requires DATABASE_URL)
 # ---------------------------------------------------------------------------
@@ -248,7 +292,16 @@ def test_pipeline_smoke_1k_jobs(monkeypatch):
     result = run_daily_pipeline()
 
     # All 6 expected keys must be present
-    expected_keys = {"scrape", "jd_enrichment", "url_resolution", "enrich", "embed", "errors", "duration_seconds"}
+    expected_keys = {
+        "scrape",
+        "jd_enrichment",
+        "url_resolution",
+        "enrich",
+        "embed",
+        "sync",
+        "errors",
+        "duration_seconds",
+    }
     assert expected_keys.issubset(result.keys()), (
         f"Missing keys: {expected_keys - result.keys()}"
     )

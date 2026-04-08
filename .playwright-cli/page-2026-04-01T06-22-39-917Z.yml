@@ -1,0 +1,274 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Mercy Health · 10 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Mercy Health
+                        - generic [ref=e52]: · 10 hours ago
+                      - heading "Pharmacy Intern – West Hospital" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Cincinnati, OH
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Mercy Health
+                    - text: is a faith-based and patient-focused organization dedicated to enhancing the health and well-being of all people. The Pharmacy Intern role is designed to develop the knowledge base and competency level while performing pharmacy functions under the supervision of a clinical pharmacist, including patient care rounds, medication counseling, and drug preparation.
+                  - generic [ref=e78]:
+                    - generic [ref=e79]: Healthcare
+                    - generic [ref=e80]: Non Profit
+                    - generic [ref=e81]: Health Care
+              - separator [ref=e82]
+              - generic [ref=e83]:
+                - heading "Responsibilities" [level=2] [ref=e85]
+                - generic [ref=e86]:
+                  - generic [ref=e91]: Perform medication history interviews, first dose teaching, food-drug interaction counseling, discharge counseling, assessment of education, and adherence
+                  - generic [ref=e96]: Counsel patients on prescription and over-the-counter medications and devices
+                  - generic [ref=e101]: Monitor medication therapies through performing profile reviews, interpreting laboratory values, and ensuring drug regimens are consistent with medication use guidelines and protocols
+                  - generic [ref=e106]: Develop and recommend appropriate therapeutic plans, identify and resolve drug-related problems, communicate to other health care team members, follow-through, and document in the electronic record
+                  - generic [ref=e111]: Retrieve, evaluate and provide drug information to health care providers, answering general and patient-specific drug information questions
+                  - generic [ref=e116]: Other duties as assigned
+              - separator [ref=e117]
+              - generic [ref=e118]:
+                - heading "Qualification" [level=2] [ref=e120]
+                - generic [ref=e121]:
+                  - generic [ref=e122] [cursor=pointer]: Pharmacy Intern Licensure
+                  - generic [ref=e123] [cursor=pointer]: Pharmacy work routines
+                  - generic [ref=e124] [cursor=pointer]: Medication history interviews
+                  - generic [ref=e125] [cursor=pointer]: Medication counseling
+                  - generic [ref=e126] [cursor=pointer]: Patient education
+                  - generic [ref=e127] [cursor=pointer]: Drug information
+                  - generic [ref=e128] [cursor=pointer]: Drug dosing
+                  - generic [ref=e129] [cursor=pointer]: Drug preparation
+                  - generic [ref=e130] [cursor=pointer]: Drug distribution
+                  - generic [ref=e131] [cursor=pointer]: Therapeutic plan development
+                  - generic [ref=e132] [cursor=pointer]: Drug therapy monitoring
+                  - generic [ref=e133] [cursor=pointer]: Electronic medical record documentation
+                - generic [ref=e134]:
+                  - heading "Required" [level=4] [ref=e135]
+                  - generic [ref=e139]: High School Diploma or GED (required)
+                  - generic [ref=e143]: Currently enrolled in an accredited College of Pharmacy with an active board of pharmacy intern licensure (required)
+                  - generic [ref=e147]: Pharmacy Intern Licensure – State Board of Pharmacy (required)
+                  - generic [ref=e151]: Knowledge of pharmacy work routines, procedures, materials, and/or equivalent is required
+                  - generic [ref=e155]: Analytical skills required to maintain records, prepare drugs, and recognize common computer errors
+                  - generic [ref=e159]: Interpersonal skills are required to interact with nursing, pharmacy, and other support staff and patients to obtain, verify and exchange information
+              - separator [ref=e160]
+              - generic [ref=e161]:
+                - heading "Benefits" [level=2] [ref=e163]
+                - generic [ref=e164]:
+                  - generic [ref=e168]: Competitive pay, incentives, referral bonuses and 403(b) with employer contributions (when eligible)
+                  - generic [ref=e172]: Medical, dental, vision, prescription coverage, HAS/FSA options, life insurance, mental health resources and discounts
+                  - generic [ref=e176]: Paid time off, parental and FMLA leave, short- and long-term disability, backup care for children and elders
+                  - generic [ref=e180]: Tuition assistance, professional development and continuing education support
+            - separator [ref=e181]
+            - generic [ref=e182]:
+              - heading "Company" [level=2] [ref=e184]
+              - generic [ref=e186]:
+                - generic [ref=e189]:
+                  - generic [ref=e190]:
+                    - generic [ref=e191]:
+                      - heading "Mercy Health" [level=2] [ref=e192]
+                      - generic [ref=e193]:
+                        - link "twitter" [ref=e194] [cursor=pointer]:
+                          - /url: https://x.com/mercy_health
+                          - img "twitter" [ref=e195]
+                        - link "twitter" [ref=e196] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/13073
+                          - img "twitter" [ref=e197]
+                        - link "twitter" [ref=e198] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/mercy-health
+                          - img "twitter" [ref=e199]
+                        - link "Glassdoor 3.4" [ref=e200] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Mercy-Health-EI_IE631749.11,23.htm
+                          - generic [ref=e201]:
+                            - generic [ref=e202]: Glassdoor
+                            - generic "3.4 Stars" [ref=e203]:
+                              - img [ref=e205]
+                              - img [ref=e208]
+                              - img [ref=e211]
+                              - img [ref=e214]
+                              - img [ref=e217]
+                            - generic [ref=e219]: "3.4"
+                    - img "company-logo" [ref=e221]
+                  - generic [ref=e222]: Mercy Health is a mission-driven, integrated healthcare organization.
+                - generic [ref=e225]:
+                  - generic [ref=e226]:
+                    - img "date" [ref=e227]
+                    - text: Founded in 1985
+                  - generic [ref=e228]:
+                    - img "location" [ref=e229]
+                    - generic [ref=e230]: Cincinnati, Ohio, USA
+                  - generic [ref=e231]:
+                    - img "people-size" [ref=e232]
+                    - text: 10001+ employees
+                  - generic [ref=e233]:
+                    - img "web-link" [ref=e234]
+                    - link "http://www.mercy.com/" [ref=e236] [cursor=pointer]:
+                      - /url: http://www.mercy.com/
+              - generic [ref=e237]:
+                - generic [ref=e238]:
+                  - heading "Funding" [level=2] [ref=e240]
+                  - generic [ref=e241]:
+                    - generic [ref=e243]:
+                      - generic [ref=e244]:
+                        - generic [ref=e245]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e246]:
+                        - generic [ref=e247]: Total Funding
+                        - text: $0.06M
+                    - generic [ref=e249]:
+                      - generic [ref=e250]: Key Investors
+                      - generic [ref=e251]:
+                        - generic [ref=e252]: Trumbull Memorial Health Foundation
+                        - generic [ref=e253]: Appalachian Regional Commission
+                    - generic [ref=e256]:
+                      - generic [ref=e257]:
+                        - generic [ref=e258]: 2025-01-15
+                        - generic [ref=e259]: Grant· $0.01M
+                      - generic [ref=e260]:
+                        - generic [ref=e261]: 2024-09-18
+                        - generic [ref=e262]: Grant· $0.05M
+                - generic [ref=e263]:
+                  - heading "Leadership Team" [level=2] [ref=e265]
+                  - generic [ref=e266]:
+                    - generic [ref=e268] [cursor=pointer]:
+                      - img "leader-logo" [ref=e270]
+                      - generic [ref=e271]:
+                        - generic [ref=e272]: Kenneth James
+                        - generic [ref=e273]: Market Chief Operating Officer, Cincinnati
+                      - link "linkedin" [ref=e274]:
+                        - /url: https://www.linkedin.com/in/kenneth-james-4278b867
+                        - img "linkedin" [ref=e275]
+                    - generic [ref=e277] [cursor=pointer]:
+                      - img "leader-logo" [ref=e279]
+                      - generic [ref=e280]:
+                        - generic [ref=e281]: Staci Lucius
+                        - generic [ref=e282]: President, Mercy Health Physicians
+                      - link "linkedin" [ref=e283]:
+                        - /url: https://www.linkedin.com/in/staci-lucius-68102634/
+                        - img "linkedin" [ref=e284]
+                - generic [ref=e285]:
+                  - heading "Recent News" [level=2] [ref=e287]
+                  - generic [ref=e288]:
+                    - generic [ref=e290]:
+                      - generic [ref=e291]:
+                        - generic [ref=e292]: Dayton Daily News
+                        - link "Dayton Children’s expanding to Urbana, Springfield" [ref=e294] [cursor=pointer]:
+                          - /url: https://www.daytondailynews.com/local/dayton-childrens-expanding-to-urbana-springfield/ETYFVF3OOBBE7O67TZL2O45LPM/
+                          - generic [ref=e295]: Dayton Children’s expanding to Urbana, Springfield
+                      - generic [ref=e296]: 2026-02-13
+                    - generic [ref=e298]:
+                      - generic [ref=e299]:
+                        - generic [ref=e300]: Bizjournals.com Feed (2025-11-12 15:43:17)
+                        - link "College academic leader appointed board chair of Mercy Health-Springfield" [ref=e302] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/dayton/news/2026/02/13/nina-wiley-mercy-health-springfield-board-chair.html?ana=brss_5647
+                          - generic [ref=e303]: College academic leader appointed board chair of Mercy Health-Springfield
+                      - generic [ref=e304]: 2026-02-13
+                    - generic [ref=e306]:
+                      - generic [ref=e307]:
+                        - generic [ref=e308]: Bizjournals.com Feed (2025-11-12 15:43:17)
+                        - link "Mercy Health-Cincinnati names 30-year veteran to chief nursing officer role" [ref=e310] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/cincinnati/news/2026/02/13/bon-secours-mercy-health-chief-nursing-officer.html?ana=brss_5647
+                          - generic [ref=e311]: Mercy Health-Cincinnati names 30-year veteran to chief nursing officer role
+                      - generic [ref=e312]: 2026-02-13
+                - generic [ref=e314]: Company data provided by crunchbase
+        - complementary [ref=e315]:
+          - generic [ref=e318]:
+            - generic [ref=e319]: Boost Your Interview Chances
+            - generic [ref=e320]:
+              - generic [ref=e321]:
+                - generic [ref=e322]: Improve Resume Match Score
+                - generic [ref=e323]: FREE
+              - generic [ref=e324]:
+                - generic [ref=e325]:
+                  - generic [ref=e328]:
+                    - img [ref=e329]
+                    - paragraph [ref=e343]: "?"
+                  - generic [ref=e344]: Your Score
+                - generic [ref=e346]:
+                  - generic [ref=e349]:
+                    - img [ref=e350]
+                    - paragraph [ref=e363]: "10.0"
+                  - generic [ref=e364]: Top Applicants
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - img "skill icon" [ref=e368]
+                  - generic [ref=e369]: Must-Have Skills for This Role
+                - generic [ref=e371]:
+                  - generic [ref=e372] [cursor=pointer]: Pharmacy Intern Licensure
+                  - generic [ref=e373] [cursor=pointer]: Pharmacy work routines
+                  - generic [ref=e374] [cursor=pointer]: Medication history interviews
+                  - generic [ref=e375] [cursor=pointer]: Medication counseling
+                  - generic [ref=e376] [cursor=pointer]: Patient education
+              - button "Optimize my Resume" [ref=e378] [cursor=pointer]:
+                - generic [ref=e379]: Optimize my Resume
+            - generic [ref=e380]:
+              - generic [ref=e381]:
+                - generic [ref=e382]: Get Referral Via linkedIn
+                - generic [ref=e383]: FREE
+              - generic [ref=e384]: 3× Higher Response via Email Outreach
+              - generic [ref=e385]:
+                - generic [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e392] [cursor=pointer]: T
+                    - generic [ref=e394]:
+                      - generic [ref=e395]: Tessa S.
+                      - generic [ref=e396]: Mail Order Pharmacist
+                  - generic [ref=e397]:
+                    - img "email" [ref=e399] [cursor=pointer]
+                    - img "linkedin" [ref=e401] [cursor=pointer]
+                - generic [ref=e403]:
+                  - generic [ref=e404]:
+                    - generic [ref=e408] [cursor=pointer]: O
+                    - generic [ref=e410]:
+                      - generic [ref=e411]: Olivia F.
+                      - generic [ref=e412]: Pharmacist (PRN)
+                  - generic [ref=e413]:
+                    - img "email" [ref=e415] [cursor=pointer]
+                    - img "linkedin" [ref=e417] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e419] [cursor=pointer]:
+                - generic [ref=e420]: Draft Message to Connect
+            - generic [ref=e421]:
+              - generic [ref=e422]:
+                - generic [ref=e423]: Apply Faster with Autofill Plugin
+                - generic [ref=e424]: FREE
+              - img "autofill" [ref=e426]
+              - button "Apply With Autofill" [ref=e428] [cursor=pointer]:
+                - generic [ref=e429]: Apply With Autofill
+  - alert [ref=e430]

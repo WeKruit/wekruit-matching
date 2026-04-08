@@ -1,0 +1,283 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Hartford HealthCare · 13 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Hartford HealthCare
+                        - generic [ref=e52]: · 13 hours ago
+                      - heading "Pharmacy Intern (Per diem)" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: New Britain, CT
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Hartford HealthCare
+                    - text: is Connecticut’s most comprehensive healthcare network, and they are seeking a Pharmacy Intern to assist in performing pharmaceutical functions. The role involves preparing and distributing medications, maintaining patient profiles, and interacting positively with patients under the supervision of a pharmacist.
+                  - generic [ref=e77]:
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: Healthcare
+                      - generic [ref=e80]: Medical Device
+                      - generic [ref=e81]: Hospital
+                      - generic [ref=e82]: Biotechnology
+                      - generic [ref=e83]: Pharmaceutical
+                      - generic [ref=e84]: Health Care
+                      - generic [ref=e85]: Health Diagnostics
+                      - generic [ref=e86]: Oncology
+                      - generic [ref=e87]: Rehabilitation
+                    - generic [ref=e89]:
+                      - img "bad" [ref=e90]
+                      - text: No H1B
+                      - img "note" [ref=e91]
+              - separator [ref=e92]
+              - generic [ref=e93]:
+                - heading "Responsibilities" [level=2] [ref=e95]
+                - generic [ref=e96]:
+                  - generic [ref=e101]: Under the supervision and direction of the Pharmacist the Pharmacy Intern, assists in performing pharmaceutical functions which include units dose dispensing, I.V. additive preparation and other related procedures that require knowledge of pharmaceutical terminology
+                  - generic [ref=e106]: Assists in the preparation and distribution of medications throughout the hospital which includes in-patient unit dose dispensing and out-patient dispensing
+                  - generic [ref=e111]: Performs computer activities to maintain patient profiles, entry of charges and credits and generation of unit dose fill lists Fills unit dose carts accurately and according to computerized lists
+                  - generic [ref=e116]: Exchanges unit dose carts, including transfer of bulk items
+                  - generic [ref=e121]: Restocks crash cart medications, including documentation and follow through
+                  - generic [ref=e126]: Fills emergency boxes and stat boxes, including documentation, expiration date checking and follow through
+                  - generic [ref=e131]: Conducts patient care unit inspections
+                  - generic [ref=e136]: Performs technical pharmaceutical functions related to the purchasing, receiving and distribution of drugs
+                  - generic [ref=e141]: Insures all medications are packaged with a bar code compatible with existing Pharmacy bar code technology
+                  - generic [ref=e146]: Prepackages tablets, capsules and other dosage forms for in-patient and out-patient dispensing
+                  - generic [ref=e151]: Participates in the training and orientation of new Pharmacy personnel
+                  - generic [ref=e156]: Under the direct supervision of a pharmacist, prepares sterile products, intravenous admixtures, and chemotherapeutic agents
+                  - generic [ref=e161]: Positively interacts with patients and other hospital guests to enhance the quality of case/service provided
+                  - generic [ref=e166]: Maintains confidentiality of patient information
+              - separator [ref=e167]
+              - generic [ref=e168]:
+                - heading "Qualification" [level=2] [ref=e170]
+                - generic [ref=e171]:
+                  - generic [ref=e172] [cursor=pointer]: Pharmaceutical terminology
+                  - generic [ref=e173] [cursor=pointer]: Unit dose dispensing
+                  - generic [ref=e174] [cursor=pointer]: IV additive preparation
+                  - generic [ref=e175] [cursor=pointer]: Medication preparation
+                  - generic [ref=e176] [cursor=pointer]: Distribution
+                  - generic [ref=e177] [cursor=pointer]: Pharmacy bar code technology
+                  - generic [ref=e178] [cursor=pointer]: Sterile product preparation
+                  - generic [ref=e179] [cursor=pointer]: Intravenous admixtures
+                  - generic [ref=e180] [cursor=pointer]: Chemotherapeutic agent preparation
+                  - generic [ref=e181] [cursor=pointer]: Pharmacy computer systems
+                  - generic [ref=e182] [cursor=pointer]: Clinical hospital pharmacy experience
+                  - generic [ref=e183] [cursor=pointer]: State of Connecticut Intern Registration
+                  - generic [ref=e184] [cursor=pointer]: Patient interaction
+                - generic [ref=e185]:
+                  - heading "Required" [level=4] [ref=e186]
+                  - generic [ref=e190]: Currently enrolled in a PharmD Program
+                  - generic [ref=e194]: Current State of Connecticut Intern Registration
+                - generic [ref=e195]:
+                  - heading "Preferred" [level=4] [ref=e196]
+                  - generic [ref=e200]: At least one clinical rotation in a hospital setting
+              - separator [ref=e201]
+              - generic [ref=e202]:
+                - heading "Benefits" [level=2] [ref=e204]
+                - generic [ref=e209]: Competitive benefits program designed to ensure work/life balance
+            - separator [ref=e210]
+            - generic [ref=e211]:
+              - heading "Company" [level=2] [ref=e213]
+              - generic [ref=e215]:
+                - generic [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]:
+                      - heading "Hartford HealthCare" [level=2] [ref=e221]
+                      - generic [ref=e222]:
+                        - link "twitter" [ref=e223] [cursor=pointer]:
+                          - /url: https://x.com/HartfordHealthC
+                          - img "twitter" [ref=e224]
+                        - link "twitter" [ref=e225] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/5064123
+                          - img "twitter" [ref=e226]
+                        - link "twitter" [ref=e227] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/hartford-healthcare-fd32
+                          - img "twitter" [ref=e228]
+                        - link "Glassdoor 3.5" [ref=e229] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-EI_IE309978.htm?countryPickerRedirect=true
+                          - generic [ref=e230]:
+                            - generic [ref=e231]: Glassdoor
+                            - generic "3.5 Stars" [ref=e232]:
+                              - img [ref=e234]
+                              - img [ref=e237]
+                              - img [ref=e240]
+                              - img [ref=e243]
+                              - img [ref=e246]
+                            - generic [ref=e248]: "3.5"
+                    - img "company-logo" [ref=e250]
+                  - generic [ref=e251]: Hartford HealthCare is a group of hospitals that offers complete healthcare services including cancer care, rehabilitation and pharmacy.
+                - generic [ref=e254]:
+                  - generic [ref=e255]:
+                    - img "date" [ref=e256]
+                    - text: Founded in 1854
+                  - generic [ref=e257]:
+                    - img "location" [ref=e258]
+                    - generic [ref=e259]: Hartford, Connecticut, USA
+                  - generic [ref=e260]:
+                    - img "people-size" [ref=e261]
+                    - text: 10001+ employees
+                  - generic [ref=e262]:
+                    - img "web-link" [ref=e263]
+                    - link "https://hartfordhealthcare.org" [ref=e265] [cursor=pointer]:
+                      - /url: https://hartfordhealthcare.org
+              - generic [ref=e266]:
+                - generic [ref=e267]:
+                  - heading "Funding" [level=2] [ref=e269]
+                  - generic [ref=e270]:
+                    - generic [ref=e272]:
+                      - generic [ref=e273]:
+                        - generic [ref=e274]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e275]:
+                        - generic [ref=e276]: Total Funding
+                        - text: $150M
+                    - generic [ref=e278]:
+                      - generic [ref=e279]: Key Investors
+                      - generic [ref=e281]: Connecticut Health and Educational Facilities Authority
+                    - generic [ref=e285]:
+                      - generic [ref=e286]: 2024-04-01
+                      - generic [ref=e287]: Debt Financing· $150M
+                - generic [ref=e288]:
+                  - heading "Leadership Team" [level=2] [ref=e290]
+                  - generic [ref=e291]:
+                    - generic [ref=e293] [cursor=pointer]:
+                      - img "leader-logo" [ref=e295]
+                      - generic [ref=e296]:
+                        - generic [ref=e297]: Jeffrey Flaks
+                        - generic [ref=e298]: President & Chief Executive Officer, Hartford HealthCare
+                      - link "linkedin" [ref=e299]:
+                        - /url: https://www.linkedin.com/in/jeffrey-flaks-702aa343
+                        - img "linkedin" [ref=e300]
+                    - generic [ref=e302] [cursor=pointer]:
+                      - img "leader-logo" [ref=e304]
+                      - generic [ref=e305]:
+                        - generic [ref=e306]: Bimal Patel
+                        - generic [ref=e307]: Executive Vice President/ Chief Operating Officer
+                      - link "linkedin" [ref=e308]:
+                        - /url: https://www.linkedin.com/in/bimal-patel-91923296
+                        - img "linkedin" [ref=e309]
+                - generic [ref=e310]:
+                  - heading "Recent News" [level=2] [ref=e312]
+                  - generic [ref=e313]:
+                    - generic [ref=e315]:
+                      - generic [ref=e316]:
+                        - generic [ref=e317]: PR Newswire
+                        - 'link "AAHRPP Accredits Three More Research Organizations: A Research Institute, Healthcare System and Research University" [ref=e319] [cursor=pointer]':
+                          - /url: https://www.prnewswire.com/news-releases/aahrpp-accredits-three-more-research-organizations-a-research-institute-healthcare-system-and-research-university-302726454.html
+                          - generic [ref=e320]: "AAHRPP Accredits Three More Research Organizations: A Research Institute, Healthcare System and Research University"
+                      - generic [ref=e321]: 2026-03-26
+                    - generic [ref=e323]:
+                      - generic [ref=e324]:
+                        - generic [ref=e325]: PR Newswire
+                        - link "HARTFORD HEALTHCARE AND K HEALTH LAUNCH PATIENTGPT A NEW 24/7 AI BRIDGE TO THE CLINICAL CARE TEAM" [ref=e327] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/hartford-healthcare-and-k-health-launch-patientgpt-a-new-247-ai-bridge-to-the-clinical-care-team-302725573.html
+                          - generic [ref=e328]: HARTFORD HEALTHCARE AND K HEALTH LAUNCH PATIENTGPT A NEW 24/7 AI BRIDGE TO THE CLINICAL CARE TEAM
+                      - generic [ref=e329]: 2026-03-26
+                    - generic [ref=e331]:
+                      - generic [ref=e332]:
+                        - generic [ref=e333]: PR Newswire
+                        - link "Hartford HealthCare Announces Tender Pricing Information" [ref=e335] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/hartford-healthcare-announces-tender-pricing-information-302722264.html
+                          - generic [ref=e336]: Hartford HealthCare Announces Tender Pricing Information
+                      - generic [ref=e337]: 2026-03-23
+                - generic [ref=e339]: Company data provided by crunchbase
+        - complementary [ref=e340]:
+          - generic [ref=e343]:
+            - generic [ref=e344]: Boost Your Interview Chances
+            - generic [ref=e345]:
+              - generic [ref=e346]:
+                - generic [ref=e347]: Improve Resume Match Score
+                - generic [ref=e348]: FREE
+              - generic [ref=e349]:
+                - generic [ref=e350]:
+                  - generic [ref=e353]:
+                    - img [ref=e354]
+                    - paragraph [ref=e368]: "?"
+                  - generic [ref=e369]: Your Score
+                - generic [ref=e371]:
+                  - generic [ref=e374]:
+                    - img [ref=e375]
+                    - paragraph [ref=e389]: "9.3"
+                  - generic [ref=e390]: Top Applicants
+              - generic [ref=e391]:
+                - generic [ref=e392]:
+                  - img "skill icon" [ref=e394]
+                  - generic [ref=e395]: Must-Have Skills for This Role
+                - generic [ref=e397]:
+                  - generic [ref=e398] [cursor=pointer]: Pharmaceutical terminology
+                  - generic [ref=e399] [cursor=pointer]: Unit dose dispensing
+                  - generic [ref=e400] [cursor=pointer]: IV additive preparation
+                  - generic [ref=e401] [cursor=pointer]: Medication preparation
+                  - generic [ref=e402] [cursor=pointer]: distribution
+              - button "Optimize my Resume" [ref=e404] [cursor=pointer]:
+                - generic [ref=e405]: Optimize my Resume
+            - generic [ref=e406]:
+              - generic [ref=e407]:
+                - generic [ref=e408]: Get Referral Via linkedIn
+                - generic [ref=e409]: FREE
+              - generic [ref=e410]: 3× Higher Response via Email Outreach
+              - generic [ref=e411]:
+                - generic [ref=e413]:
+                  - generic [ref=e414]:
+                    - generic [ref=e418] [cursor=pointer]: M
+                    - generic [ref=e420]:
+                      - generic [ref=e421]: Mark M.
+                      - generic [ref=e422]: Security Officer
+                  - generic [ref=e423]:
+                    - img "email" [ref=e425] [cursor=pointer]
+                    - img "linkedin" [ref=e427] [cursor=pointer]
+                - generic [ref=e429]:
+                  - generic [ref=e430]:
+                    - generic [ref=e434] [cursor=pointer]: K
+                    - generic [ref=e436]:
+                      - generic [ref=e437]: Kleona K.
+                      - generic [ref=e438]: Pharmacist
+                  - generic [ref=e439]:
+                    - img "email" [ref=e441] [cursor=pointer]
+                    - img "linkedin" [ref=e443] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e445] [cursor=pointer]:
+                - generic [ref=e446]: Draft Message to Connect
+            - generic [ref=e447]:
+              - generic [ref=e448]:
+                - generic [ref=e449]: Apply Faster with Autofill Plugin
+                - generic [ref=e450]: FREE
+              - img "autofill" [ref=e452]
+              - button "Apply With Autofill" [ref=e454] [cursor=pointer]:
+                - generic [ref=e455]: Apply With Autofill
+  - alert [ref=e456]

@@ -17,7 +17,7 @@ from wekruit_matching.db.connection import get_connection
 from wekruit_matching.embedding.embedder import embed_text, EMBEDDING_MODEL
 from wekruit_matching.matching.filters import apply_hard_filters
 from wekruit_matching.matching.scorer import score_job
-from wekruit_matching.models.user_profile import UserProfile
+from wekruit_matching.models.user_profile import UserProfile, JobType
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +39,7 @@ def _fetch_ann_candidates(
     conn: psycopg.Connection,
     query_embedding: list[float],
     limit: int,
+    source_repos: set[str] | None = None,
 ) -> list[dict]:
     """Fetch ANN candidates from the jobs table using pgvector cosine similarity.
 
@@ -49,6 +50,9 @@ def _fetch_ann_candidates(
         conn: Active psycopg3 connection (dict_row factory assumed).
         query_embedding: 1536-dim user query vector.
         limit: Maximum number of ANN candidates to fetch (typically top_n * 4).
+        source_repos: If set, only fetch from these source repos (e.g. for
+                      job_type filtering at the DB level to avoid ANN results
+                      dominated by the wrong type).
 
     Returns:
         List of job dicts ordered by embedding <=> query_embedding ascending
@@ -56,21 +60,39 @@ def _fetch_ann_candidates(
     """
     register_vector(conn)
 
-    cursor = conn.execute(
-        """
-        SELECT
-            job_id, source_repo, company_name, role_title, primary_url,
-            location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
-            industry, company_size, required_skills, sponsorship,
-            embedding, embedding_model
-        FROM jobs
-        WHERE status = 'active'
-          AND embedding IS NOT NULL
-        ORDER BY embedding <=> %s::vector
-        LIMIT %s
-        """,
-        (query_embedding, limit),
-    )
+    if source_repos:
+        cursor = conn.execute(
+            """
+            SELECT
+                job_id, source_repo, company_name, role_title, primary_url,
+                location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
+                industry, company_size, required_skills, sponsorship,
+                embedding, embedding_model
+            FROM jobs
+            WHERE status = 'active'
+              AND embedding IS NOT NULL
+              AND source_repo = ANY(%s)
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+            """,
+            (list(source_repos), query_embedding, limit),
+        )
+    else:
+        cursor = conn.execute(
+            """
+            SELECT
+                job_id, source_repo, company_name, role_title, primary_url,
+                location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
+                industry, company_size, required_skills, sponsorship,
+                embedding, embedding_model
+            FROM jobs
+            WHERE status = 'active'
+              AND embedding IS NOT NULL
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+            """,
+            (query_embedding, limit),
+        )
     rows = cursor.fetchall()
 
     # rows are already dicts when dict_row factory is set on the connection.
@@ -191,10 +213,15 @@ def get_matches(
     # ------------------------------------------------------------------
     ann_limit = top_n * 4
 
+    # Pre-compute source_repo filter for ANN query so results aren't
+    # dominated by the wrong job type (35K newgrad vs 2K intern)
+    from wekruit_matching.matching.filters import _SOURCE_REPO_SET
+    ann_source_repos = _SOURCE_REPO_SET.get(profile.preferred_job_type) if profile.preferred_job_type is not JobType.ANY else None
+
     def _run(active_conn: psycopg.Connection) -> list[dict]:
         if query_embedding is not None:
             ann_candidates = _fetch_ann_candidates(
-                active_conn, query_embedding, ann_limit
+                active_conn, query_embedding, ann_limit, source_repos=ann_source_repos
             )
         else:
             ann_candidates = []

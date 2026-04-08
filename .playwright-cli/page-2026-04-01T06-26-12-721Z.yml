@@ -1,0 +1,351 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "FreshDirect · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: FreshDirect
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Customer Experience Analytics Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Bronx, NY
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $23/hr - $25/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: FreshDirect
+                    - text: is reinventing the grocery experience by building an innovative end-to-end food supply chain. The
+                    - strong [ref=e80]: Customer Experience Analytics Intern
+                    - text: will work on analyzing customer satisfaction data, maintaining data pipelines, and collaborating with various teams to improve the customer journey.
+                  - generic [ref=e82]:
+                    - generic [ref=e83]:
+                      - generic [ref=e84]: Food and Beverage
+                      - generic [ref=e85]: Logistics
+                      - generic [ref=e86]: Agriculture
+                      - generic [ref=e87]: Bakery
+                      - generic [ref=e88]: Catering
+                      - generic [ref=e89]: Coffee
+                      - generic [ref=e90]: Craft Beer
+                      - generic [ref=e91]: Delivery Service
+                      - generic [ref=e92]: Food Delivery
+                      - generic [ref=e93]: Food Processing
+                      - generic [ref=e94]: Fruit
+                      - generic [ref=e95]: Grocery
+                      - generic [ref=e96]: Tea
+                    - generic [ref=e98]:
+                      - img "check" [ref=e100]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e101]
+              - separator [ref=e102]
+              - generic [ref=e103]:
+                - heading "Responsibilities" [level=2] [ref=e105]
+                - generic [ref=e106]:
+                  - generic [ref=e111]: Support FreshDirect's multi-touchpoint NPS program — including post-transaction, post-delivery, and post-customer care surveys — by maintaining data pipelines, tracking response trends, and flagging anomalies
+                  - generic [ref=e116]: Analyze open-ended survey responses and customer feedback to surface themes, pain points, and improvement opportunities across the customer journey
+                  - generic [ref=e121]: Build and maintain Power BI dashboards to track customer satisfaction KPIs (NPS, CSAT, resolution rates) and enable data-driven decision-making across CX and operations teams
+                  - generic [ref=e126]: Assist in the design and methodology of customer surveys — including question structure, timing, segmentation logic, and normalization approaches
+                  - generic [ref=e131]: Collaborate with customer care teams to analyze support ticket data, identify resolution patterns, and quantify the impact of service interactions on downstream retention and satisfaction
+                  - generic [ref=e136]: Extract, clean, and transform structured datasets using SQL and Python to support CX reporting and ad hoc analysis requests
+                  - generic [ref=e141]: Translate analytical findings into concise, actionable insights and communicate them clearly to non-technical stakeholders
+                  - generic [ref=e146]: Bring a proactive, curious mindset — ask the next question, not just the one you were assigned
+              - separator [ref=e147]
+              - generic [ref=e148]:
+                - heading "Qualification" [level=2] [ref=e150]
+                - generic [ref=e151]:
+                  - generic [ref=e152] [cursor=pointer]: SQL
+                  - generic [ref=e153] [cursor=pointer]: Python
+                  - generic [ref=e154] [cursor=pointer]: Statistics
+                  - generic [ref=e155] [cursor=pointer]: Data analysis
+                  - generic [ref=e156] [cursor=pointer]: Economics
+                  - generic [ref=e157] [cursor=pointer]: Psychology
+                  - generic [ref=e158] [cursor=pointer]: NPS framework
+                  - generic [ref=e159] [cursor=pointer]: Survey research methodology
+                  - generic [ref=e160] [cursor=pointer]: Text analytics
+                  - generic [ref=e161] [cursor=pointer]: Sentiment analysis
+                  - generic [ref=e162] [cursor=pointer]: Qualitative data coding
+                  - generic [ref=e163] [cursor=pointer]: Power BI
+                  - generic [ref=e164] [cursor=pointer]: Tableau
+                  - generic [ref=e165] [cursor=pointer]: Looker
+                  - generic [ref=e166] [cursor=pointer]: Customer care data
+                  - generic [ref=e167] [cursor=pointer]: CRM data
+                  - generic [ref=e168] [cursor=pointer]: Version control
+                  - generic [ref=e169] [cursor=pointer]: Git
+                  - generic [ref=e170] [cursor=pointer]: E-commerce data
+                  - generic [ref=e171] [cursor=pointer]: Attention to data quality
+                - generic [ref=e172]:
+                  - heading "Required" [level=4] [ref=e173]
+                  - generic [ref=e177]: SQL proficiency — comfortable writing multi-table joins, aggregations, subqueries, and window functions independently
+                  - generic [ref=e181]: Python for data analysis (pandas, numpy) — clean, reproducible code in Jupyter or similar environments
+                  - generic [ref=e185]: Coursework or experience in statistics, data analysis, economics, psychology, or a related quantitative or social science discipline
+                  - generic [ref=e189]: Attention to data quality — you notice when numbers don't add up and you follow up
+                - generic [ref=e190]:
+                  - heading "Preferred" [level=4] [ref=e191]
+                  - generic [ref=e195]: Familiarity with NPS framework and survey research methodology
+                  - generic [ref=e199]: Exposure to text analytics, sentiment analysis, or qualitative data coding techniques
+                  - generic [ref=e203]: Experience with Power BI, Tableau, or Looker
+                  - generic [ref=e207]: Experience working with customer care or CRM data (ticketing systems, support platforms)
+                  - generic [ref=e211]: Comfort with version control (Git) and collaborative working environments
+                  - generic [ref=e215]: Experience with e-commerce or transactional datasets at scale
+              - separator [ref=e216]
+              - generic [ref=e217]:
+                - heading "Benefits" [level=2] [ref=e219]
+                - generic [ref=e220]:
+                  - generic [ref=e224]: Competitive compensation and comprehensive benefits
+                  - generic [ref=e228]: PTO, Safe & Sick Time, and Paid Holidays
+                  - generic [ref=e232]: Medical, Vision, Dental, and Voluntary Disability coverage
+                  - generic [ref=e236]: 401(k) with employer match and Life Insurance
+                  - generic [ref=e240]: State-of-the-art Bronx campus with on-site basketball court, cafeteria, and employee market
+                  - generic [ref=e244]: Onsite FREE parking
+                  - generic [ref=e248]: FREE employee shuttle bus service from nearby Subway station
+                  - generic [ref=e252]: Training, leadership development, and tuition discount at local colleges
+                  - generic [ref=e256]: 20% employee discount on FreshDirect online orders and Brooklyn wine store
+                  - generic [ref=e260]: Minimum 50% employee discount at our onsite employee market
+                  - generic [ref=e264]: Mobile phone discounts through partnerships with T-Mobile and Verizon
+            - separator [ref=e265]
+            - generic [ref=e266]:
+              - heading "Company" [level=2] [ref=e268]
+              - generic [ref=e270]:
+                - generic [ref=e273]:
+                  - generic [ref=e274]:
+                    - generic [ref=e275]:
+                      - heading "FreshDirect" [level=2] [ref=e276]
+                      - generic [ref=e277]:
+                        - link "twitter" [ref=e278] [cursor=pointer]:
+                          - /url: https://x.com/FreshDirect
+                          - img "twitter" [ref=e279]
+                        - link "twitter" [ref=e280] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/15241
+                          - img "twitter" [ref=e281]
+                        - link "twitter" [ref=e282] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/fresh-direct
+                          - img "twitter" [ref=e283]
+                        - link "Glassdoor 2.8" [ref=e284] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-FreshDirect-EI_IE15793.11,22.htm
+                          - generic [ref=e285]:
+                            - generic [ref=e286]: Glassdoor
+                            - generic "2.8 Stars" [ref=e287]:
+                              - img [ref=e289]
+                              - img [ref=e292]
+                              - img [ref=e295]
+                              - img [ref=e298]
+                              - img [ref=e301]
+                            - generic [ref=e303]: "2.8"
+                    - img "company-logo" [ref=e305]
+                  - generic [ref=e306]: FreshDirect delivers fresh food to residences and offices.
+                - generic [ref=e309]:
+                  - generic [ref=e310]:
+                    - img "date" [ref=e311]
+                    - text: Founded in 1998
+                  - generic [ref=e312]:
+                    - img "location" [ref=e313]
+                    - generic [ref=e314]: Bronx, New York, USA
+                  - generic [ref=e315]:
+                    - img "people-size" [ref=e316]
+                    - text: 1001-5000 employees
+                  - generic [ref=e317]:
+                    - img "web-link" [ref=e318]
+                    - link "http://freshdirect.com" [ref=e320] [cursor=pointer]:
+                      - /url: http://freshdirect.com
+              - generic [ref=e321]:
+                - generic [ref=e322]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e324]
+                  - generic [ref=e326]:
+                    - text: FreshDirect has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e327]: (Data Powered by US Department of Labor)
+                  - generic [ref=e328]:
+                    - generic [ref=e329]:
+                      - generic [ref=e330]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e337]: Represents job field similar to this job
+                    - generic [ref=e338]:
+                      - generic [ref=e339]: Trends of Total Sponsorships
+                      - generic [ref=e340]:
+                        - generic [ref=e341]:
+                          - text: "2025"
+                          - generic [ref=e342]: (14)
+                        - progressbar [ref=e343]
+                      - generic [ref=e347]:
+                        - generic [ref=e348]:
+                          - text: "2024"
+                          - generic [ref=e349]: (13)
+                        - progressbar [ref=e350]
+                      - generic [ref=e354]:
+                        - generic [ref=e355]:
+                          - text: "2023"
+                          - generic [ref=e356]: (2)
+                        - progressbar [ref=e357]
+                      - generic [ref=e361]:
+                        - generic [ref=e362]:
+                          - text: "2022"
+                          - generic [ref=e363]: (26)
+                        - progressbar [ref=e364]
+                      - generic [ref=e368]:
+                        - generic [ref=e369]:
+                          - text: "2021"
+                          - generic [ref=e370]: (36)
+                        - progressbar [ref=e371]
+                      - generic [ref=e375]:
+                        - generic [ref=e376]:
+                          - text: "2020"
+                          - generic [ref=e377]: (11)
+                        - progressbar [ref=e378]
+                - generic [ref=e382]:
+                  - heading "Funding" [level=2] [ref=e384]
+                  - generic [ref=e385]:
+                    - generic [ref=e387]:
+                      - generic [ref=e388]:
+                        - generic [ref=e389]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e390]:
+                        - generic [ref=e391]: Total Funding
+                        - text: $280M
+                    - generic [ref=e393]:
+                      - generic [ref=e394]: Key Investors
+                      - generic [ref=e395]:
+                        - generic [ref=e396]: J.P. Morgan Asset Management
+                        - generic [ref=e397]: AIG Investments
+                    - generic [ref=e400]:
+                      - generic [ref=e401]:
+                        - generic [ref=e402]: 2023-11-08
+                        - generic [ref=e403]: Acquired
+                      - generic [ref=e404]:
+                        - generic [ref=e405]: 2016-09-26
+                        - generic [ref=e406]: Private Equity· $189M
+                      - generic [ref=e407]:
+                        - generic [ref=e408]: 2014-04-02
+                        - generic [ref=e409]: Series Unknown· $10M
+                - generic [ref=e410]:
+                  - heading "Leadership Team" [level=2] [ref=e412]
+                  - generic [ref=e413]:
+                    - generic [ref=e415] [cursor=pointer]:
+                      - img "leader-logo" [ref=e417]
+                      - generic [ref=e418]:
+                        - generic [ref=e419]: Dickson Aladesanmi
+                        - generic [ref=e420]: Chief Financial Officer
+                      - link "linkedin" [ref=e421]:
+                        - /url: https://www.linkedin.com/in/dicksonaladesanmi
+                        - img "linkedin" [ref=e422]
+                    - generic [ref=e424] [cursor=pointer]:
+                      - img "leader-logo" [ref=e426]
+                      - generic [ref=e427]:
+                        - generic [ref=e428]: Amit Thummala
+                        - generic [ref=e429]: Chief Product & Technology Officer
+                      - link "linkedin" [ref=e430]:
+                        - /url: https://www.linkedin.com/in/thummalaamit
+                        - img "linkedin" [ref=e431]
+                - generic [ref=e432]:
+                  - heading "Recent News" [level=2] [ref=e434]
+                  - generic [ref=e435]:
+                    - generic [ref=e437]:
+                      - generic [ref=e438]:
+                        - generic [ref=e439]: AgFunderNews
+                        - link "Plant-based cheese startup Stockeld Dreamery shutters as flexitarian dream fizzles" [ref=e441] [cursor=pointer]:
+                          - /url: https://agfundernews.com/plant-based-cheese-startup-stockeld-dreamery-shutters-as-flexitarian-dream-fizzles
+                          - generic [ref=e442]: Plant-based cheese startup Stockeld Dreamery shutters as flexitarian dream fizzles
+                      - generic [ref=e443]: 2025-10-24
+                    - generic [ref=e445]:
+                      - generic [ref=e446]:
+                        - generic [ref=e447]: PR Newswire
+                        - link "Baldor Specialty Foods Appoints Teepoo Riaz as Chief Legal & Administrative Officer and Vladimiro Sinatti as Chief Financial Officer" [ref=e449] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/baldor-specialty-foods-appoints-teepoo-riaz-as-chief-legal--administrative-officer-and-vladimiro-sinatti-as-chief-financial-officer-302584889.html
+                          - generic [ref=e450]: Baldor Specialty Foods Appoints Teepoo Riaz as Chief Legal & Administrative Officer and Vladimiro Sinatti as Chief Financial Officer
+                      - generic [ref=e451]: 2025-10-15
+                    - generic [ref=e453]:
+                      - generic [ref=e454]:
+                        - generic [ref=e455]: The Real Deal
+                        - link "Acumen Capital refis old Pfizer Brooklyn building" [ref=e457] [cursor=pointer]:
+                          - /url: https://therealdeal.com/new-york/2025/10/15/acumen-capital-refis-pfizers-old-brooklyn-industrial-hq/
+                          - generic [ref=e458]: Acumen Capital refis old Pfizer Brooklyn building
+                      - generic [ref=e459]: 2025-10-15
+                - generic [ref=e461]: Company data provided by crunchbase
+        - complementary [ref=e462]:
+          - generic [ref=e465]:
+            - generic [ref=e466]: Boost Your Interview Chances
+            - generic [ref=e467]:
+              - generic [ref=e468]:
+                - generic [ref=e469]: Improve Resume Match Score
+                - generic [ref=e470]: FREE
+              - generic [ref=e471]:
+                - generic [ref=e472]:
+                  - generic [ref=e475]:
+                    - img [ref=e476]
+                    - paragraph [ref=e490]: "?"
+                  - generic [ref=e491]: Your Score
+                - generic [ref=e493]:
+                  - generic [ref=e496]:
+                    - img [ref=e497]
+                    - paragraph [ref=e500]: "-"
+                  - generic [ref=e501]: Top Applicants
+              - generic [ref=e502]:
+                - generic [ref=e503]:
+                  - img "skill icon" [ref=e505]
+                  - generic [ref=e506]: Must-Have Skills for This Role
+                - generic [ref=e508]:
+                  - generic [ref=e509] [cursor=pointer]: SQL
+                  - generic [ref=e510] [cursor=pointer]: Python
+                  - generic [ref=e511] [cursor=pointer]: Statistics
+                  - generic [ref=e512] [cursor=pointer]: Data analysis
+                  - generic [ref=e513] [cursor=pointer]: Economics
+              - button "Optimize my Resume" [ref=e515] [cursor=pointer]:
+                - generic [ref=e516]: Optimize my Resume
+            - generic [ref=e517]:
+              - generic [ref=e518]:
+                - generic [ref=e519]: Get Referral Via linkedIn
+                - generic [ref=e520]: FREE
+              - generic [ref=e521]: 3× Higher Response via Email Outreach
+              - generic [ref=e524]:
+                - generic [ref=e525]:
+                  - generic [ref=e529] [cursor=pointer]: L
+                  - generic [ref=e531]:
+                    - generic [ref=e532]: Linda L.
+                    - generic [ref=e533]: Technical Recruiter
+                - generic [ref=e534]:
+                  - img "email" [ref=e536] [cursor=pointer]
+                  - img "linkedin" [ref=e538] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e540] [cursor=pointer]:
+                - generic [ref=e541]: Draft Message to Connect
+            - generic [ref=e542]:
+              - generic [ref=e543]:
+                - generic [ref=e544]: Apply Faster with Autofill Plugin
+                - generic [ref=e545]: FREE
+              - img "autofill" [ref=e547]
+              - button "Apply With Autofill" [ref=e549] [cursor=pointer]:
+                - generic [ref=e550]: Apply With Autofill
+  - alert [ref=e551]

@@ -1,0 +1,233 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Chenega Corporation · 10 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Chenega Corporation
+                        - generic [ref=e52]: · 10 hours ago
+                      - heading "IT Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Chantilly, VA, US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $17/hr - $29/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Chenega Corporation
+                    - text: is a mission-driven Alaska Native corporation with a commitment to community and cultural values. They are seeking an Information Technology Intern to provide IT support focusing on desktop support activities and assist in managing technology issues and hardware inventory.
+                  - generic [ref=e81]:
+                    - generic [ref=e83]: Information Technology
+                    - generic [ref=e85]:
+                      - img "check" [ref=e87]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e88]
+              - separator [ref=e89]
+              - generic [ref=e90]:
+                - heading "Responsibilities" [level=2] [ref=e92]
+                - generic [ref=e93]:
+                  - generic [ref=e98]: Assist in delegating ServiceNow tickets
+                  - generic [ref=e103]: Review InfoSec system logs
+                  - generic [ref=e108]: Identify, troubleshoot, and resolve technology issues
+                  - generic [ref=e113]: Assist in managing laptops and hardware asset inventory
+                  - generic [ref=e118]: Documenting Standard Operating Procedures (SOP) related to support
+                  - generic [ref=e123]: Support onsite HP/Poly telephone and conference rooms AV equipment
+                  - generic [ref=e128]: Other duties as assigned
+              - separator [ref=e129]
+              - generic [ref=e130]:
+                - heading "Qualification" [level=2] [ref=e132]
+                - generic [ref=e133]:
+                  - generic [ref=e134] [cursor=pointer]: ServiceNow
+                  - generic [ref=e135] [cursor=pointer]: InfoSec system logs
+                  - generic [ref=e136] [cursor=pointer]: Technology troubleshooting
+                  - generic [ref=e137] [cursor=pointer]: Hardware asset inventory management
+                  - generic [ref=e138] [cursor=pointer]: Standard Operating Procedures documentation
+                  - generic [ref=e139] [cursor=pointer]: HP telephone systems
+                  - generic [ref=e140] [cursor=pointer]: Poly conference room AV equipment
+                - generic [ref=e141]:
+                  - heading "Required" [level=4] [ref=e142]
+                  - generic [ref=e146]: Currently enrolled in a 4-year academic institution
+                  - generic [ref=e150]: Computer experience
+                - generic [ref=e151]:
+                  - heading "Preferred" [level=4] [ref=e152]
+                  - generic [ref=e156]: Knowledge of standard concepts, practices, and procedures
+            - separator [ref=e157]
+            - generic [ref=e158]:
+              - heading "Company" [level=2] [ref=e160]
+              - generic [ref=e162]:
+                - generic [ref=e165]:
+                  - generic [ref=e166]:
+                    - generic [ref=e167]:
+                      - heading "Chenega Corporation" [level=2] [ref=e168]
+                      - generic [ref=e169]:
+                        - link "twitter" [ref=e170] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/73212
+                          - img "twitter" [ref=e171]
+                        - link "twitter" [ref=e172] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/chenega-decision-sciences
+                          - img "twitter" [ref=e173]
+                        - link "Glassdoor 3.7" [ref=e174] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Chenega-Corporation-EI_IE39894.11,30.htm
+                          - generic [ref=e175]:
+                            - generic [ref=e176]: Glassdoor
+                            - generic "3.7 Stars" [ref=e177]:
+                              - img [ref=e179]
+                              - img [ref=e182]
+                              - img [ref=e185]
+                              - img [ref=e188]
+                              - img [ref=e191]
+                            - generic [ref=e193]: "3.7"
+                    - img "company-logo" [ref=e195]
+                  - generic [ref=e196]: As the most successful Alaska Native village corporation, Chenega figures prominently in the diverse government services contracting marketplace supporting defense, intelligence, and federal civilian customers.
+                - generic [ref=e199]:
+                  - generic [ref=e200]:
+                    - img "date" [ref=e201]
+                    - text: Founded in 1974
+                  - generic [ref=e202]:
+                    - img "location" [ref=e203]
+                    - generic [ref=e204]: Anchorage, Alaska, USA
+                  - generic [ref=e205]:
+                    - img "people-size" [ref=e206]
+                    - text: 5001-10000 employees
+                  - generic [ref=e207]:
+                    - img "web-link" [ref=e208]
+                    - link "https://www.chenega.com/" [ref=e210] [cursor=pointer]:
+                      - /url: https://www.chenega.com/
+              - generic [ref=e211]:
+                - generic [ref=e212]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e214]
+                  - generic [ref=e216]:
+                    - text: Chenega Corporation has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e217]: (Data Powered by US Department of Labor)
+                  - generic [ref=e218]:
+                    - generic [ref=e219]:
+                      - generic [ref=e220]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e227]: Represents job field similar to this job
+                    - generic [ref=e228]:
+                      - generic [ref=e229]: Trends of Total Sponsorships
+                      - generic [ref=e230]:
+                        - generic [ref=e231]:
+                          - text: "2023"
+                          - generic [ref=e232]: (1)
+                        - progressbar [ref=e233]
+                      - generic [ref=e237]:
+                        - generic [ref=e238]:
+                          - text: "2020"
+                          - generic [ref=e239]: (2)
+                        - progressbar [ref=e240]
+                - generic [ref=e244]:
+                  - heading "Funding" [level=2] [ref=e246]
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e252]:
+                  - heading "Leadership Team" [level=2] [ref=e254]
+                  - generic [ref=e255]:
+                    - generic [ref=e257] [cursor=pointer]:
+                      - img "leader-logo" [ref=e259]
+                      - generic [ref=e260]:
+                        - generic [ref=e261]: Robb Milne
+                        - generic [ref=e262]: CFO
+                      - link "linkedin" [ref=e263]:
+                        - /url: https://www.linkedin.com/in/robb-milne-a4a84913
+                        - img "linkedin" [ref=e264]
+                    - generic [ref=e266] [cursor=pointer]:
+                      - img "leader-logo" [ref=e268]
+                      - generic [ref=e269]:
+                        - generic [ref=e270]: Chris Andersen
+                        - generic [ref=e271]: Chief Development Officer, Military, Intel and Operations Support Strategic Business Unit
+                      - link "linkedin" [ref=e272]:
+                        - /url: https://www.linkedin.com/in/chriscandersen
+                        - img "linkedin" [ref=e273]
+                - generic [ref=e275]: Company data provided by crunchbase
+        - complementary [ref=e276]:
+          - generic [ref=e279]:
+            - generic [ref=e280]: Boost Your Interview Chances
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - generic [ref=e283]: Improve Resume Match Score
+                - generic [ref=e284]: FREE
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - generic [ref=e289]:
+                    - img [ref=e290]
+                    - paragraph [ref=e304]: "?"
+                  - generic [ref=e305]: Your Score
+                - generic [ref=e307]:
+                  - generic [ref=e310]:
+                    - img [ref=e311]
+                    - paragraph [ref=e325]: "8.9"
+                  - generic [ref=e326]: Top Applicants
+              - generic [ref=e327]:
+                - generic [ref=e328]:
+                  - img "skill icon" [ref=e330]
+                  - generic [ref=e331]: Must-Have Skills for This Role
+                - generic [ref=e333]:
+                  - generic [ref=e334] [cursor=pointer]: ServiceNow
+                  - generic [ref=e335] [cursor=pointer]: InfoSec system logs
+                  - generic [ref=e336] [cursor=pointer]: Technology troubleshooting
+                  - generic [ref=e337] [cursor=pointer]: Hardware asset inventory management
+                  - generic [ref=e338] [cursor=pointer]: Standard Operating Procedures documentation
+              - button "Optimize my Resume" [ref=e340] [cursor=pointer]:
+                - generic [ref=e341]: Optimize my Resume
+            - generic [ref=e342]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: Get Referral Via linkedIn
+                - generic [ref=e345]: FREE
+              - generic [ref=e346]: 3× Higher Response via Email Outreach
+              - generic [ref=e349]:
+                - generic [ref=e350]:
+                  - generic [ref=e354] [cursor=pointer]: L
+                  - generic [ref=e356]:
+                    - generic [ref=e357]: Linda L.
+                    - generic [ref=e358]: Technical Recruiter
+                - generic [ref=e359]:
+                  - img "email" [ref=e361] [cursor=pointer]
+                  - img "linkedin" [ref=e363] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e365] [cursor=pointer]:
+                - generic [ref=e366]: Draft Message to Connect
+            - generic [ref=e367]:
+              - generic [ref=e368]:
+                - generic [ref=e369]: Apply Faster with Autofill Plugin
+                - generic [ref=e370]: FREE
+              - img "autofill" [ref=e372]
+              - button "Apply With Autofill" [ref=e374] [cursor=pointer]:
+                - generic [ref=e375]: Apply With Autofill
+  - alert [ref=e376]

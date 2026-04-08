@@ -1,0 +1,1111 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - generic [ref=e8]: WeKruit Matching
+            - generic [ref=e9]: Jobs console for inventory, freshness, and pipeline health
+          - generic [ref=e10]: internal
+        - navigation "Primary navigation" [ref=e11]:
+          - link "Active Jobs" [ref=e12] [cursor=pointer]:
+            - /url: /internal/jobs?status=active
+          - link "Stale Jobs" [ref=e13] [cursor=pointer]:
+            - /url: /internal/jobs?status=inactive
+          - link "Stats" [ref=e14] [cursor=pointer]:
+            - /url: /internal/stats
+          - link "Pipeline" [ref=e15] [cursor=pointer]:
+            - /url: /internal/pipeline
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - paragraph [ref=e18]: Jobs Console
+        - heading "Active Jobs" [level=1] [ref=e19]
+        - paragraph [ref=e20]: Browse the live inventory, narrow to a source or industry, and see processing state without decoding raw database fields.
+        - generic "Page summary" [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]: Inventory
+            - generic [ref=e24]: Active
+          - generic [ref=e25]:
+            - generic [ref=e26]: Results
+            - generic [ref=e27]: 49,431 jobs
+          - generic [ref=e28]:
+            - generic [ref=e29]: Showing
+            - generic [ref=e30]: 1-50
+          - generic [ref=e31]:
+            - generic [ref=e32]: Refinements
+            - generic [ref=e33]: "0"
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]:
+            - heading "Browse and filter" [level=2] [ref=e38]
+            - paragraph [ref=e39]: Keep one filtering surface for search, source, industry, and listing status, with a visible read on what is currently narrowing the list.
+          - generic [ref=e40]:
+            - paragraph [ref=e41]: Start broad, then narrow by source, industry, or a role/company search when you need a tighter slice.
+            - search [ref=e42]:
+              - generic [ref=e43]:
+                - generic [ref=e44]: Search
+                - textbox "Search" [ref=e45]:
+                  - /placeholder: Company or role
+              - generic [ref=e46]:
+                - generic [ref=e47]: Listing status
+                - combobox "Listing status" [ref=e48]:
+                  - option "Active" [selected]
+                  - option "Inactive"
+              - generic [ref=e49]:
+                - generic [ref=e50]: Source
+                - combobox "Source" [ref=e51]:
+                  - option "All sources" [selected]
+                  - option "jobright-intern"
+                  - option "jobright-newgrad"
+                  - option "New-Grad-Positions"
+                  - option "Summer2026-Internships"
+              - generic [ref=e52]:
+                - generic [ref=e53]: Industry
+                - combobox "Industry" [ref=e54]:
+                  - option "All industries" [selected]
+                  - option "accounting_finance"
+                  - option "ai_ml"
+                  - option "arts_entertainment"
+                  - option "automotive"
+                  - option "business"
+                  - option "consulting"
+                  - option "customer_service"
+                  - option "cybersecurity"
+                  - option "data_analytics"
+                  - option "defense"
+                  - option "design"
+                  - option "ecommerce"
+                  - option "education"
+                  - option "energy"
+                  - option "engineering"
+                  - option "enterprise_saas"
+                  - option "fintech"
+                  - option "gaming"
+                  - option "government"
+                  - option "hardware"
+                  - option "healthtech"
+                  - option "human_resources"
+                  - option "legal"
+                  - option "management"
+                  - option "manufacturing"
+                  - option "marketing"
+                  - option "nonprofit"
+                  - option "other"
+                  - option "product"
+                  - option "retail"
+                  - option "sales"
+                  - option "social_media"
+                  - option "tech"
+                  - option "transportation"
+                  - option "unknown"
+              - button "Apply filters" [ref=e56] [cursor=pointer]
+        - generic [ref=e57]:
+          - generic [ref=e59]:
+            - heading "Job inventory" [level=2] [ref=e60]
+            - paragraph [ref=e61]: Desktop keeps density with a table. Narrow screens switch to cards so core fields stay readable without horizontal-only browsing.
+          - generic [ref=e62]:
+            - paragraph [ref=e63]: Showing 1-50 of 49,431 jobs · Page 1 of 989
+            - navigation "Pagination" [ref=e64]:
+              - generic [ref=e65]: Prev
+              - generic [ref=e66]: "1"
+              - link "Page 2" [ref=e67] [cursor=pointer]:
+                - /url: /internal/jobs?page=2&status=active
+                - text: "2"
+              - link "Page 3" [ref=e68] [cursor=pointer]:
+                - /url: /internal/jobs?page=3&status=active
+                - text: "3"
+              - link "Page 4" [ref=e69] [cursor=pointer]:
+                - /url: /internal/jobs?page=4&status=active
+                - text: "4"
+              - link "Page 5" [ref=e70] [cursor=pointer]:
+                - /url: /internal/jobs?page=5&status=active
+                - text: "5"
+              - link "Page 6" [ref=e71] [cursor=pointer]:
+                - /url: /internal/jobs?page=6&status=active
+                - text: "6"
+              - link "Page 7" [ref=e72] [cursor=pointer]:
+                - /url: /internal/jobs?page=7&status=active
+                - text: "7"
+              - link "Next page" [ref=e73] [cursor=pointer]:
+                - /url: /internal/jobs?page=2&status=active
+                - text: Next
+          - table "Active Jobs results" [ref=e75]:
+            - caption [ref=e76]: Active Jobs results
+            - rowgroup [ref=e77]:
+              - row "Role Company Location Industry Skills Status" [ref=e78]:
+                - columnheader "Role" [ref=e79]
+                - columnheader "Company" [ref=e80]
+                - columnheader "Location" [ref=e81]
+                - columnheader "Industry" [ref=e82]
+                - columnheader "Skills" [ref=e83]
+                - columnheader "Status" [ref=e84]
+            - rowgroup [ref=e85]:
+              - row "Patient Service Representative I First seen 2026-03-31 · Last seen 2026-03-31 uropartners llc Downers Grove, IL customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e86]:
+                - cell "Patient Service Representative I First seen 2026-03-31 · Last seen 2026-03-31" [ref=e87]:
+                  - link "Patient Service Representative I" [ref=e88] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cb97808130af1ac83346bf?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e89]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "uropartners llc" [ref=e90]
+                - cell "Downers Grove, IL" [ref=e91]
+                - cell "customer_service" [ref=e92]:
+                  - generic [ref=e93]: customer_service
+                - cell "No skills parsed" [ref=e94]:
+                  - generic [ref=e96]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e97]:
+                  - generic [ref=e98]:
+                    - generic [ref=e99]: Active listing
+                    - generic [ref=e100]: Sponsorship unknown
+                    - generic [ref=e101]: Pending enrichment
+                    - generic [ref=e102]: Awaiting enrichment
+              - row "Customer Service Associate I First seen 2026-03-31 · Last seen 2026-03-31 dollar tree stores Bronx, NY retail customer service communication teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e103]:
+                - cell "Customer Service Associate I First seen 2026-03-31 · Last seen 2026-03-31" [ref=e104]:
+                  - link "Customer Service Associate I" [ref=e105] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/694a32d1c6f0e2546cef4931?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e106]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "dollar tree stores" [ref=e107]
+                - cell "Bronx, NY" [ref=e108]
+                - cell "retail" [ref=e109]:
+                  - generic [ref=e110]: retail
+                - cell "customer service communication teamwork" [ref=e111]:
+                  - generic [ref=e112]:
+                    - generic [ref=e113]: customer service
+                    - generic [ref=e114]: communication
+                    - generic [ref=e115]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e116]:
+                  - generic [ref=e117]:
+                    - generic [ref=e118]: Active listing
+                    - generic [ref=e119]: Sponsorship unknown
+                    - generic [ref=e120]: Enriched
+                    - generic [ref=e121]: Pending embedding
+              - row "Parts Specialist First seen 2026-03-31 · Last seen 2026-03-31 o reilly auto parts Auburn, CA retail customer service inventory management sales Active listing Sponsorship unknown Enriched Pending embedding" [ref=e122]:
+                - cell "Parts Specialist First seen 2026-03-31 · Last seen 2026-03-31" [ref=e123]:
+                  - link "Parts Specialist" [ref=e124] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69a7f25f637232443f65491f?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e125]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "o reilly auto parts" [ref=e126]
+                - cell "Auburn, CA" [ref=e127]
+                - cell "retail" [ref=e128]:
+                  - generic [ref=e129]: retail
+                - cell "customer service inventory management sales" [ref=e130]:
+                  - generic [ref=e131]:
+                    - generic [ref=e132]: customer service
+                    - generic [ref=e133]: inventory management
+                    - generic [ref=e134]: sales
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e135]:
+                  - generic [ref=e136]:
+                    - generic [ref=e137]: Active listing
+                    - generic [ref=e138]: Sponsorship unknown
+                    - generic [ref=e139]: Enriched
+                    - generic [ref=e140]: Pending embedding
+              - row "Retail Associate First seen 2026-03-31 · Last seen 2026-03-31 ross stores inc Mattoon, IL retail customer_service retail_operations inventory_management Active listing Sponsorship unknown Enriched Pending embedding" [ref=e141]:
+                - cell "Retail Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e142]:
+                  - link "Retail Associate" [ref=e143] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/698a63e1c5761b521a9992ec?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e144]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "ross stores inc" [ref=e145]
+                - cell "Mattoon, IL" [ref=e146]
+                - cell "retail" [ref=e147]:
+                  - generic [ref=e148]: retail
+                - cell "customer_service retail_operations inventory_management" [ref=e149]:
+                  - generic [ref=e150]:
+                    - generic [ref=e151]: customer_service
+                    - generic [ref=e152]: retail_operations
+                    - generic [ref=e153]: inventory_management
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e154]:
+                  - generic [ref=e155]:
+                    - generic [ref=e156]: Active listing
+                    - generic [ref=e157]: Sponsorship unknown
+                    - generic [ref=e158]: Enriched
+                    - generic [ref=e159]: Pending embedding
+              - row "Early Morning Stock Associate First seen 2026-03-31 · Last seen 2026-03-31 ross stores inc Hyattsville, MD retail customer_service inventory_management teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e160]:
+                - cell "Early Morning Stock Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e161]:
+                  - link "Early Morning Stock Associate" [ref=e162] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c3ca0a33eecf310793a646?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e163]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "ross stores inc" [ref=e164]
+                - cell "Hyattsville, MD" [ref=e165]
+                - cell "retail" [ref=e166]:
+                  - generic [ref=e167]: retail
+                - cell "customer_service inventory_management teamwork" [ref=e168]:
+                  - generic [ref=e169]:
+                    - generic [ref=e170]: customer_service
+                    - generic [ref=e171]: inventory_management
+                    - generic [ref=e172]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e173]:
+                  - generic [ref=e174]:
+                    - generic [ref=e175]: Active listing
+                    - generic [ref=e176]: Sponsorship unknown
+                    - generic [ref=e177]: Enriched
+                    - generic [ref=e178]: Pending embedding
+              - row "Retail Associate First seen 2026-03-31 · Last seen 2026-03-31 ross stores inc Aurora, IL retail customer_service retail_operations teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e179]:
+                - cell "Retail Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e180]:
+                  - link "Retail Associate" [ref=e181] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/698a771f4db8972cecffca63?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e182]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "ross stores inc" [ref=e183]
+                - cell "Aurora, IL" [ref=e184]
+                - cell "retail" [ref=e185]:
+                  - generic [ref=e186]: retail
+                - cell "customer_service retail_operations teamwork" [ref=e187]:
+                  - generic [ref=e188]:
+                    - generic [ref=e189]: customer_service
+                    - generic [ref=e190]: retail_operations
+                    - generic [ref=e191]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e192]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Active listing
+                    - generic [ref=e195]: Sponsorship unknown
+                    - generic [ref=e196]: Enriched
+                    - generic [ref=e197]: Pending embedding
+              - row "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31 walgreens Palm Harbor, FL customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e198]:
+                - cell "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31" [ref=e199]:
+                  - link "Customer Service Associate - Temporary" [ref=e200] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c3d7f06f4f855eeda61aee?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e201]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e202]
+                - cell "Palm Harbor, FL" [ref=e203]
+                - cell "customer_service" [ref=e204]:
+                  - generic [ref=e205]: customer_service
+                - cell "No skills parsed" [ref=e206]:
+                  - generic [ref=e208]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e209]:
+                  - generic [ref=e210]:
+                    - generic [ref=e211]: Active listing
+                    - generic [ref=e212]: Sponsorship unknown
+                    - generic [ref=e213]: Pending enrichment
+                    - generic [ref=e214]: Awaiting enrichment
+              - row "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens Joplin, MO retail customer_service pharmacy_operations communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e215]:
+                - cell "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e216]:
+                  - link "Pharmacy Customer Service Associate" [ref=e217] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c506391f66063a68166a7b?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e218]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e219]
+                - cell "Joplin, MO" [ref=e220]
+                - cell "retail" [ref=e221]:
+                  - generic [ref=e222]: retail
+                - cell "customer_service pharmacy_operations communication" [ref=e223]:
+                  - generic [ref=e224]:
+                    - generic [ref=e225]: customer_service
+                    - generic [ref=e226]: pharmacy_operations
+                    - generic [ref=e227]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e228]:
+                  - generic [ref=e229]:
+                    - generic [ref=e230]: Active listing
+                    - generic [ref=e231]: Sponsorship unknown
+                    - generic [ref=e232]: Enriched
+                    - generic [ref=e233]: Pending embedding
+              - row "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens Castle Pines, CO retail customer service communication problem solving Active listing Sponsorship unknown Enriched Pending embedding" [ref=e234]:
+                - cell "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e235]:
+                  - link "Customer Service Associate" [ref=e236] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c506418652780152678a17?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e237]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e238]
+                - cell "Castle Pines, CO" [ref=e239]
+                - cell "retail" [ref=e240]:
+                  - generic [ref=e241]: retail
+                - cell "customer service communication problem solving" [ref=e242]:
+                  - generic [ref=e243]:
+                    - generic [ref=e244]: customer service
+                    - generic [ref=e245]: communication
+                    - generic [ref=e246]: problem solving
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e247]:
+                  - generic [ref=e248]:
+                    - generic [ref=e249]: Active listing
+                    - generic [ref=e250]: Sponsorship unknown
+                    - generic [ref=e251]: Enriched
+                    - generic [ref=e252]: Pending embedding
+              - row "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31 walgreens Yuba City, CA retail customer_service communication teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e253]:
+                - cell "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31" [ref=e254]:
+                  - link "Customer Service Associate - Temporary" [ref=e255] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c3ebead5a1016e98dae4bb?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e256]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e257]
+                - cell "Yuba City, CA" [ref=e258]
+                - cell "retail" [ref=e259]:
+                  - generic [ref=e260]: retail
+                - cell "customer_service communication teamwork" [ref=e261]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: customer_service
+                    - generic [ref=e264]: communication
+                    - generic [ref=e265]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e266]:
+                  - generic [ref=e267]:
+                    - generic [ref=e268]: Active listing
+                    - generic [ref=e269]: Sponsorship unknown
+                    - generic [ref=e270]: Enriched
+                    - generic [ref=e271]: Pending embedding
+              - row "Medicare Customer Service Rep First seen 2026-03-31 · Last seen 2026-03-31 wps a health solutions company Colorado, United States healthtech customer_service healthcare_knowledge communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e272]:
+                - cell "Medicare Customer Service Rep First seen 2026-03-31 · Last seen 2026-03-31" [ref=e273]:
+                  - link "Medicare Customer Service Rep" [ref=e274] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c40d1ed5a1016e98db1678?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e275]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "wps a health solutions company" [ref=e276]
+                - cell "Colorado, United States" [ref=e277]
+                - cell "healthtech" [ref=e278]:
+                  - generic [ref=e279]: healthtech
+                - cell "customer_service healthcare_knowledge communication" [ref=e280]:
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: customer_service
+                    - generic [ref=e283]: healthcare_knowledge
+                    - generic [ref=e284]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e285]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]: Active listing
+                    - generic [ref=e288]: Sponsorship unknown
+                    - generic [ref=e289]: Enriched
+                    - generic [ref=e290]: Pending embedding
+              - row "Security Officer Part Time Campus Patrol First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-NY-New York customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e291]:
+                - cell "Security Officer Part Time Campus Patrol First seen 2026-03-31 · Last seen 2026-03-31" [ref=e292]:
+                  - link "Security Officer Part Time Campus Patrol" [ref=e293] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cb7c861b5ad028873ac952?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e294]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e295]
+                - cell "US-NY-New York" [ref=e296]
+                - cell "customer_service" [ref=e297]:
+                  - generic [ref=e298]: customer_service
+                - cell "No skills parsed" [ref=e299]:
+                  - generic [ref=e301]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e302]:
+                  - generic [ref=e303]:
+                    - generic [ref=e304]: Active listing
+                    - generic [ref=e305]: Sponsorship unknown
+                    - generic [ref=e306]: Pending enrichment
+                    - generic [ref=e307]: Awaiting enrichment
+              - row "Shift Supervisor First seen 2026-03-31 · Last seen 2026-03-31 gpm investments llc US-VA-Richmond other supervision team management logistics Active listing Sponsorship unknown Enriched Pending embedding" [ref=e308]:
+                - cell "Shift Supervisor First seen 2026-03-31 · Last seen 2026-03-31" [ref=e309]:
+                  - link "Shift Supervisor" [ref=e310] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cab3fe1b5ad028873a40a2?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e311]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "gpm investments llc" [ref=e312]
+                - cell "US-VA-Richmond" [ref=e313]
+                - cell "other" [ref=e314]:
+                  - generic [ref=e315]: other
+                - cell "supervision team management logistics" [ref=e316]:
+                  - generic [ref=e317]:
+                    - generic [ref=e318]: supervision
+                    - generic [ref=e319]: team management
+                    - generic [ref=e320]: logistics
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e321]:
+                  - generic [ref=e322]:
+                    - generic [ref=e323]: Active listing
+                    - generic [ref=e324]: Sponsorship unknown
+                    - generic [ref=e325]: Enriched
+                    - generic [ref=e326]: Pending embedding
+              - row "Teller Part Time Route 66 District First seen 2026-03-31 · Last seen 2026-03-31 wells fargo MONTCLAIR, CA customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e327]:
+                - cell "Teller Part Time Route 66 District First seen 2026-03-31 · Last seen 2026-03-31" [ref=e328]:
+                  - link "Teller Part Time Route 66 District" [ref=e329] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c43c80d5a1016e98db52c5?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e330]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "wells fargo" [ref=e331]
+                - cell "MONTCLAIR, CA" [ref=e332]
+                - cell "customer_service" [ref=e333]:
+                  - generic [ref=e334]: customer_service
+                - cell "No skills parsed" [ref=e335]:
+                  - generic [ref=e337]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e338]:
+                  - generic [ref=e339]:
+                    - generic [ref=e340]: Active listing
+                    - generic [ref=e341]: Sponsorship unknown
+                    - generic [ref=e342]: Pending enrichment
+                    - generic [ref=e343]: Awaiting enrichment
+              - row "Daytime Stocker First seen 2026-03-31 · Last seen 2026-03-31 winco foods US-WA-Wenatchee retail inventory management customer service teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e344]:
+                - cell "Daytime Stocker First seen 2026-03-31 · Last seen 2026-03-31" [ref=e345]:
+                  - link "Daytime Stocker" [ref=e346] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cb25b18fc6090c5d455423?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e347]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "winco foods" [ref=e348]
+                - cell "US-WA-Wenatchee" [ref=e349]
+                - cell "retail" [ref=e350]:
+                  - generic [ref=e351]: retail
+                - cell "inventory management customer service teamwork" [ref=e352]:
+                  - generic [ref=e353]:
+                    - generic [ref=e354]: inventory management
+                    - generic [ref=e355]: customer service
+                    - generic [ref=e356]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e357]:
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: Active listing
+                    - generic [ref=e360]: Sponsorship unknown
+                    - generic [ref=e361]: Enriched
+                    - generic [ref=e362]: Pending embedding
+              - row "Associate I, Client Relations Associate First seen 2026-03-31 · Last seen 2026-03-31 first national bank gh Kansas City, MO - 1 Ward Parkway fintech client relations customer service communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e363]:
+                - cell "Associate I, Client Relations Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e364]:
+                  - link "Associate I, Client Relations Associate" [ref=e365] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c445c7d5a1016e98db5f96?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e366]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "first national bank gh" [ref=e367]
+                - cell "Kansas City, MO - 1 Ward Parkway" [ref=e368]
+                - cell "fintech" [ref=e369]:
+                  - generic [ref=e370]: fintech
+                - cell "client relations customer service communication" [ref=e371]:
+                  - generic [ref=e372]:
+                    - generic [ref=e373]: client relations
+                    - generic [ref=e374]: customer service
+                    - generic [ref=e375]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e376]:
+                  - generic [ref=e377]:
+                    - generic [ref=e378]: Active listing
+                    - generic [ref=e379]: Sponsorship unknown
+                    - generic [ref=e380]: Enriched
+                    - generic [ref=e381]: Pending embedding
+              - row "Security Officer - Badge Room First seen 2026-03-31 · Last seen 2026-03-31 allied universal Commerce City, CO, US customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e382]:
+                - cell "Security Officer - Badge Room First seen 2026-03-31 · Last seen 2026-03-31" [ref=e383]:
+                  - link "Security Officer - Badge Room" [ref=e384] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c46db06f4f855eeda6faf3?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e385]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e386]
+                - cell "Commerce City, CO, US" [ref=e387]
+                - cell "customer_service" [ref=e388]:
+                  - generic [ref=e389]: customer_service
+                - cell "No skills parsed" [ref=e390]:
+                  - generic [ref=e392]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e393]:
+                  - generic [ref=e394]:
+                    - generic [ref=e395]: Active listing
+                    - generic [ref=e396]: Sponsorship unknown
+                    - generic [ref=e397]: Pending enrichment
+                    - generic [ref=e398]: Awaiting enrichment
+              - row "Part-Time Doorstep Trash Collection Specialist - Nights - Pickup Truck Required First seen 2026-03-31 · Last seen 2026-03-31 valet living Georgetown,TX retail pickup truck operation customer service organizational skills Active listing Sponsorship unknown Enriched Pending embedding" [ref=e399]:
+                - cell "Part-Time Doorstep Trash Collection Specialist - Nights - Pickup Truck Required First seen 2026-03-31 · Last seen 2026-03-31" [ref=e400]:
+                  - link "Part-Time Doorstep Trash Collection Specialist - Nights - Pickup Truck Required" [ref=e401] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c476db6f4f855eeda703a7?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e402]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "valet living" [ref=e403]
+                - cell "Georgetown,TX" [ref=e404]
+                - cell "retail" [ref=e405]:
+                  - generic [ref=e406]: retail
+                - cell "pickup truck operation customer service organizational skills" [ref=e407]:
+                  - generic [ref=e408]:
+                    - generic [ref=e409]: pickup truck operation
+                    - generic [ref=e410]: customer service
+                    - generic [ref=e411]: organizational skills
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e412]:
+                  - generic [ref=e413]:
+                    - generic [ref=e414]: Active listing
+                    - generic [ref=e415]: Sponsorship unknown
+                    - generic [ref=e416]: Enriched
+                    - generic [ref=e417]: Pending embedding
+              - row "Help Desk Analyst First seen 2026-03-31 · Last seen 2026-03-31 kpff consulting engineers Seattle, WA consulting customer service technical support problem solving communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e418]:
+                - cell "Help Desk Analyst First seen 2026-03-31 · Last seen 2026-03-31" [ref=e419]:
+                  - link "Help Desk Analyst" [ref=e420] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c45bf333eecf310794a99f?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e421]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "kpff consulting engineers" [ref=e422]
+                - cell "Seattle, WA" [ref=e423]
+                - cell "consulting" [ref=e424]:
+                  - generic [ref=e425]: consulting
+                - cell "customer service technical support problem solving communication" [ref=e426]:
+                  - generic [ref=e427]:
+                    - generic [ref=e428]: customer service
+                    - generic [ref=e429]: technical support
+                    - generic [ref=e430]: problem solving
+                    - generic [ref=e431]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e432]:
+                  - generic [ref=e433]:
+                    - generic [ref=e434]: Active listing
+                    - generic [ref=e435]: Sponsorship unknown
+                    - generic [ref=e436]: Enriched
+                    - generic [ref=e437]: Pending embedding
+              - row "Security Officer - Part Time Molecular Diagnostics Driver First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-CA-Redwood City customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e438]:
+                - cell "Security Officer - Part Time Molecular Diagnostics Driver First seen 2026-03-31 · Last seen 2026-03-31" [ref=e439]:
+                  - link "Security Officer - Part Time Molecular Diagnostics Driver" [ref=e440] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c48c3433eecf310794e519?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e441]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e442]
+                - cell "US-CA-Redwood City" [ref=e443]
+                - cell "customer_service" [ref=e444]:
+                  - generic [ref=e445]: customer_service
+                - cell "No skills parsed" [ref=e446]:
+                  - generic [ref=e448]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e449]:
+                  - generic [ref=e450]:
+                    - generic [ref=e451]: Active listing
+                    - generic [ref=e452]: Sponsorship unknown
+                    - generic [ref=e453]: Pending enrichment
+                    - generic [ref=e454]: Awaiting enrichment
+              - row "Delivery and Installation Specialist First seen 2026-03-31 · Last seen 2026-03-31 the aaron s company inc C1828 - Jamestown, 1800 Washington St, Jamestown, New York, United States of America retail delivery installation customer_service Active listing Sponsorship unknown Enriched Pending embedding" [ref=e455]:
+                - cell "Delivery and Installation Specialist First seen 2026-03-31 · Last seen 2026-03-31" [ref=e456]:
+                  - link "Delivery and Installation Specialist" [ref=e457] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c49ddc33eecf310795032d?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e458]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "the aaron s company inc" [ref=e459]
+                - cell "C1828 - Jamestown, 1800 Washington St, Jamestown, New York, United States of America" [ref=e460]
+                - cell "retail" [ref=e461]:
+                  - generic [ref=e462]: retail
+                - cell "delivery installation customer_service" [ref=e463]:
+                  - generic [ref=e464]:
+                    - generic [ref=e465]: delivery
+                    - generic [ref=e466]: installation
+                    - generic [ref=e467]: customer_service
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e468]:
+                  - generic [ref=e469]:
+                    - generic [ref=e470]: Active listing
+                    - generic [ref=e471]: Sponsorship unknown
+                    - generic [ref=e472]: Enriched
+                    - generic [ref=e473]: Pending embedding
+              - row "Patient Service Representative - Pre Admission Testing First seen 2026-03-31 · Last seen 2026-03-31 trinity health Syracuse, NY customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e474]:
+                - cell "Patient Service Representative - Pre Admission Testing First seen 2026-03-31 · Last seen 2026-03-31" [ref=e475]:
+                  - link "Patient Service Representative - Pre Admission Testing" [ref=e476] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/698aa7b5c5761b521a99ee8e?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e477]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "trinity health" [ref=e478]
+                - cell "Syracuse, NY" [ref=e479]
+                - cell "customer_service" [ref=e480]:
+                  - generic [ref=e481]: customer_service
+                - cell "No skills parsed" [ref=e482]:
+                  - generic [ref=e484]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e485]:
+                  - generic [ref=e486]:
+                    - generic [ref=e487]: Active listing
+                    - generic [ref=e488]: Sponsorship unknown
+                    - generic [ref=e489]: Pending enrichment
+                    - generic [ref=e490]: Awaiting enrichment
+              - row "Developmental Disabilities Support Specialist (office-based) First seen 2026-03-31 · Last seen 2026-03-31 liberty healthcare corporation Boise, ID customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e491]:
+                - cell "Developmental Disabilities Support Specialist (office-based) First seen 2026-03-31 · Last seen 2026-03-31" [ref=e492]:
+                  - link "Developmental Disabilities Support Specialist (office-based)" [ref=e493] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cb97808130af1ac83346c3?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e494]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "liberty healthcare corporation" [ref=e495]
+                - cell "Boise, ID" [ref=e496]
+                - cell "customer_service" [ref=e497]:
+                  - generic [ref=e498]: customer_service
+                - cell "No skills parsed" [ref=e499]:
+                  - generic [ref=e501]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e502]:
+                  - generic [ref=e503]:
+                    - generic [ref=e504]: Active listing
+                    - generic [ref=e505]: Sponsorship unknown
+                    - generic [ref=e506]: Pending enrichment
+                    - generic [ref=e507]: Awaiting enrichment
+              - row "Delivery Specialist - Union GBA First seen 2026-03-31 · Last seen 2026-03-31 o reilly auto parts Union City, CA retail logistics customer_service inventory_management Active listing Sponsorship unknown Enriched Pending embedding" [ref=e508]:
+                - cell "Delivery Specialist - Union GBA First seen 2026-03-31 · Last seen 2026-03-31" [ref=e509]:
+                  - link "Delivery Specialist - Union GBA" [ref=e510] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c501df49316e7df50201fe?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e511]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "o reilly auto parts" [ref=e512]
+                - cell "Union City, CA" [ref=e513]
+                - cell "retail" [ref=e514]:
+                  - generic [ref=e515]: retail
+                - cell "logistics customer_service inventory_management" [ref=e516]:
+                  - generic [ref=e517]:
+                    - generic [ref=e518]: logistics
+                    - generic [ref=e519]: customer_service
+                    - generic [ref=e520]: inventory_management
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e521]:
+                  - generic [ref=e522]:
+                    - generic [ref=e523]: Active listing
+                    - generic [ref=e524]: Sponsorship unknown
+                    - generic [ref=e525]: Enriched
+                    - generic [ref=e526]: Pending embedding
+              - row "Security Officer Part Time Screener First seen 2026-03-31 · Last seen 2026-03-31 allied universal Jacksonville, FL, US customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e527]:
+                - cell "Security Officer Part Time Screener First seen 2026-03-31 · Last seen 2026-03-31" [ref=e528]:
+                  - link "Security Officer Part Time Screener" [ref=e529] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c57121aa3c2c1995dff02f?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e530]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e531]
+                - cell "Jacksonville, FL, US" [ref=e532]
+                - cell "customer_service" [ref=e533]:
+                  - generic [ref=e534]: customer_service
+                - cell "No skills parsed" [ref=e535]:
+                  - generic [ref=e537]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e538]:
+                  - generic [ref=e539]:
+                    - generic [ref=e540]: Active listing
+                    - generic [ref=e541]: Sponsorship unknown
+                    - generic [ref=e542]: Pending enrichment
+                    - generic [ref=e543]: Awaiting enrichment
+              - row "Préposé(e) au service à la clientèle -ACT First seen 2026-03-31 · Last seen 2026-03-31 couche tard Montreal, QC other customer_service communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e544]:
+                - cell "Préposé(e) au service à la clientèle -ACT First seen 2026-03-31 · Last seen 2026-03-31" [ref=e545]:
+                  - link "Préposé(e) au service à la clientèle -ACT" [ref=e546] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5543e1b5ad02887372522?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e547]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "couche tard" [ref=e548]
+                - cell "Montreal, QC" [ref=e549]
+                - cell "other" [ref=e550]:
+                  - generic [ref=e551]: other
+                - cell "customer_service communication" [ref=e552]:
+                  - generic [ref=e553]:
+                    - generic [ref=e554]: customer_service
+                    - generic [ref=e555]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e556]:
+                  - generic [ref=e557]:
+                    - generic [ref=e558]: Active listing
+                    - generic [ref=e559]: Sponsorship unknown
+                    - generic [ref=e560]: Enriched
+                    - generic [ref=e561]: Pending embedding
+              - row "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens Callao, VA retail customer service communication pharmacy knowledge Active listing Sponsorship unknown Enriched Pending embedding" [ref=e562]:
+                - cell "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e563]:
+                  - link "Pharmacy Customer Service Associate" [ref=e564] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c61f5583ea553769fd4097?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e565]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e566]
+                - cell "Callao, VA" [ref=e567]
+                - cell "retail" [ref=e568]:
+                  - generic [ref=e569]: retail
+                - cell "customer service communication pharmacy knowledge" [ref=e570]:
+                  - generic [ref=e571]:
+                    - generic [ref=e572]: customer service
+                    - generic [ref=e573]: communication
+                    - generic [ref=e574]: pharmacy knowledge
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e575]:
+                  - generic [ref=e576]:
+                    - generic [ref=e577]: Active listing
+                    - generic [ref=e578]: Sponsorship unknown
+                    - generic [ref=e579]: Enriched
+                    - generic [ref=e580]: Pending embedding
+              - row "Security Officer Housing Armed Patrol Driver First seen 2026-03-31 · Last seen 2026-03-31 allied universal Miami, FL, US defense security driving armed patrol Active listing Sponsorship unknown Enriched Pending embedding" [ref=e581]:
+                - cell "Security Officer Housing Armed Patrol Driver First seen 2026-03-31 · Last seen 2026-03-31" [ref=e582]:
+                  - link "Security Officer Housing Armed Patrol Driver" [ref=e583] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5713a1b5ad02887373e43?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e584]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e585]
+                - cell "Miami, FL, US" [ref=e586]
+                - cell "defense" [ref=e587]:
+                  - generic [ref=e588]: defense
+                - cell "security driving armed patrol" [ref=e589]:
+                  - generic [ref=e590]:
+                    - generic [ref=e591]: security
+                    - generic [ref=e592]: driving
+                    - generic [ref=e593]: armed patrol
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e594]:
+                  - generic [ref=e595]:
+                    - generic [ref=e596]: Active listing
+                    - generic [ref=e597]: Sponsorship unknown
+                    - generic [ref=e598]: Enriched
+                    - generic [ref=e599]: Pending embedding
+              - row "Security Officer Perimeter Patrol First seen 2026-03-31 · Last seen 2026-03-31 allied universal Corpus Christi, TX, US customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e600]:
+                - cell "Security Officer Perimeter Patrol First seen 2026-03-31 · Last seen 2026-03-31" [ref=e601]:
+                  - link "Security Officer Perimeter Patrol" [ref=e602] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5713b83ea553769fca336?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e603]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e604]
+                - cell "Corpus Christi, TX, US" [ref=e605]
+                - cell "customer_service" [ref=e606]:
+                  - generic [ref=e607]: customer_service
+                - cell "No skills parsed" [ref=e608]:
+                  - generic [ref=e610]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e611]:
+                  - generic [ref=e612]:
+                    - generic [ref=e613]: Active listing
+                    - generic [ref=e614]: Sponsorship unknown
+                    - generic [ref=e615]: Pending enrichment
+                    - generic [ref=e616]: Awaiting enrichment
+              - row "Security Officer Patrol Driver - Downtown First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-WI-Milwaukee customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e617]:
+                - cell "Security Officer Patrol Driver - Downtown First seen 2026-03-31 · Last seen 2026-03-31" [ref=e618]:
+                  - link "Security Officer Patrol Driver - Downtown" [ref=e619] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c57150aa9a29199e804c72?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e620]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e621]
+                - cell "US-WI-Milwaukee" [ref=e622]
+                - cell "customer_service" [ref=e623]:
+                  - generic [ref=e624]: customer_service
+                - cell "No skills parsed" [ref=e625]:
+                  - generic [ref=e627]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e628]:
+                  - generic [ref=e629]:
+                    - generic [ref=e630]: Active listing
+                    - generic [ref=e631]: Sponsorship unknown
+                    - generic [ref=e632]: Pending enrichment
+                    - generic [ref=e633]: Awaiting enrichment
+              - row "Security Officer Distribution Center Screening First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-MD-Hagerstown customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e634]:
+                - cell "Security Officer Distribution Center Screening First seen 2026-03-31 · Last seen 2026-03-31" [ref=e635]:
+                  - link "Security Officer Distribution Center Screening" [ref=e636] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c571511818a24cd84b5698?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e637]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e638]
+                - cell "US-MD-Hagerstown" [ref=e639]
+                - cell "customer_service" [ref=e640]:
+                  - generic [ref=e641]: customer_service
+                - cell "No skills parsed" [ref=e642]:
+                  - generic [ref=e644]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e645]:
+                  - generic [ref=e646]:
+                    - generic [ref=e647]: Active listing
+                    - generic [ref=e648]: Sponsorship unknown
+                    - generic [ref=e649]: Pending enrichment
+                    - generic [ref=e650]: Awaiting enrichment
+              - row "Security Officer - Third Shift First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-IN-Indianapolis customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e651]:
+                - cell "Security Officer - Third Shift First seen 2026-03-31 · Last seen 2026-03-31" [ref=e652]:
+                  - link "Security Officer - Third Shift" [ref=e653] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c58ffcaa3c2c1995e01938?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e654]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e655]
+                - cell "US-IN-Indianapolis" [ref=e656]
+                - cell "customer_service" [ref=e657]:
+                  - generic [ref=e658]: customer_service
+                - cell "No skills parsed" [ref=e659]:
+                  - generic [ref=e661]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e662]:
+                  - generic [ref=e663]:
+                    - generic [ref=e664]: Active listing
+                    - generic [ref=e665]: Sponsorship unknown
+                    - generic [ref=e666]: Pending enrichment
+                    - generic [ref=e667]: Awaiting enrichment
+              - row "Security Officer Enhanced Part Time Lobby Driver First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-SC-Anderson customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e668]:
+                - cell "Security Officer Enhanced Part Time Lobby Driver First seen 2026-03-31 · Last seen 2026-03-31" [ref=e669]:
+                  - link "Security Officer Enhanced Part Time Lobby Driver" [ref=e670] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c59015aa9a29199e8074ea?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e671]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e672]
+                - cell "US-SC-Anderson" [ref=e673]
+                - cell "customer_service" [ref=e674]:
+                  - generic [ref=e675]: customer_service
+                - cell "No skills parsed" [ref=e676]:
+                  - generic [ref=e678]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e679]:
+                  - generic [ref=e680]:
+                    - generic [ref=e681]: Active listing
+                    - generic [ref=e682]: Sponsorship unknown
+                    - generic [ref=e683]: Pending enrichment
+                    - generic [ref=e684]: Awaiting enrichment
+              - row "Bakery Clerk $20-$22.50/hr* First seen 2026-03-31 · Last seen 2026-03-31 nugget market inc US-CA-Rocklin retail customer service inventory management operational tasks Active listing Sponsorship unknown Enriched Pending embedding" [ref=e685]:
+                - cell "Bakery Clerk $20-$22.50/hr* First seen 2026-03-31 · Last seen 2026-03-31" [ref=e686]:
+                  - link "Bakery Clerk $20-$22.50/hr*" [ref=e687] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c750401818a24cd84cd4de?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e688]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "nugget market inc" [ref=e689]
+                - cell "US-CA-Rocklin" [ref=e690]
+                - cell "retail" [ref=e691]:
+                  - generic [ref=e692]: retail
+                - cell "customer service inventory management operational tasks" [ref=e693]:
+                  - generic [ref=e694]:
+                    - generic [ref=e695]: customer service
+                    - generic [ref=e696]: inventory management
+                    - generic [ref=e697]: operational tasks
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e698]:
+                  - generic [ref=e699]:
+                    - generic [ref=e700]: Active listing
+                    - generic [ref=e701]: Sponsorship unknown
+                    - generic [ref=e702]: Enriched
+                    - generic [ref=e703]: Pending embedding
+              - row "Automotive Customer Service Advisor First seen 2026-03-31 · Last seen 2026-03-31 pep boys Rancho Cucamonga, CA automotive customer service communication problem solving Active listing Sponsorship unknown Enriched Pending embedding" [ref=e704]:
+                - cell "Automotive Customer Service Advisor First seen 2026-03-31 · Last seen 2026-03-31" [ref=e705]:
+                  - link "Automotive Customer Service Advisor" [ref=e706] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c598071b5ad0288737694f?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e707]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "pep boys" [ref=e708]
+                - cell "Rancho Cucamonga, CA" [ref=e709]
+                - cell "automotive" [ref=e710]:
+                  - generic [ref=e711]: automotive
+                - cell "customer service communication problem solving" [ref=e712]:
+                  - generic [ref=e713]:
+                    - generic [ref=e714]: customer service
+                    - generic [ref=e715]: communication
+                    - generic [ref=e716]: problem solving
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e717]:
+                  - generic [ref=e718]:
+                    - generic [ref=e719]: Active listing
+                    - generic [ref=e720]: Sponsorship unknown
+                    - generic [ref=e721]: Enriched
+                    - generic [ref=e722]: Pending embedding
+              - row "Security Officer Driver Patrol Lead First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-KS-Leawood customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e723]:
+                - cell "Security Officer Driver Patrol Lead First seen 2026-03-31 · Last seen 2026-03-31" [ref=e724]:
+                  - link "Security Officer Driver Patrol Lead" [ref=e725] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5aaaa1b5ad02887377bfd?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e726]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e727]
+                - cell "US-KS-Leawood" [ref=e728]
+                - cell "customer_service" [ref=e729]:
+                  - generic [ref=e730]: customer_service
+                - cell "No skills parsed" [ref=e731]:
+                  - generic [ref=e733]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e734]:
+                  - generic [ref=e735]:
+                    - generic [ref=e736]: Active listing
+                    - generic [ref=e737]: Sponsorship unknown
+                    - generic [ref=e738]: Pending enrichment
+                    - generic [ref=e739]: Awaiting enrichment
+              - row "Ramp & Customer Service Agent First seen 2026-03-31 · Last seen 2026-03-31 alaska airlines OR-Eugene, UNAVAILABLE, USA transportation customer_service communication teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e740]:
+                - cell "Ramp & Customer Service Agent First seen 2026-03-31 · Last seen 2026-03-31" [ref=e741]:
+                  - link "Ramp & Customer Service Agent" [ref=e742] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69cb76641b5ad028873ac2f0?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e743]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "alaska airlines" [ref=e744]
+                - cell "OR-Eugene, UNAVAILABLE, USA" [ref=e745]
+                - cell "transportation" [ref=e746]:
+                  - generic [ref=e747]: transportation
+                - cell "customer_service communication teamwork" [ref=e748]:
+                  - generic [ref=e749]:
+                    - generic [ref=e750]: customer_service
+                    - generic [ref=e751]: communication
+                    - generic [ref=e752]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e753]:
+                  - generic [ref=e754]:
+                    - generic [ref=e755]: Active listing
+                    - generic [ref=e756]: Sponsorship unknown
+                    - generic [ref=e757]: Enriched
+                    - generic [ref=e758]: Pending embedding
+              - row "GSOC Lead - Overnight Shift First seen 2026-03-31 · Last seen 2026-03-31 allied universal US-CA-Milpitas customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e759]:
+                - cell "GSOC Lead - Overnight Shift First seen 2026-03-31 · Last seen 2026-03-31" [ref=e760]:
+                  - link "GSOC Lead - Overnight Shift" [ref=e761] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5c4d6e565c26a70014c5f?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e762]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e763]
+                - cell "US-CA-Milpitas" [ref=e764]
+                - cell "customer_service" [ref=e765]:
+                  - generic [ref=e766]: customer_service
+                - cell "No skills parsed" [ref=e767]:
+                  - generic [ref=e769]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e770]:
+                  - generic [ref=e771]:
+                    - generic [ref=e772]: Active listing
+                    - generic [ref=e773]: Sponsorship unknown
+                    - generic [ref=e774]: Pending enrichment
+                    - generic [ref=e775]: Awaiting enrichment
+              - row "Security Officer Clinic Rover First seen 2026-03-31 · Last seen 2026-03-31 allied universal Culver City, CA, US customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e776]:
+                - cell "Security Officer Clinic Rover First seen 2026-03-31 · Last seen 2026-03-31" [ref=e777]:
+                  - link "Security Officer Clinic Rover" [ref=e778] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c5f321aa3c2c1995e06467?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e779]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e780]
+                - cell "Culver City, CA, US" [ref=e781]
+                - cell "customer_service" [ref=e782]:
+                  - generic [ref=e783]: customer_service
+                - cell "No skills parsed" [ref=e784]:
+                  - generic [ref=e786]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e787]:
+                  - generic [ref=e788]:
+                    - generic [ref=e789]: Active listing
+                    - generic [ref=e790]: Sponsorship unknown
+                    - generic [ref=e791]: Pending enrichment
+                    - generic [ref=e792]: Awaiting enrichment
+              - row "Security Officer Vehicle Patrol Driver First seen 2026-03-31 · Last seen 2026-03-31 allied universal SLC Metro Area customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e793]:
+                - cell "Security Officer Vehicle Patrol Driver First seen 2026-03-31 · Last seen 2026-03-31" [ref=e794]:
+                  - link "Security Officer Vehicle Patrol Driver" [ref=e795] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c61c48aa3c2c1995e08c73?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e796]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "allied universal" [ref=e797]
+                - cell "SLC Metro Area" [ref=e798]
+                - cell "customer_service" [ref=e799]:
+                  - generic [ref=e800]: customer_service
+                - cell "No skills parsed" [ref=e801]:
+                  - generic [ref=e803]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e804]:
+                  - generic [ref=e805]:
+                    - generic [ref=e806]: Active listing
+                    - generic [ref=e807]: Sponsorship unknown
+                    - generic [ref=e808]: Pending enrichment
+                    - generic [ref=e809]: Awaiting enrichment
+              - row "Customer Service Rep(03607) - 853 Long Island Ave. First seen 2026-03-31 · Last seen 2026-03-31 domino s Deer Park, NY retail customer service communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e810]:
+                - cell "Customer Service Rep(03607) - 853 Long Island Ave. First seen 2026-03-31 · Last seen 2026-03-31" [ref=e811]:
+                  - link "Customer Service Rep(03607) - 853 Long Island Ave." [ref=e812] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c7deb6e565c26a7002c681?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e813]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "domino s" [ref=e814]
+                - cell "Deer Park, NY" [ref=e815]
+                - cell "retail" [ref=e816]:
+                  - generic [ref=e817]: retail
+                - cell "customer service communication" [ref=e818]:
+                  - generic [ref=e819]:
+                    - generic [ref=e820]: customer service
+                    - generic [ref=e821]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e822]:
+                  - generic [ref=e823]:
+                    - generic [ref=e824]: Active listing
+                    - generic [ref=e825]: Sponsorship unknown
+                    - generic [ref=e826]: Enriched
+                    - generic [ref=e827]: Pending embedding
+              - row "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31 walgreens South Gate, CA retail customer_service communication teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e828]:
+                - cell "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31" [ref=e829]:
+                  - link "Customer Service Associate - Temporary" [ref=e830] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c68e06e565c26a70020fb6?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e831]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e832]
+                - cell "South Gate, CA" [ref=e833]
+                - cell "retail" [ref=e834]:
+                  - generic [ref=e835]: retail
+                - cell "customer_service communication teamwork" [ref=e836]:
+                  - generic [ref=e837]:
+                    - generic [ref=e838]: customer_service
+                    - generic [ref=e839]: communication
+                    - generic [ref=e840]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e841]:
+                  - generic [ref=e842]:
+                    - generic [ref=e843]: Active listing
+                    - generic [ref=e844]: Sponsorship unknown
+                    - generic [ref=e845]: Enriched
+                    - generic [ref=e846]: Pending embedding
+              - row "Warehouse Person - Lakeland Refrigerated First seen 2026-03-31 · Last seen 2026-03-31 publix pharmacy Lakeland, FL retail inventory management logistics operational efficiency Active listing Sponsorship unknown Enriched Pending embedding" [ref=e847]:
+                - cell "Warehouse Person - Lakeland Refrigerated First seen 2026-03-31 · Last seen 2026-03-31" [ref=e848]:
+                  - link "Warehouse Person - Lakeland Refrigerated" [ref=e849] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c80d16b773006330b7da4b?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e850]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "publix pharmacy" [ref=e851]
+                - cell "Lakeland, FL" [ref=e852]
+                - cell "retail" [ref=e853]:
+                  - generic [ref=e854]: retail
+                - cell "inventory management logistics operational efficiency" [ref=e855]:
+                  - generic [ref=e856]:
+                    - generic [ref=e857]: inventory management
+                    - generic [ref=e858]: logistics
+                    - generic [ref=e859]: operational efficiency
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e860]:
+                  - generic [ref=e861]:
+                    - generic [ref=e862]: Active listing
+                    - generic [ref=e863]: Sponsorship unknown
+                    - generic [ref=e864]: Enriched
+                    - generic [ref=e865]: Pending embedding
+              - row "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31 walgreens Edison, NJ retail No skills parsed Active listing Sponsorship unknown Enriched Pending embedding" [ref=e866]:
+                - cell "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31" [ref=e867]:
+                  - link "Customer Service Associate - Temporary" [ref=e868] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c68e0ee565c26a70020fdb?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e869]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e870]
+                - cell "Edison, NJ" [ref=e871]
+                - cell "retail" [ref=e872]:
+                  - generic [ref=e873]: retail
+                - cell "No skills parsed" [ref=e874]:
+                  - generic [ref=e876]: No skills parsed
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e877]:
+                  - generic [ref=e878]:
+                    - generic [ref=e879]: Active listing
+                    - generic [ref=e880]: Sponsorship unknown
+                    - generic [ref=e881]: Enriched
+                    - generic [ref=e882]: Pending embedding
+              - row "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens Appleton, WI retail customer_service communication problem_solving Active listing Sponsorship unknown Enriched Pending embedding" [ref=e883]:
+                - cell "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e884]:
+                  - link "Customer Service Associate" [ref=e885] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c68f241b5ad028873853a1?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e886]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e887]
+                - cell "Appleton, WI" [ref=e888]
+                - cell "retail" [ref=e889]:
+                  - generic [ref=e890]: retail
+                - cell "customer_service communication problem_solving" [ref=e891]:
+                  - generic [ref=e892]:
+                    - generic [ref=e893]: customer_service
+                    - generic [ref=e894]: communication
+                    - generic [ref=e895]: problem_solving
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e896]:
+                  - generic [ref=e897]:
+                    - generic [ref=e898]: Active listing
+                    - generic [ref=e899]: Sponsorship unknown
+                    - generic [ref=e900]: Enriched
+                    - generic [ref=e901]: Pending embedding
+              - row "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens Newark, NJ retail customer service communication problem solving Active listing Sponsorship unknown Enriched Pending embedding" [ref=e902]:
+                - cell "Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e903]:
+                  - link "Customer Service Associate" [ref=e904] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c68f48aa3c2c1995e10821?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e905]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e906]
+                - cell "Newark, NJ" [ref=e907]
+                - cell "retail" [ref=e908]:
+                  - generic [ref=e909]: retail
+                - cell "customer service communication problem solving" [ref=e910]:
+                  - generic [ref=e911]:
+                    - generic [ref=e912]: customer service
+                    - generic [ref=e913]: communication
+                    - generic [ref=e914]: problem solving
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e915]:
+                  - generic [ref=e916]:
+                    - generic [ref=e917]: Active listing
+                    - generic [ref=e918]: Sponsorship unknown
+                    - generic [ref=e919]: Enriched
+                    - generic [ref=e920]: Pending embedding
+              - row "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31 walgreens St Peters, MO retail customer_service pharmacy_operations communication Active listing Sponsorship unknown Enriched Pending embedding" [ref=e921]:
+                - cell "Pharmacy Customer Service Associate First seen 2026-03-31 · Last seen 2026-03-31" [ref=e922]:
+                  - link "Pharmacy Customer Service Associate" [ref=e923] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c7f31e83ea553769fe7b7b?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e924]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e925]
+                - cell "St Peters, MO" [ref=e926]
+                - cell "retail" [ref=e927]:
+                  - generic [ref=e928]: retail
+                - cell "customer_service pharmacy_operations communication" [ref=e929]:
+                  - generic [ref=e930]:
+                    - generic [ref=e931]: customer_service
+                    - generic [ref=e932]: pharmacy_operations
+                    - generic [ref=e933]: communication
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e934]:
+                  - generic [ref=e935]:
+                    - generic [ref=e936]: Active listing
+                    - generic [ref=e937]: Sponsorship unknown
+                    - generic [ref=e938]: Enriched
+                    - generic [ref=e939]: Pending embedding
+              - row "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31 walgreens Spring Branch, TX retail customer_service communication teamwork Active listing Sponsorship unknown Enriched Pending embedding" [ref=e940]:
+                - cell "Customer Service Associate - Temporary First seen 2026-03-31 · Last seen 2026-03-31" [ref=e941]:
+                  - link "Customer Service Associate - Temporary" [ref=e942] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c7f2fb1b5ad02887391358?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e943]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "walgreens" [ref=e944]
+                - cell "Spring Branch, TX" [ref=e945]
+                - cell "retail" [ref=e946]:
+                  - generic [ref=e947]: retail
+                - cell "customer_service communication teamwork" [ref=e948]:
+                  - generic [ref=e949]:
+                    - generic [ref=e950]: customer_service
+                    - generic [ref=e951]: communication
+                    - generic [ref=e952]: teamwork
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e953]:
+                  - generic [ref=e954]:
+                    - generic [ref=e955]: Active listing
+                    - generic [ref=e956]: Sponsorship unknown
+                    - generic [ref=e957]: Enriched
+                    - generic [ref=e958]: Pending embedding
+              - row "Assistant(e)-Gérant(e) -ACT First seen 2026-03-31 · Last seen 2026-03-31 couche tard Québec, QC other management leadership business_operations Active listing Sponsorship unknown Enriched Pending embedding" [ref=e959]:
+                - cell "Assistant(e)-Gérant(e) -ACT First seen 2026-03-31 · Last seen 2026-03-31" [ref=e960]:
+                  - link "Assistant(e)-Gérant(e) -ACT" [ref=e961] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c6cf50b773006330b7308b?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e962]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "couche tard" [ref=e963]
+                - cell "Québec, QC" [ref=e964]
+                - cell "other" [ref=e965]:
+                  - generic [ref=e966]: other
+                - cell "management leadership business_operations" [ref=e967]:
+                  - generic [ref=e968]:
+                    - generic [ref=e969]: management
+                    - generic [ref=e970]: leadership
+                    - generic [ref=e971]: business_operations
+                - cell "Active listing Sponsorship unknown Enriched Pending embedding" [ref=e972]:
+                  - generic [ref=e973]:
+                    - generic [ref=e974]: Active listing
+                    - generic [ref=e975]: Sponsorship unknown
+                    - generic [ref=e976]: Enriched
+                    - generic [ref=e977]: Pending embedding
+              - row "Patient Services Associate - Advanced Urgent Care -36 Hours - Brand New Powell Location First seen 2026-03-31 · Last seen 2026-03-31 ohio state university physicians Powell, OH, US customer_service No skills parsed Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e978]:
+                - cell "Patient Services Associate - Advanced Urgent Care -36 Hours - Brand New Powell Location First seen 2026-03-31 · Last seen 2026-03-31" [ref=e979]:
+                  - link "Patient Services Associate - Advanced Urgent Care -36 Hours - Brand New Powell Location" [ref=e980] [cursor=pointer]:
+                    - /url: https://jobright.ai/jobs/info/69c6a5bb1b5ad02887385e2c?utm_campaign=Customer%20Service%20and%20Support&utm_source=1103
+                  - generic [ref=e981]: First seen 2026-03-31 · Last seen 2026-03-31
+                - cell "ohio state university physicians" [ref=e982]
+                - cell "Powell, OH, US" [ref=e983]
+                - cell "customer_service" [ref=e984]:
+                  - generic [ref=e985]: customer_service
+                - cell "No skills parsed" [ref=e986]:
+                  - generic [ref=e988]: No skills parsed
+                - cell "Active listing Sponsorship unknown Pending enrichment Awaiting enrichment" [ref=e989]:
+                  - generic [ref=e990]:
+                    - generic [ref=e991]: Active listing
+                    - generic [ref=e992]: Sponsorship unknown
+                    - generic [ref=e993]: Pending enrichment
+                    - generic [ref=e994]: Awaiting enrichment
+        - generic [ref=e995]:
+          - generic [ref=e997]:
+            - heading "Result pages" [level=2] [ref=e998]
+            - paragraph [ref=e999]: Paging keeps your current filters, clamps invalid page numbers, and uses real disabled states at the boundaries.
+          - navigation "Pagination" [ref=e1000]:
+            - generic [ref=e1001]: Prev
+            - generic [ref=e1002]: "1"
+            - link "Page 2" [ref=e1003] [cursor=pointer]:
+              - /url: /internal/jobs?page=2&status=active
+              - text: "2"
+            - link "Page 3" [ref=e1004] [cursor=pointer]:
+              - /url: /internal/jobs?page=3&status=active
+              - text: "3"
+            - link "Page 4" [ref=e1005] [cursor=pointer]:
+              - /url: /internal/jobs?page=4&status=active
+              - text: "4"
+            - link "Page 5" [ref=e1006] [cursor=pointer]:
+              - /url: /internal/jobs?page=5&status=active
+              - text: "5"
+            - link "Page 6" [ref=e1007] [cursor=pointer]:
+              - /url: /internal/jobs?page=6&status=active
+              - text: "6"
+            - link "Page 7" [ref=e1008] [cursor=pointer]:
+              - /url: /internal/jobs?page=7&status=active
+              - text: "7"
+            - link "Next page" [ref=e1009] [cursor=pointer]:
+              - /url: /internal/jobs?page=2&status=active
+              - text: Next

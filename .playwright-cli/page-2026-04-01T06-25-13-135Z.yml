@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - main [ref=e15]:
+        - generic [ref=e18]:
+          - img "empty-list" [ref=e20]
+          - generic [ref=e22]:
+            - generic [ref=e23]: It seems that this job is no longer available.
+            - generic [ref=e24]: Explore recommended ones to find some you'd like!
+          - button "View Recommended Jobs" [ref=e26] [cursor=pointer]:
+            - generic [ref=e27]: View Recommended Jobs
+  - alert [ref=e28]

@@ -1,0 +1,186 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Omni Fort Worth Hotel · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Omni Fort Worth Hotel
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Omni Care Internship | Summer 2026 | Food & Beverage" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Louisville, KY, US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "workcard" [ref=e75]
+                      - generic [ref=e76]: Start in 2026 Summer
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Omni Fort Worth Hotel
+                    - text: is offering a summer internship opportunity for individuals interested in the food and beverage sector. The Omni Care Internship allows participants to rotate through various entry-level service positions, providing hands-on training and the possibility of joining the Leader in Development program based on performance.
+                  - generic [ref=e83]: Hospitality
+              - separator [ref=e84]
+              - generic [ref=e85]:
+                - heading "Responsibilities" [level=2] [ref=e87]
+                - generic [ref=e88]:
+                  - generic [ref=e93]: Flexible in working various entry level service positions within the property
+                  - generic [ref=e98]: Position will rotate between front office, housekeeping, and pool/recreation. Additional departments/roles may be added based on business needs
+                  - generic [ref=e103]: Attend to and anticipate guest’s needs
+                  - generic [ref=e108]: Demonstrate adaptability and flexibility in scheduling
+                  - generic [ref=e113]: Demonstrate excellent teamwork
+                  - generic [ref=e118]: Attend Omni Care Internship training and enrichment seminars through the summer season
+                  - generic [ref=e123]: Maintain a clean and safe work environment
+                  - generic [ref=e128]: Perform any other duties as assigned by the Operations Leader
+              - separator [ref=e129]
+              - generic [ref=e130]:
+                - heading "Qualification" [level=2] [ref=e132]
+                - generic [ref=e133]:
+                  - generic [ref=e134] [cursor=pointer]: STAR Certification
+                  - generic [ref=e135] [cursor=pointer]: Food Handlers Certification
+                  - generic [ref=e136] [cursor=pointer]: Customer Service
+                - generic [ref=e137]:
+                  - heading "Required" [level=4] [ref=e138]
+                  - generic [ref=e142]: Strong communication skills – both written and verbal required
+                  - generic [ref=e146]: Strong customer service skills
+                  - generic [ref=e150]: Willingness to learn and take on different projects
+                  - generic [ref=e154]: Ability to adapt to changing environment
+                  - generic [ref=e158]: Must be able to walk, sit, stand, squat, and lean during daily business for extended periods of time
+                  - generic [ref=e162]: Must have STAR Certification
+                  - generic [ref=e166]: Must have Food Handlers Certification
+                - generic [ref=e167]:
+                  - heading "Preferred" [level=4] [ref=e168]
+                  - generic [ref=e172]: Previous experience in a customer service position preferred
+              - separator [ref=e173]
+              - generic [ref=e174]:
+                - heading "Benefits" [level=2] [ref=e176]
+                - generic [ref=e177]:
+                  - generic [ref=e181]: Receive 2 FREE nights at any Omni hotel or resort after completion of the program.
+                  - generic [ref=e185]: Housing options available.
+            - separator [ref=e186]
+            - generic [ref=e187]:
+              - heading "Company" [level=2] [ref=e189]
+              - generic [ref=e191]:
+                - generic [ref=e194]:
+                  - generic [ref=e195]:
+                    - generic [ref=e196]:
+                      - heading "Omni Fort Worth Hotel" [level=2] [ref=e197]
+                      - link "twitter" [ref=e199] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/company/28980619
+                        - img "twitter" [ref=e200]
+                    - img "company-logo" [ref=e202]
+                  - generic [ref=e203]: As breathtaking as any West Texas sunset, the Omni Fort Worth Hotel offers a taste of Texas hospitality.
+                - generic [ref=e206]:
+                  - generic [ref=e207]:
+                    - img "location" [ref=e208]
+                    - generic [ref=e209]: Fort Worth, Texas, US
+                  - generic [ref=e210]:
+                    - img "people-size" [ref=e211]
+                    - text: 201-500 employees
+                  - generic [ref=e212]:
+                    - img "web-link" [ref=e213]
+                    - link "https://www.omnihotels.com/" [ref=e215] [cursor=pointer]:
+                      - /url: https://www.omnihotels.com/
+              - generic [ref=e216]:
+                - generic [ref=e217]:
+                  - heading "Funding" [level=2] [ref=e219]
+                  - generic [ref=e223]:
+                    - generic [ref=e224]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e226]: Company data provided by crunchbase
+        - complementary [ref=e227]:
+          - generic [ref=e230]:
+            - generic [ref=e231]: Boost Your Interview Chances
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - generic [ref=e234]: Improve Resume Match Score
+                - generic [ref=e235]: FREE
+              - generic [ref=e236]:
+                - generic [ref=e237]:
+                  - generic [ref=e240]:
+                    - img [ref=e241]
+                    - paragraph [ref=e255]: "?"
+                  - generic [ref=e256]: Your Score
+                - generic [ref=e258]:
+                  - generic [ref=e261]:
+                    - img [ref=e262]
+                    - paragraph [ref=e276]: "9.5"
+                  - generic [ref=e277]: Top Applicants
+              - generic [ref=e278]:
+                - generic [ref=e279]:
+                  - img "skill icon" [ref=e281]
+                  - generic [ref=e282]: Must-Have Skills for This Role
+                - generic [ref=e284]:
+                  - generic [ref=e285] [cursor=pointer]: STAR Certification
+                  - generic [ref=e286] [cursor=pointer]: Food Handlers Certification
+                  - generic [ref=e287] [cursor=pointer]: Customer Service
+              - button "Optimize my Resume" [ref=e289] [cursor=pointer]:
+                - generic [ref=e290]: Optimize my Resume
+            - generic [ref=e291]:
+              - generic [ref=e292]:
+                - generic [ref=e293]: Get Referral Via linkedIn
+                - generic [ref=e294]: FREE
+              - generic [ref=e295]: 3× Higher Response via Email Outreach
+              - generic [ref=e296]:
+                - generic [ref=e298]:
+                  - generic [ref=e299]:
+                    - generic [ref=e303] [cursor=pointer]: D
+                    - generic [ref=e305]:
+                      - generic [ref=e306]: David R.
+                      - generic [ref=e307]: Director of Human Resources
+                  - generic [ref=e308]:
+                    - img "email" [ref=e310] [cursor=pointer]
+                    - img "linkedin" [ref=e312] [cursor=pointer]
+                - generic [ref=e314]:
+                  - generic [ref=e315]:
+                    - generic [ref=e319] [cursor=pointer]: A
+                    - generic [ref=e321]:
+                      - generic [ref=e322]: Alexandra C.
+                      - generic [ref=e323]: Human Resources Generalist
+                  - generic [ref=e324]:
+                    - img "email" [ref=e326] [cursor=pointer]
+                    - img "linkedin" [ref=e328] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e330] [cursor=pointer]:
+                - generic [ref=e331]: Draft Message to Connect
+            - generic [ref=e332]:
+              - generic [ref=e333]:
+                - generic [ref=e334]: Apply Faster with Autofill Plugin
+                - generic [ref=e335]: FREE
+              - img "autofill" [ref=e337]
+              - button "Apply With Autofill" [ref=e339] [cursor=pointer]:
+                - generic [ref=e340]: Apply With Autofill
+  - alert [ref=e341]

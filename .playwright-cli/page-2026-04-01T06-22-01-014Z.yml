@@ -1,0 +1,287 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Saint Luke's · 9 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Saint Luke's
+                        - generic [ref=e52]: · 9 hours ago
+                      - heading "Nursing Intern - Intermediate PCU" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Saint Luke's Hospital | 4401 Wornall Rd | Kansas City | MO
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]: Saint Luke’s Hospital of Kansas City is seeking a Nursing Intern for their Progressive Care Unit. This role involves providing clinical procedures and patient care under the supervision of a Registered Nurse in a fast-paced environment for high acuity patients.
+                  - generic [ref=e76]:
+                    - generic [ref=e77]:
+                      - generic [ref=e78]: Healthcare
+                      - generic [ref=e79]: Medical Device
+                      - generic [ref=e80]: Hospital
+                      - generic [ref=e81]: Non Profit
+                      - generic [ref=e82]: Health Care
+                      - generic [ref=e83]: Health Diagnostics
+                    - generic [ref=e85]:
+                      - img "check" [ref=e87]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e88]
+              - separator [ref=e89]
+              - generic [ref=e90]:
+                - heading "Responsibilities" [level=2] [ref=e92]
+                - generic [ref=e93]:
+                  - generic [ref=e98]: Perform clinical procedures and provide patient care for assigned patients under the direction and supervision of the Registered Nurse
+                  - generic [ref=e103]: Perform direct and indirect patient care activities
+                  - generic [ref=e108]: Provide support to other health care team members
+                  - generic [ref=e113]: Perform technical tasks per unit competency validation
+              - separator [ref=e114]
+              - generic [ref=e115]:
+                - heading "Qualification" [level=2] [ref=e117]
+                - generic [ref=e118]:
+                  - generic [ref=e119] [cursor=pointer]: Certified Nursing Assistant
+                  - generic [ref=e120] [cursor=pointer]: Basic Life Support
+                  - generic [ref=e121] [cursor=pointer]: Nursing Fundamentals
+                  - generic [ref=e122] [cursor=pointer]: Clinical Procedures
+                  - generic [ref=e123] [cursor=pointer]: Patient Care
+                - generic [ref=e124]:
+                  - heading "Required" [level=4] [ref=e125]
+                  - generic [ref=e129]: Be enrolled in a formal nursing school
+                  - generic [ref=e133]: Have a certified nursing assistant certificate
+                  - generic [ref=e137]: Successfully completed SLHS NA internal training program
+                  - generic [ref=e141]: Completed their fundamentals of care course in nursing school
+                  - generic [ref=e145]: Less than 1 year of applicable experience
+                  - generic [ref=e149]: Basic Life Support - American Heart Association or Red Cross
+                  - generic [ref=e153]: Nursing Student - Various
+            - separator [ref=e154]
+            - generic [ref=e155]:
+              - heading "Company" [level=2] [ref=e157]
+              - generic [ref=e159]:
+                - generic [ref=e162]:
+                  - generic [ref=e163]:
+                    - generic [ref=e164]:
+                      - heading "Saint Luke's" [level=2] [ref=e165]
+                      - generic [ref=e166]:
+                        - link "twitter" [ref=e167] [cursor=pointer]:
+                          - /url: https://x.com/saintlukeskc
+                          - img "twitter" [ref=e168]
+                        - link "twitter" [ref=e169] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/30130
+                          - img "twitter" [ref=e170]
+                        - link "twitter" [ref=e171] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/saint-luke-s-health-system
+                          - img "twitter" [ref=e172]
+                        - link "Glassdoor 3.8" [ref=e173] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-EI_IE258586.htm?countryPickerRedirect=true
+                          - generic [ref=e174]:
+                            - generic [ref=e175]: Glassdoor
+                            - generic "3.8 Stars" [ref=e176]:
+                              - img [ref=e178]
+                              - img [ref=e181]
+                              - img [ref=e184]
+                              - img [ref=e187]
+                              - img [ref=e190]
+                            - generic [ref=e192]: "3.8"
+                    - img "company-logo" [ref=e194]
+                  - generic [ref=e195]: About Saint Luke’s Saint Luke’s serves the West Region of BJC Health System as a faith-based, nonprofit, aligned health system committed to providing the highest levels of excellence in compassionate health care and health-related services.
+                - generic [ref=e198]:
+                  - generic [ref=e199]:
+                    - img "date" [ref=e200]
+                    - text: Founded in 1882
+                  - generic [ref=e201]:
+                    - img "location" [ref=e202]
+                    - generic [ref=e203]: Kansas City, Missouri, USA
+                  - generic [ref=e204]:
+                    - img "people-size" [ref=e205]
+                    - text: 10001+ employees
+                  - generic [ref=e206]:
+                    - img "web-link" [ref=e207]
+                    - link "https://www.saintlukeskc.org" [ref=e209] [cursor=pointer]:
+                      - /url: https://www.saintlukeskc.org
+              - generic [ref=e210]:
+                - generic [ref=e211]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e213]
+                  - generic [ref=e215]:
+                    - text: Saint Luke's has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e216]: (Data Powered by US Department of Labor)
+                  - generic [ref=e217]:
+                    - generic [ref=e218]:
+                      - generic [ref=e219]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e226]: Represents job field similar to this job
+                    - generic [ref=e227]:
+                      - generic [ref=e228]: Trends of Total Sponsorships
+                      - generic [ref=e229]:
+                        - generic [ref=e230]:
+                          - text: "2025"
+                          - generic [ref=e231]: (8)
+                        - progressbar [ref=e232]
+                      - generic [ref=e236]:
+                        - generic [ref=e237]:
+                          - text: "2024"
+                          - generic [ref=e238]: (12)
+                        - progressbar [ref=e239]
+                      - generic [ref=e243]:
+                        - generic [ref=e244]:
+                          - text: "2023"
+                          - generic [ref=e245]: (14)
+                        - progressbar [ref=e246]
+                      - generic [ref=e250]:
+                        - generic [ref=e251]:
+                          - text: "2022"
+                          - generic [ref=e252]: (10)
+                        - progressbar [ref=e253]
+                      - generic [ref=e257]:
+                        - generic [ref=e258]:
+                          - text: "2021"
+                          - generic [ref=e259]: (5)
+                        - progressbar [ref=e260]
+                      - generic [ref=e264]:
+                        - generic [ref=e265]:
+                          - text: "2020"
+                          - generic [ref=e266]: (7)
+                        - progressbar [ref=e267]
+                - generic [ref=e271]:
+                  - heading "Funding" [level=2] [ref=e273]
+                  - generic [ref=e274]:
+                    - generic [ref=e276]:
+                      - generic [ref=e277]:
+                        - generic [ref=e278]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e279]:
+                        - generic [ref=e280]: Total Funding
+                        - text: unknown
+                    - generic [ref=e284]:
+                      - generic [ref=e285]: 2023-05-31
+                      - generic [ref=e286]: Acquired
+                - generic [ref=e287]:
+                  - heading "Leadership Team" [level=2] [ref=e289]
+                  - generic [ref=e292] [cursor=pointer]:
+                    - img "leader-logo" [ref=e294]
+                    - generic [ref=e295]:
+                      - generic [ref=e296]: Darren Bass
+                      - generic [ref=e297]: Chief Executive Officer
+                    - link "linkedin" [ref=e298]:
+                      - /url: https://www.linkedin.com/in/darren-bass-dpt-fache-13128732
+                      - img "linkedin" [ref=e299]
+                - generic [ref=e300]:
+                  - heading "Recent News" [level=2] [ref=e302]
+                  - generic [ref=e303]:
+                    - generic [ref=e305]:
+                      - generic [ref=e306]:
+                        - generic [ref=e307]: Seattle TechFlash
+                        - link "Patients sue Saint Luke's, claim infections from unsterile medical equipment" [ref=e309] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/kansascity/news/2025/08/22/saint-lukes-improper-sterilization-class-action.html
+                          - generic [ref=e310]: Patients sue Saint Luke's, claim infections from unsterile medical equipment
+                      - generic [ref=e311]: 2025-08-22
+                    - generic [ref=e313]:
+                      - generic [ref=e314]:
+                        - generic [ref=e315]: Seattle TechFlash
+                        - link "BJC Health System taps new CFO as longtime Saint Luke's exec retires" [ref=e317] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/kansascity/news/2025/07/23/saint-lukes-cfo-retires-successor-is-named.html
+                          - generic [ref=e318]: BJC Health System taps new CFO as longtime Saint Luke's exec retires
+                      - generic [ref=e319]: 2025-07-24
+                    - generic [ref=e321]:
+                      - generic [ref=e322]:
+                        - generic [ref=e323]: Seattle TechFlash
+                        - link "Area research, health organizations sweat and fret over looming NIH funding cuts" [ref=e325] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/kansascity/news/2025/04/08/nih-funding-grant-cuts-health-care-research.html
+                          - generic [ref=e326]: Area research, health organizations sweat and fret over looming NIH funding cuts
+                      - generic [ref=e327]: 2025-04-08
+                - generic [ref=e329]: Company data provided by crunchbase
+        - complementary [ref=e330]:
+          - generic [ref=e333]:
+            - generic [ref=e334]: Boost Your Interview Chances
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - generic [ref=e337]: Improve Resume Match Score
+                - generic [ref=e338]: FREE
+              - generic [ref=e339]:
+                - generic [ref=e340]:
+                  - generic [ref=e343]:
+                    - img [ref=e344]
+                    - paragraph [ref=e358]: "?"
+                  - generic [ref=e359]: Your Score
+                - generic [ref=e361]:
+                  - generic [ref=e364]:
+                    - img [ref=e365]
+                    - paragraph [ref=e379]: "9.9"
+                  - generic [ref=e380]: Top Applicants
+              - generic [ref=e381]:
+                - generic [ref=e382]:
+                  - img "skill icon" [ref=e384]
+                  - generic [ref=e385]: Must-Have Skills for This Role
+                - generic [ref=e387]:
+                  - generic [ref=e388] [cursor=pointer]: Certified Nursing Assistant
+                  - generic [ref=e389] [cursor=pointer]: Basic Life Support
+                  - generic [ref=e390] [cursor=pointer]: Nursing Fundamentals
+                  - generic [ref=e391] [cursor=pointer]: Clinical Procedures
+                  - generic [ref=e392] [cursor=pointer]: Patient Care
+              - button "Optimize my Resume" [ref=e394] [cursor=pointer]:
+                - generic [ref=e395]: Optimize my Resume
+            - generic [ref=e396]:
+              - generic [ref=e397]:
+                - generic [ref=e398]: Get Referral Via linkedIn
+                - generic [ref=e399]: FREE
+              - generic [ref=e400]: 3× Higher Response via Email Outreach
+              - generic [ref=e401]:
+                - generic [ref=e403]:
+                  - generic [ref=e404]:
+                    - generic [ref=e408] [cursor=pointer]: P
+                    - generic [ref=e410]:
+                      - generic [ref=e411]: Polly M.
+                      - generic [ref=e412]: Human Resources Director
+                  - generic [ref=e413]:
+                    - img "email" [ref=e415] [cursor=pointer]
+                    - img "linkedin" [ref=e417] [cursor=pointer]
+                - generic [ref=e419]:
+                  - generic [ref=e420]:
+                    - generic [ref=e424] [cursor=pointer]: S
+                    - generic [ref=e426]:
+                      - generic [ref=e427]: Sherry W.
+                      - generic [ref=e428]: Sr HRIS Analyst
+                  - generic [ref=e429]:
+                    - img "email" [ref=e431] [cursor=pointer]
+                    - img "linkedin" [ref=e433] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e435] [cursor=pointer]:
+                - generic [ref=e436]: Draft Message to Connect
+            - generic [ref=e437]:
+              - generic [ref=e438]:
+                - generic [ref=e439]: Apply Faster with Autofill Plugin
+                - generic [ref=e440]: FREE
+              - img "autofill" [ref=e442]
+              - button "Apply With Autofill" [ref=e444] [cursor=pointer]:
+                - generic [ref=e445]: Apply With Autofill
+  - alert [ref=e446]

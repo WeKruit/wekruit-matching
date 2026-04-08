@@ -1,0 +1,242 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Milton CAT · 13 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Milton CAT
+                        - generic [ref=e52]: · 13 hours ago
+                      - heading "Service Technician Intern – Field Service - SITECH" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Clifton Park, NY
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $20/hr - $20/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Milton CAT
+                    - text: is offering a Service Technician Internship at SITECH Northeast, providing hands-on field experience in GPS and machine control systems for construction and heavy equipment applications. Interns will work alongside experienced technicians, assisting with equipment installation, service, and troubleshooting while learning about jobsite safety and customer interactions.
+                  - generic [ref=e82]:
+                    - generic [ref=e83]: Automotive
+                    - generic [ref=e84]: Logistics
+                    - generic [ref=e85]: Transportation
+              - separator [ref=e86]
+              - generic [ref=e87]:
+                - heading "Responsibilities" [level=2] [ref=e89]
+                - generic [ref=e90]:
+                  - generic [ref=e95]: Assist field technicians with GPS equipment installation, repair, and service
+                  - generic [ref=e100]: Support troubleshooting and diagnostics of machine control systems
+                  - generic [ref=e105]: Help prepare equipment for customer deployment
+                  - generic [ref=e110]: Learn proper safety, documentation, and reporting procedures
+                  - generic [ref=e115]: Gain exposure to customer interactions and jobsite operations
+              - separator [ref=e116]
+              - generic [ref=e117]:
+                - heading "Qualification" [level=2] [ref=e119]
+                - generic [ref=e120]:
+                  - generic [ref=e121] [cursor=pointer]: Diesel engines
+                  - generic [ref=e122] [cursor=pointer]: Electrical systems
+                  - generic [ref=e123] [cursor=pointer]: Construction technology
+                  - generic [ref=e124] [cursor=pointer]: Heavy equipment
+                  - generic [ref=e125] [cursor=pointer]: GPS equipment
+                  - generic [ref=e126] [cursor=pointer]: Machine control systems
+                  - generic [ref=e127] [cursor=pointer]: Computer proficiency
+                  - generic [ref=e128] [cursor=pointer]: Microsoft Word
+                  - generic [ref=e129] [cursor=pointer]: Microsoft Excel
+                  - generic [ref=e130] [cursor=pointer]: Microsoft Outlook
+                  - generic [ref=e131] [cursor=pointer]: Work as part of a team
+                - generic [ref=e132]:
+                  - heading "Required" [level=4] [ref=e133]
+                  - generic [ref=e137]: High school diploma or GED required
+                  - generic [ref=e141]: Currently enrolled in an accredited technical, trade, or academic program
+                  - generic [ref=e145]: "Interest in or basic understanding of: Diesel engines, Electrical systems, Construction or heavy equipment"
+                  - generic [ref=e149]: Proficient with computers and basic software (Microsoft Word, Excel, Outlook)
+                  - generic [ref=e153]: Strong communication and interpersonal skills
+                  - generic [ref=e157]: Ability to work independently and as part of a team
+                  - generic [ref=e161]: Organized, reliable, and willing to learn
+                  - generic [ref=e165]: Able to commute daily to the assigned work location
+                - generic [ref=e166]:
+                  - heading "Preferred" [level=4] [ref=e167]
+                  - generic [ref=e171]: Prior hands-on mechanical or technical experience
+                  - generic [ref=e175]: GPA of 3.0 or higher on a 4.0 scale
+                  - generic [ref=e179]: Interest in pursuing a career in field service, construction technology, or heavy equipment systems
+              - separator [ref=e180]
+              - generic [ref=e181]:
+                - heading "Benefits" [level=2] [ref=e183]
+                - generic [ref=e184]:
+                  - generic [ref=e188]: Hands-on, real-world field experience
+                  - generic [ref=e192]: Exposure to GPS, machine control, and construction technology
+                  - generic [ref=e196]: Competitive hourly pay
+                  - generic [ref=e200]: Mentorship from experienced service technicians
+                  - generic [ref=e204]: Consideration for full-time employment after graduation
+            - separator [ref=e205]
+            - generic [ref=e206]:
+              - heading "Company" [level=2] [ref=e208]
+              - generic [ref=e210]:
+                - generic [ref=e213]:
+                  - generic [ref=e214]:
+                    - generic [ref=e215]:
+                      - heading "Milton CAT" [level=2] [ref=e216]
+                      - generic [ref=e217]:
+                        - link "twitter" [ref=e218] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/103928
+                          - img "twitter" [ref=e219]
+                        - link "twitter" [ref=e220] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/milton-cat
+                          - img "twitter" [ref=e221]
+                    - img "company-logo" [ref=e223]
+                  - generic [ref=e224]: Milton CAT is the Caterpillar Dealer for the Northeast region of the United States.
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - img "date" [ref=e229]
+                    - text: Founded in 1960
+                  - generic [ref=e230]:
+                    - img "location" [ref=e231]
+                    - generic [ref=e232]: Milford, Massachusetts, USA
+                  - generic [ref=e233]:
+                    - img "people-size" [ref=e234]
+                    - text: 501-1000 employees
+                  - generic [ref=e235]:
+                    - img "web-link" [ref=e236]
+                    - link "http://www.miltoncat.com/Pages/default.aspx" [ref=e238] [cursor=pointer]:
+                      - /url: http://www.miltoncat.com/Pages/default.aspx
+              - generic [ref=e239]:
+                - generic [ref=e240]:
+                  - heading "Funding" [level=2] [ref=e242]
+                  - generic [ref=e246]:
+                    - generic [ref=e247]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e248]:
+                  - heading "Leadership Team" [level=2] [ref=e250]
+                  - generic [ref=e251]:
+                    - generic [ref=e253] [cursor=pointer]:
+                      - img "leader-logo" [ref=e255]
+                      - generic [ref=e256]:
+                        - generic [ref=e257]: Bill Staar
+                        - generic [ref=e258]: Chief Legal Officer
+                      - link "linkedin" [ref=e259]:
+                        - /url: https://www.linkedin.com/in/bill-staar-4972222
+                        - img "linkedin" [ref=e260]
+                    - generic [ref=e262] [cursor=pointer]:
+                      - img "leader-logo" [ref=e264]
+                      - generic [ref=e265]:
+                        - generic [ref=e266]: Rhonda Gelinas
+                        - generic [ref=e267]: Business Partner Program Manager
+                      - link "linkedin" [ref=e268]:
+                        - /url: https://www.linkedin.com/in/rhonda-gelinas-556094ab
+                        - img "linkedin" [ref=e269]
+                - generic [ref=e270]:
+                  - heading "Recent News" [level=2] [ref=e272]
+                  - generic [ref=e273]:
+                    - generic [ref=e275]:
+                      - generic [ref=e276]:
+                        - generic [ref=e277]: Seattle TechFlash
+                        - link "Milton CAT buys land in Clifton Park to expand" [ref=e279] [cursor=pointer]:
+                          - /url: https://www.bizjournals.com/albany/news/2025/06/23/milton-cat-buys-land-clifton-park-expansion.html
+                          - generic [ref=e280]: Milton CAT buys land in Clifton Park to expand
+                      - generic [ref=e281]: 2025-06-24
+                    - generic [ref=e283]:
+                      - generic [ref=e284]:
+                        - generic [ref=e285]: Google Patent
+                        - link "Hydraulic tool stand" [ref=e287] [cursor=pointer]:
+                          - /url: https://patents.google.com/patent/WO2024086002A1/en
+                          - generic [ref=e288]: Hydraulic tool stand
+                      - generic [ref=e289]: 2025-02-16
+                    - generic [ref=e291]:
+                      - generic [ref=e292]:
+                        - generic [ref=e293]: citybiz
+                        - link "B.C. Tent Provides Marquees at Milton CAT’s Stoughton Location Grand Opening and Open House" [ref=e295] [cursor=pointer]:
+                          - /url: https://www.citybiz.co/article/639466/b-c-tent-provides-marquees-at-milton-cats-stoughton-location-grand-opening-and-open-house/
+                          - generic [ref=e296]: B.C. Tent Provides Marquees at Milton CAT’s Stoughton Location Grand Opening and Open House
+                      - generic [ref=e297]: 2024-12-18
+                - generic [ref=e299]: Company data provided by crunchbase
+        - complementary [ref=e300]:
+          - generic [ref=e303]:
+            - generic [ref=e304]: Boost Your Interview Chances
+            - generic [ref=e305]:
+              - generic [ref=e306]:
+                - generic [ref=e307]: Improve Resume Match Score
+                - generic [ref=e308]: FREE
+              - generic [ref=e309]:
+                - generic [ref=e310]:
+                  - generic [ref=e313]:
+                    - img [ref=e314]
+                    - paragraph [ref=e328]: "?"
+                  - generic [ref=e329]: Your Score
+                - generic [ref=e331]:
+                  - generic [ref=e334]:
+                    - img [ref=e335]
+                    - paragraph [ref=e349]: "9.2"
+                  - generic [ref=e350]: Top Applicants
+              - generic [ref=e351]:
+                - generic [ref=e352]:
+                  - img "skill icon" [ref=e354]
+                  - generic [ref=e355]: Must-Have Skills for This Role
+                - generic [ref=e357]:
+                  - generic [ref=e358] [cursor=pointer]: Diesel engines
+                  - generic [ref=e359] [cursor=pointer]: Electrical systems
+                  - generic [ref=e360] [cursor=pointer]: Construction technology
+                  - generic [ref=e361] [cursor=pointer]: Heavy equipment
+                  - generic [ref=e362] [cursor=pointer]: GPS equipment
+              - button "Optimize my Resume" [ref=e364] [cursor=pointer]:
+                - generic [ref=e365]: Optimize my Resume
+            - generic [ref=e366]:
+              - generic [ref=e367]:
+                - generic [ref=e368]: Get Referral Via linkedIn
+                - generic [ref=e369]: FREE
+              - generic [ref=e370]: 3× Higher Response via Email Outreach
+              - generic [ref=e373]:
+                - generic [ref=e374]:
+                  - generic [ref=e378] [cursor=pointer]: S
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: Sarah R.
+                    - generic [ref=e382]: Talent Acquisition Manager
+                - generic [ref=e383]:
+                  - img "email" [ref=e385] [cursor=pointer]
+                  - img "linkedin" [ref=e387] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e389] [cursor=pointer]:
+                - generic [ref=e390]: Draft Message to Connect
+            - generic [ref=e391]:
+              - generic [ref=e392]:
+                - generic [ref=e393]: Apply Faster with Autofill Plugin
+                - generic [ref=e394]: FREE
+              - img "autofill" [ref=e396]
+              - button "Apply With Autofill" [ref=e398] [cursor=pointer]:
+                - generic [ref=e399]: Apply With Autofill
+  - alert [ref=e400]

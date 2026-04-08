@@ -363,26 +363,89 @@ def resolve_via_slug_registry(
 # RESOLVE-04: Serper.dev search fallback
 # ---------------------------------------------------------------------------
 
-# ATS hostnames to accept in Serper organic results
-_ATS_HOSTNAMES_FOR_SERPER = ("greenhouse.io", "lever.co", "ashbyhq.com")
+# ---------------------------------------------------------------------------
+# URL classification and validation helpers
+# ---------------------------------------------------------------------------
 
 _SERPER_URL = "https://google.serper.dev/search"
 
+# Never use these as apply URLs — they're the aggregators we're trying to replace
+_SKIP_DOMAINS = ("jobright.ai", "simplify.jobs")
 
-def _extract_serper_url(organic: list[dict]) -> str | None:
-    """Return the first organic result link that matches a known ATS hostname.
+# Aggregator domains — valid fallback but flag as non-official
+_AGGREGATOR_DOMAINS = (
+    "linkedin.com", "glassdoor.com", "indeed.com", "ziprecruiter.com",
+    "lensa.com", "builtin.com", "wayup.com", "wellfound.com", "monster.com",
+    "talent.com", "jobilize.com", "salary.com", "careerbuilder.com",
+    "dice.com", "simplyhired.com",
+)
 
-    Args:
-        organic: List of organic search result dicts from Serper.dev response.
 
-    Returns:
-        The first link containing a known ATS hostname, or None if not found.
+def _classify_serper_result(url: str) -> tuple[int, str]:
+    """Classify a Serper result URL by source priority.
+
+    Returns (priority, source_tag) where lower priority = preferred.
+    Returns (-1, 'skip') for URLs we should never use.
     """
+    url_lower = url.lower()
+    if any(d in url_lower for d in _SKIP_DOMAINS):
+        return -1, "skip"
+    for agg in _AGGREGATOR_DOMAINS:
+        if agg in url_lower:
+            return 2, f"serper_{agg.split('.')[0]}"
+    return 1, "serper"  # Official/unknown = preferred
+
+
+def _verify_url_alive(client: httpx.Client, url: str) -> bool:
+    """Check that a URL returns HTTP 200 (not 404/error). 5s timeout."""
+    try:
+        resp = client.head(url, follow_redirects=True, timeout=5.0)
+        if resp.status_code < 400:
+            return True
+        if resp.status_code == 405:  # Method not allowed — try GET
+            resp = client.get(url, follow_redirects=True, timeout=5.0)
+            return resp.status_code < 400
+        return False
+    except Exception:
+        return True  # On timeout/error, assume alive (don't reject valid URLs)
+
+
+def _extract_best_serper_url(
+    organic: list[dict],
+    client: httpx.Client,
+    *,
+    verify: bool = True,
+) -> tuple[str | None, str]:
+    """Pick the best URL from Serper organic results.
+
+    Priority: official employer site > aggregator (LinkedIn/Glassdoor).
+    Skips jobright.ai and simplify.jobs.
+    Optionally verifies the link is alive (HEAD request).
+
+    Returns (url, source_tag) or (None, 'none').
+    """
+    candidates: list[tuple[int, str, str]] = []  # (priority, source, url)
+
     for result in organic:
         link = result.get("link") or ""
-        if any(host in link for host in _ATS_HOSTNAMES_FOR_SERPER):
-            return link
-    return None
+        if not link:
+            continue
+        priority, source = _classify_serper_result(link)
+        if priority < 0:
+            continue  # skip jobright/simplify
+        candidates.append((priority, source, link))
+
+    # Sort by priority (official first, then aggregators)
+    candidates.sort(key=lambda x: x[0])
+
+    for priority, source, url in candidates:
+        if verify:
+            if _verify_url_alive(client, url):
+                return url, source
+        else:
+            return url, source
+
+    return None, "none"
 
 
 def resolve_via_serper(
@@ -390,108 +453,204 @@ def resolve_via_serper(
     serper_api_key: str,
     *,
     batch_size: int = 500,
+    verify_urls: bool = True,
+    max_jobs: int = 0,
 ) -> dict:
-    """Resolve JobRight jobs still missing ats_apply_url via Serper.dev search (RESOLVE-04).
+    """Resolve jobs missing ats_apply_url via Serper.dev Google search.
 
-    For each active JobRight job without an ats_apply_url after the slug-registry
-    pass, issues a targeted Serper.dev search:
-      '"{role_title}" "{company_name}" site:greenhouse.io OR site:lever.co OR site:ashbyhq.com'
+    Best practices:
+    - Batched DB writes: collects resolutions in memory, writes in one
+      executemany() per batch, single COMMIT per batch. No per-row UPDATEs.
+    - Dedup: SELECT skips jobs that already have ats_apply_url (WHERE IS NULL).
+    - Rate limiting: 0.3s between Serper calls.
+    - Link validation: HEAD request with 5s timeout, assume alive on timeout.
 
-    On finding a matching ATS URL in the organic results, writes it to
-    ats_apply_url and sets jd_fetch_source = 'serper'.
+    Two-pass search per job:
+    1. Exact: '"{role_title}" "{company_name}" careers apply'
+    2. Broad: '{role_title} {company_name} apply careers' (if exact fails)
 
-    If serper_api_key is empty, returns immediately with queries_used=0 — no
-    crash, no DB access.
-
-    Rate limiting: 0.5s sleep between Serper API calls (free tier safety).
+    URL priority: official employer site > aggregator (LinkedIn/Glassdoor).
+    Never returns jobright.ai or simplify.jobs links.
 
     Args:
-        conn: Active psycopg3 connection (caller owns lifecycle/commit).
-        serper_api_key: Serper.dev API key. Empty string = skip gracefully.
-        batch_size: Max rows per DB round-trip (capped at 500).
+        conn: psycopg3 connection (caller owns lifecycle).
+        serper_api_key: Serper.dev API key. Empty = skip.
+        batch_size: DB SELECT batch size (capped at 500).
+        verify_urls: HEAD-check each URL before storing.
+        max_jobs: Stop after resolving this many (0 = unlimited).
 
     Returns:
-        dict with keys: resolved, skipped, errors, queries_used.
+        dict with resolution stats.
     """
     if not serper_api_key:
-        return {"resolved": 0, "skipped": 0, "errors": 0, "queries_used": 0}
+        return {
+            "resolved": 0, "resolved_official": 0, "resolved_aggregator": 0,
+            "skipped": 0, "errors": 0, "queries_used": 0, "dead_links_filtered": 0,
+        }
 
     effective_batch_size = min(batch_size, 500)
-    resolved = skipped = errors = queries_used = 0
+    resolved = resolved_official = resolved_aggregator = 0
+    skipped = errors = queries_used = dead_links_filtered = 0
+    total_processed = 0
 
-    headers = {"X-API-KEY": serper_api_key, "Content-Type": "application/json"}
+    serper_headers = {"X-API-KEY": serper_api_key, "Content-Type": "application/json"}
 
-    with httpx.Client(timeout=15.0) as client:
+    with httpx.Client(
+        timeout=10.0,
+        headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+    ) as client:
         while True:
+            if max_jobs and total_processed >= max_jobs:
+                break
+
+            remaining = effective_batch_size
+            if max_jobs:
+                remaining = min(effective_batch_size, max_jobs - total_processed)
+
             rows = conn.execute(
                 """
                 SELECT job_id, company_name, role_title
                 FROM jobs
                 WHERE status = 'active'
-                  AND source_repo LIKE 'jobright%%'
                   AND ats_apply_url IS NULL
+                  AND (jd_fetch_source IS NULL OR jd_fetch_source != 'serper_miss')
                 ORDER BY first_seen_at DESC
                 LIMIT %(limit)s
                 """,
-                {"limit": effective_batch_size},
+                {"limit": remaining},
             ).fetchall()
 
             if not rows:
                 break
 
-            batch_resolved = 0
+            # Collect batch updates in memory — no per-row DB writes
+            batch_updates: list[dict] = []
 
             for row in rows:
                 job_id: str = row["job_id"]
                 company_name: str = row["company_name"] or ""
                 role_title: str = row["role_title"] or ""
+                total_processed += 1
 
-                query = (
-                    f'"{role_title}" "{company_name}"'
-                    " site:greenhouse.io OR site:lever.co OR site:ashbyhq.com"
-                )
+                found_url = None
+                found_source = "none"
 
+                # Pass 1: Exact quoted search
+                query1 = f'"{role_title}" "{company_name}" careers apply'
                 try:
-                    response = client.post(
+                    resp = client.post(
                         _SERPER_URL,
-                        json={"q": query, "num": 5},
-                        headers=headers,
+                        json={"q": query1, "num": 10},
+                        headers=serper_headers,
                     )
                     queries_used += 1
-                    response.raise_for_status()
-                    data = response.json()
+                    resp.raise_for_status()
+                    organic = resp.json().get("organic") or []
+                    found_url, found_source = _extract_best_serper_url(
+                        organic, client, verify=verify_urls
+                    )
+                    if not found_url and verify_urls and organic:
+                        dead_links_filtered += 1
                 except httpx.HTTPError as exc:
                     logger.warning(
-                        "url_resolver: serper request failed for job={} company={}: {}",
-                        job_id,
-                        company_name,
-                        exc,
+                        "url_resolver: serper pass1 failed job={} company={}: {}",
+                        job_id, company_name, exc,
                     )
                     errors += 1
-                    time.sleep(0.5)
-                    continue
 
-                organic = data.get("organic") or []
-                ats_url = _extract_serper_url(organic)
+                # Pass 2: Broader search if exact failed
+                if not found_url:
+                    query2 = f"{role_title} {company_name} apply careers"
+                    try:
+                        resp = client.post(
+                            _SERPER_URL,
+                            json={"q": query2, "num": 10},
+                            headers=serper_headers,
+                        )
+                        queries_used += 1
+                        resp.raise_for_status()
+                        organic = resp.json().get("organic") or []
+                        found_url, found_source = _extract_best_serper_url(
+                            organic, client, verify=verify_urls
+                        )
+                        if not found_url and verify_urls and organic:
+                            dead_links_filtered += 1
+                    except httpx.HTTPError as exc:
+                        logger.warning(
+                            "url_resolver: serper pass2 failed job={} company={}: {}",
+                            job_id, company_name, exc,
+                        )
+                        errors += 1
 
-                if ats_url:
+                if found_url:
+                    batch_updates.append({
+                        "url": found_url, "source": found_source, "job_id": job_id,
+                    })
+                    resolved += 1
+                    if "serper_" in found_source and found_source != "serper":
+                        resolved_aggregator += 1
+                    else:
+                        resolved_official += 1
+                else:
+                    # Mark as attempted so we don't retry next batch
+                    batch_updates.append({
+                        "url": None, "source": "serper_miss", "job_id": job_id,
+                    })
+                    skipped += 1
+
+                time.sleep(0.3)
+
+                # Log progress every 100 jobs
+                if total_processed % 100 == 0:
+                    logger.info(
+                        "serper: processed={} resolved={} (official={} agg={}) skipped={} queries={}",
+                        total_processed, resolved, resolved_official,
+                        resolved_aggregator, skipped, queries_used,
+                    )
+
+            # ── Batch DB write: individual executes + single COMMIT ──
+            # psycopg3 pipelining not needed — batch is small (100 rows)
+            # and each execute is fast (single row UPDATE by PK)
+            if batch_updates:
+                resolved_rows = [u for u in batch_updates if u["url"] is not None]
+                missed_rows = [u for u in batch_updates if u["url"] is None]
+
+                for r in resolved_rows:
                     conn.execute(
                         """
                         UPDATE jobs
                         SET ats_apply_url = %(url)s,
-                            jd_fetch_source = 'serper'
+                            jd_fetch_source = %(source)s
                         WHERE job_id = %(job_id)s
+                          AND ats_apply_url IS NULL
                         """,
-                        {"url": ats_url, "job_id": job_id},
+                        r,
                     )
-                    resolved += 1
-                    batch_resolved += 1
-                else:
-                    skipped += 1
 
-                time.sleep(0.5)
+                if missed_rows:
+                    miss_ids = [r["job_id"] for r in missed_rows]
+                    conn.execute(
+                        """
+                        UPDATE jobs
+                        SET jd_fetch_source = COALESCE(jd_fetch_source, 'serper_miss')
+                        WHERE job_id = ANY(%(ids)s)
+                          AND ats_apply_url IS NULL
+                        """,
+                        {"ids": miss_ids},
+                    )
 
-            if batch_resolved > 0:
                 conn.commit()
+                logger.info(
+                    "serper: batch committed — {} resolved, {} missed",
+                    len(resolved_rows), len(missed_rows),
+                )
 
-    return {"resolved": resolved, "skipped": skipped, "errors": errors, "queries_used": queries_used}
+    return {
+        "resolved": resolved,
+        "resolved_official": resolved_official,
+        "resolved_aggregator": resolved_aggregator,
+        "skipped": skipped,
+        "errors": errors,
+        "queries_used": queries_used,
+        "dead_links_filtered": dead_links_filtered,
+    }

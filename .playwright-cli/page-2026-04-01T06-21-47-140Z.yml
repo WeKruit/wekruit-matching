@@ -1,0 +1,302 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Stormont Vail Health · 8 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Stormont Vail Health
+                        - generic [ref=e52]: · 8 hours ago
+                      - heading "Medical Imaging Intern/Associate - Radiology CT Scan - PRN" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Topeka, KS
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern, Entry Level
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Stormont Vail Health
+                    - text: is a healthcare organization seeking a Medical Imaging Intern/Associate for their Radiology CT Scan department. The role involves performing imaging examinations to assist physicians in diagnosing and treating patients, as well as providing support to the Imaging department and reception areas.
+                  - generic [ref=e77]:
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: Healthcare
+                      - generic [ref=e80]: Hospital
+                      - generic [ref=e81]: Health Care
+                      - generic [ref=e82]: Medical
+                      - generic [ref=e83]: Mental Health
+                      - generic [ref=e84]: Primary and Urgent Care
+                    - generic [ref=e86]:
+                      - img "check" [ref=e88]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e89]
+              - separator [ref=e90]
+              - generic [ref=e91]:
+                - heading "Responsibilities" [level=2] [ref=e93]
+                - generic [ref=e94]:
+                  - generic [ref=e99]: Prepares and positions patient for diagnostic imaging procedures
+                  - generic [ref=e104]: Adjusts immobilization devices to obtain optimum views of specified area of body requested by physician
+                  - generic [ref=e109]: Moves imaging equipment into specified position, determines exposure factors on basis of height, weight, portion of body involved, and degree of penetration required, and adjusts equipment controls to set exposure factors and produce images of proper detail, density, and accuracy
+                  - generic [ref=e114]: Performs a variety of technical procedures that will require independent judgement, with ingenuity and initiative to apply prescribed ionizing radiation for radiologic diagnosis when needed
+                  - generic [ref=e119]: Performs routine maintenance, diagnoses malfunctions, and makes minor repairs on radiologic equipment, arranging for repairs as needed
+                  - generic [ref=e124]: Operates mobile radiologic equipment in operating room, emergency room, or at patient’s bedside
+                  - generic [ref=e129]: Explains procedures to patient to reduce anxieties and obtain patient cooperation
+                  - generic [ref=e134]: Practices radiation protection techniques to minimize radiation to patient and staff during exams
+                  - generic [ref=e139]: Assists radiologist in fluoroscopic and special x-ray examinations when needed
+                  - generic [ref=e144]: Measures and mixes barium and contrast media as needed
+                  - generic [ref=e149]: Processes images and reviews for proper identification and quality control
+                  - generic [ref=e154]: Prepares images for reading by radiologist or requesting physician
+                  - generic [ref=e159]: Completes forms and maintains records, logs, and reports of work performed
+                  - generic [ref=e164]: Performs office work including, but not limited to, answering phone, filing, obtaining information from computer
+                  - generic [ref=e169]: Complies with all policies, standards, mandatory training and requirements of Stormont Vail Health
+                  - generic [ref=e174]: Performs other duties as assigned
+              - separator [ref=e175]
+              - generic [ref=e176]:
+                - heading "Qualification" [level=2] [ref=e178]
+                - generic [ref=e179]:
+                  - generic [ref=e180] [cursor=pointer]: Medical Imaging
+                  - generic [ref=e181] [cursor=pointer]: Radiologic Technology
+                  - generic [ref=e182] [cursor=pointer]: Computed Tomography (CT)
+                  - generic [ref=e183] [cursor=pointer]: Basic Life Support (BLS)
+                  - generic [ref=e184] [cursor=pointer]: Radiation Protection Techniques
+                  - generic [ref=e185] [cursor=pointer]: Fluoroscopic X-ray Examinations
+                  - generic [ref=e186] [cursor=pointer]: Contrast Media Preparation
+                  - generic [ref=e187] [cursor=pointer]: Image Processing
+                  - generic [ref=e188] [cursor=pointer]: Patient Positioning
+                - generic [ref=e189]:
+                  - heading "Required" [level=4] [ref=e190]
+                  - generic [ref=e194]: Satisfactory completion of the first year of an American Registry of Radiologic Technologist (ARRT) approved training program
+                  - generic [ref=e198]: Basic Life Support - BLS Required within the first 90 days of hire
+                  - generic [ref=e202]: Complies with all policies, standards, mandatory training and requirements of Stormont Vail Health
+            - separator [ref=e203]
+            - generic [ref=e204]:
+              - heading "Company" [level=2] [ref=e206]
+              - generic [ref=e208]:
+                - generic [ref=e211]:
+                  - generic [ref=e212]:
+                    - generic [ref=e213]:
+                      - heading "Stormont Vail Health" [level=2] [ref=e214]
+                      - generic [ref=e215]:
+                        - link "twitter" [ref=e216] [cursor=pointer]:
+                          - /url: https://x.com/StormontVail
+                          - img "twitter" [ref=e217]
+                        - link "twitter" [ref=e218] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/292629
+                          - img "twitter" [ref=e219]
+                        - link "twitter" [ref=e220] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/stormont-vail-hospital
+                          - img "twitter" [ref=e221]
+                    - img "company-logo" [ref=e223]
+                  - generic [ref=e224]: Stormont Vail Hospital provides primary care, pediatric care, mental health express care clinic services.
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - img "date" [ref=e229]
+                    - text: Founded in 1884
+                  - generic [ref=e230]:
+                    - img "location" [ref=e231]
+                    - generic [ref=e232]: Topeka, Kansas, USA
+                  - generic [ref=e233]:
+                    - img "people-size" [ref=e234]
+                    - text: 1001-5000 employees
+                  - generic [ref=e235]:
+                    - img "web-link" [ref=e236]
+                    - link "http://www.stormontvail.org" [ref=e238] [cursor=pointer]:
+                      - /url: http://www.stormontvail.org
+              - generic [ref=e239]:
+                - generic [ref=e240]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e242]
+                  - generic [ref=e244]:
+                    - text: Stormont Vail Health has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e245]: (Data Powered by US Department of Labor)
+                  - generic [ref=e246]:
+                    - generic [ref=e247]:
+                      - generic [ref=e248]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e255]: Represents job field similar to this job
+                    - generic [ref=e256]:
+                      - generic [ref=e257]: Trends of Total Sponsorships
+                      - generic [ref=e258]:
+                        - generic [ref=e259]:
+                          - text: "2025"
+                          - generic [ref=e260]: (19)
+                        - progressbar [ref=e261]
+                      - generic [ref=e265]:
+                        - generic [ref=e266]:
+                          - text: "2024"
+                          - generic [ref=e267]: (7)
+                        - progressbar [ref=e268]
+                      - generic [ref=e272]:
+                        - generic [ref=e273]:
+                          - text: "2023"
+                          - generic [ref=e274]: (17)
+                        - progressbar [ref=e275]
+                      - generic [ref=e279]:
+                        - generic [ref=e280]:
+                          - text: "2022"
+                          - generic [ref=e281]: (18)
+                        - progressbar [ref=e282]
+                      - generic [ref=e286]:
+                        - generic [ref=e287]:
+                          - text: "2021"
+                          - generic [ref=e288]: (14)
+                        - progressbar [ref=e289]
+                      - generic [ref=e293]:
+                        - generic [ref=e294]:
+                          - text: "2020"
+                          - generic [ref=e295]: (12)
+                        - progressbar [ref=e296]
+                - generic [ref=e300]:
+                  - heading "Funding" [level=2] [ref=e302]
+                  - generic [ref=e303]:
+                    - generic [ref=e305]:
+                      - generic [ref=e306]:
+                        - generic [ref=e307]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e308]:
+                        - generic [ref=e309]: Total Funding
+                        - text: $0.22M
+                    - generic [ref=e311]:
+                      - generic [ref=e312]: Key Investors
+                      - generic [ref=e314]: Kansas Department of Commerce
+                    - generic [ref=e318]:
+                      - generic [ref=e319]: 2023-06-20
+                      - generic [ref=e320]: Grant· $0.22M
+                - generic [ref=e321]:
+                  - heading "Leadership Team" [level=2] [ref=e323]
+                  - generic [ref=e324]:
+                    - generic [ref=e326] [cursor=pointer]:
+                      - img "leader-logo" [ref=e328]
+                      - generic [ref=e329]:
+                        - generic [ref=e330]: Maynard Oliverius
+                        - generic [ref=e331]: Health system CEO (retired)
+                      - link "linkedin" [ref=e332]:
+                        - /url: https://www.linkedin.com/in/maynard-oliverius-3aa8ba73
+                        - img "linkedin" [ref=e333]
+                    - generic [ref=e335] [cursor=pointer]:
+                      - img "leader-logo" [ref=e337]
+                      - generic [ref=e338]:
+                        - generic [ref=e339]: Randy Peterson
+                        - generic [ref=e340]: President/CEO
+                      - link "linkedin" [ref=e341]:
+                        - /url: https://www.linkedin.com/in/randy-peterson-0323b46a
+                        - img "linkedin" [ref=e342]
+                - generic [ref=e343]:
+                  - heading "Recent News" [level=2] [ref=e345]
+                  - generic [ref=e346]:
+                    - generic [ref=e348]:
+                      - generic [ref=e349]:
+                        - generic [ref=e350]: HealthCareIT News
+                        - link "With AI, health IT leaders must link technology to purpose, CIO says" [ref=e352] [cursor=pointer]:
+                          - /url: https://www.healthcareitnews.com/news/ai-health-it-leaders-must-link-technology-purpose-cio-says
+                          - generic [ref=e353]: With AI, health IT leaders must link technology to purpose, CIO says
+                      - generic [ref=e354]: 2026-03-26
+                    - generic [ref=e356]:
+                      - generic [ref=e357]:
+                        - generic [ref=e358]: PR Newswire
+                        - link "Stormont Vail Health Launches 2026-2027 Physician Leadership Academy" [ref=e360] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/stormont-vail-health-launches-2026-2027-physician-leadership-academy-302716926.html
+                          - generic [ref=e361]: Stormont Vail Health Launches 2026-2027 Physician Leadership Academy
+                      - generic [ref=e362]: 2026-03-18
+                    - generic [ref=e364]:
+                      - generic [ref=e365]:
+                        - generic [ref=e366]: Morningstar.com
+                        - link "Hospital Leaders to Speak at HFMA 2025 Conference on Successful Use of AI in Utilization Management" [ref=e368] [cursor=pointer]:
+                          - /url: https://www.morningstar.com/news/pr-newswire/20250612ny07885/hospital-leaders-to-speak-at-hfma-2025-conference-on-successful-use-of-ai-in-utilization-management
+                          - generic [ref=e369]: Hospital Leaders to Speak at HFMA 2025 Conference on Successful Use of AI in Utilization Management
+                      - generic [ref=e370]: 2025-06-12
+                - generic [ref=e372]: Company data provided by crunchbase
+        - complementary [ref=e373]:
+          - generic [ref=e376]:
+            - generic [ref=e377]: Boost Your Interview Chances
+            - generic [ref=e378]:
+              - generic [ref=e379]:
+                - generic [ref=e380]: Improve Resume Match Score
+                - generic [ref=e381]: FREE
+              - generic [ref=e382]:
+                - generic [ref=e383]:
+                  - generic [ref=e386]:
+                    - img [ref=e387]
+                    - paragraph [ref=e401]: "?"
+                  - generic [ref=e402]: Your Score
+                - generic [ref=e404]:
+                  - generic [ref=e407]:
+                    - img [ref=e408]
+                    - paragraph [ref=e422]: "9.4"
+                  - generic [ref=e423]: Top Applicants
+              - generic [ref=e424]:
+                - generic [ref=e425]:
+                  - img "skill icon" [ref=e427]
+                  - generic [ref=e428]: Must-Have Skills for This Role
+                - generic [ref=e430]:
+                  - generic [ref=e431] [cursor=pointer]: Medical Imaging
+                  - generic [ref=e432] [cursor=pointer]: Radiologic Technology
+                  - generic [ref=e433] [cursor=pointer]: Computed Tomography (CT)
+                  - generic [ref=e434] [cursor=pointer]: Basic Life Support (BLS)
+                  - generic [ref=e435] [cursor=pointer]: Radiation Protection Techniques
+              - button "Optimize my Resume" [ref=e437] [cursor=pointer]:
+                - generic [ref=e438]: Optimize my Resume
+            - generic [ref=e439]:
+              - generic [ref=e440]:
+                - generic [ref=e441]: Get Referral Via linkedIn
+                - generic [ref=e442]: FREE
+              - generic [ref=e443]: 3× Higher Response via Email Outreach
+              - generic [ref=e444]:
+                - generic [ref=e446]:
+                  - generic [ref=e447]:
+                    - generic [ref=e451] [cursor=pointer]: R
+                    - generic [ref=e453]:
+                      - generic [ref=e454]: Robert B.
+                      - generic [ref=e455]: Audiovisual Technician
+                  - generic [ref=e456]:
+                    - img "email" [ref=e458] [cursor=pointer]
+                    - img "linkedin" [ref=e460] [cursor=pointer]
+                - generic [ref=e462]:
+                  - generic [ref=e463]:
+                    - generic [ref=e467] [cursor=pointer]: J
+                    - generic [ref=e469]:
+                      - generic [ref=e470]: Jennifer C.
+                      - generic [ref=e471]: Endoscopy Nurse
+                  - generic [ref=e472]:
+                    - img "email" [ref=e474] [cursor=pointer]
+                    - img "linkedin" [ref=e476] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e478] [cursor=pointer]:
+                - generic [ref=e479]: Draft Message to Connect
+            - generic [ref=e480]:
+              - generic [ref=e481]:
+                - generic [ref=e482]: Apply Faster with Autofill Plugin
+                - generic [ref=e483]: FREE
+              - img "autofill" [ref=e485]
+              - button "Apply With Autofill" [ref=e487] [cursor=pointer]:
+                - generic [ref=e488]: Apply With Autofill
+  - alert [ref=e489]

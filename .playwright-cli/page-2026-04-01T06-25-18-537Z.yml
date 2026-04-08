@@ -1,0 +1,260 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Gemini Legal · 8 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Gemini Legal
+                        - generic [ref=e52]: · 8 hours ago
+                      - heading "IT Intern- Sac State Career Fair Applicants Only" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Rocklin,CA,US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $19.23/hr - $21.63/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Gemini Legal
+                    - text: is a dynamic, industry-leading, technology-based company headquartered in Rocklin, California. The IT Intern’s purpose at Gemini is to effectively support the IT department in maintaining hardware, software, and network systems, including managing requests through the IT ticket board and supporting ongoing IT projects.
+                  - generic [ref=e81]:
+                    - generic [ref=e83]: Legal
+                    - generic [ref=e85]:
+                      - img "check" [ref=e87]
+                      - text: Work & Life Balance
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Assist in troubleshooting hardware, software, and network issues
+                  - generic [ref=e102]: Provide technical support to end-users via in-person, phone, or remote access
+                  - generic [ref=e107]: Assist in setting up workstations, laptops, printers, and mobile devices
+                  - generic [ref=e112]: Help with software installations and updates
+                  - generic [ref=e117]: Maintain inventory records for IT equipment and software licenses
+                  - generic [ref=e122]: Document IT processes and user guides
+                  - generic [ref=e127]: Support the rollout of new applications or system upgrades
+                  - generic [ref=e132]: Monitor system performance and report anomalies
+                  - generic [ref=e137]: Maintain cleanliness and organization of IT work areas
+                  - generic [ref=e142]: Test and evaluate new technology solutions
+                  - generic [ref=e147]: Assist with maintaining access controls and user accounts
+                  - generic [ref=e152]: Participate in IT projects and initiatives as needed
+                  - generic [ref=e157]: Other duties as assigned
+              - separator [ref=e158]
+              - generic [ref=e159]:
+                - heading "Qualification" [level=2] [ref=e161]
+                - generic [ref=e162]:
+                  - generic [ref=e163] [cursor=pointer]: Windows support
+                  - generic [ref=e164] [cursor=pointer]: MacOS support
+                  - generic [ref=e165] [cursor=pointer]: Microsoft 365
+                  - generic [ref=e166] [cursor=pointer]: Google Workspace
+                  - generic [ref=e167] [cursor=pointer]: Networking fundamentals
+                  - generic [ref=e168] [cursor=pointer]: Computer hardware
+                  - generic [ref=e169] [cursor=pointer]: Operating systems
+                  - generic [ref=e170] [cursor=pointer]: Help desk platforms
+                  - generic [ref=e171] [cursor=pointer]: Customer service
+                - generic [ref=e172]:
+                  - heading "Required" [level=4] [ref=e173]
+                  - generic [ref=e177]: Currently pursuing an AA, BA/BS degree in Information Technology, Computer Science, or related field
+                  - generic [ref=e181]: Must be in Sophomore year or higher
+                  - generic [ref=e185]: Strong problem-solving and troubleshooting abilities
+                  - generic [ref=e189]: Excellent verbal and written communication skills
+                  - generic [ref=e193]: Good time management and organizational skills
+                  - generic [ref=e197]: Ability to learn new technologies quickly
+                  - generic [ref=e201]: Attention to detail and strong documentation habits
+                  - generic [ref=e205]: Customer-service mindset
+                  - generic [ref=e209]: Comfortable supporting and troubleshooting Windows and/or macOS environments
+                  - generic [ref=e213]: Familiar with productivity platforms including Microsoft 365 and Google Workspace
+                  - generic [ref=e217]: Basic knowledge of networking fundamentals, computer hardware, and operating systems
+                - generic [ref=e218]:
+                  - heading "Preferred" [level=4] [ref=e219]
+                  - generic [ref=e223]: Previous internship or IT help desk experience
+                  - generic [ref=e227]: CompTIA A+ or similar certification
+                  - generic [ref=e231]: Experience working in an office setting
+                  - generic [ref=e235]: Prior exposure to help desk or ticket management platforms (e.g., Zendesk, Freshservice)
+                  - generic [ref=e239]: Team player with a positive attitude
+              - separator [ref=e240]
+              - generic [ref=e241]:
+                - heading "Benefits" [level=2] [ref=e243]
+                - generic [ref=e244]:
+                  - generic [ref=e248]: Comprehensive health coverage including medical, dental, and vision
+                  - generic [ref=e252]: Generous time-off to support work-life balance including PTO, volunteer time, sick time, and paid holidays
+                  - generic [ref=e256]: 401(k) plan with company match to support your financial future
+                  - generic [ref=e260]: Company culture rooted in shared values and community
+                  - generic [ref=e264]: Education tuition reimbursement program
+                  - generic [ref=e268]: Employee Assistance Program (EAP) and legal assistance benefit
+                  - generic [ref=e272]: Company-paid annual donation to a non-profit or charity of your choice
+                  - generic [ref=e276]: Employee recognition program with gifts and awards
+            - separator [ref=e277]
+            - generic [ref=e278]:
+              - heading "Company" [level=2] [ref=e280]
+              - generic [ref=e282]:
+                - generic [ref=e285]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]:
+                      - heading "Gemini Legal" [level=2] [ref=e288]
+                      - generic [ref=e289]:
+                        - link "twitter" [ref=e290] [cursor=pointer]:
+                          - /url: https://x.com/geminilegal
+                          - img "twitter" [ref=e291]
+                        - link "twitter" [ref=e292] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1087621
+                          - img "twitter" [ref=e293]
+                        - link "twitter" [ref=e294] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/gemini-duplication
+                          - img "twitter" [ref=e295]
+                    - img "company-logo" [ref=e297]
+                  - generic [ref=e298]: Gemini Legal is providing legal document procurement for California attorneys representing injured workers.
+                - generic [ref=e301]:
+                  - generic [ref=e302]:
+                    - img "date" [ref=e303]
+                    - text: Founded in 2004
+                  - generic [ref=e304]:
+                    - img "location" [ref=e305]
+                    - generic [ref=e306]: Rocklin, California, USA
+                  - generic [ref=e307]:
+                    - img "people-size" [ref=e308]
+                    - text: 201-500 employees
+                  - generic [ref=e309]:
+                    - img "web-link" [ref=e310]
+                    - link "https://gemini.legal/" [ref=e312] [cursor=pointer]:
+                      - /url: https://gemini.legal/
+              - generic [ref=e313]:
+                - generic [ref=e314]:
+                  - heading "Funding" [level=2] [ref=e316]
+                  - generic [ref=e320]:
+                    - generic [ref=e321]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e322]:
+                  - heading "Leadership Team" [level=2] [ref=e324]
+                  - generic [ref=e325]:
+                    - generic [ref=e327] [cursor=pointer]:
+                      - img "leader-logo" [ref=e329]
+                      - generic [ref=e330]:
+                        - generic [ref=e331]: Dan Mora
+                        - generic [ref=e332]: Founder/CEO
+                      - link "linkedin" [ref=e333]:
+                        - /url: https://www.linkedin.com/in/danmora
+                        - img "linkedin" [ref=e334]
+                    - generic [ref=e336] [cursor=pointer]:
+                      - img "leader-logo" [ref=e338]
+                      - generic [ref=e339]:
+                        - generic [ref=e340]: Jeff Pierce
+                        - generic [ref=e341]: Learning & Development Business Partner
+                      - link "linkedin" [ref=e342]:
+                        - /url: https://www.linkedin.com/in/jeff-pierce-b7ba1514
+                        - img "linkedin" [ref=e343]
+                - generic [ref=e344]:
+                  - heading "Recent News" [level=2] [ref=e346]
+                  - generic [ref=e347]:
+                    - generic [ref=e349]:
+                      - generic [ref=e350]:
+                        - generic [ref=e351]: PR Newswire
+                        - link "Gemini Legal and Filevine Deliver Integration for Workers' Compensation Law Firms for Faster, Easier Workflows" [ref=e353] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/gemini-legal-and-filevine-deliver-integration-for-workers-compensation-law-firms-for-faster-easier-workflows-302598074.html
+                          - generic [ref=e354]: Gemini Legal and Filevine Deliver Integration for Workers' Compensation Law Firms for Faster, Easier Workflows
+                      - generic [ref=e355]: 2025-10-30
+                    - generic [ref=e357]:
+                      - generic [ref=e358]:
+                        - generic [ref=e359]: PR Newswire
+                        - link "Gemini Legal and Filevine Announce Strategic Partnership to Advance Efficiency for California Workers' Compensation Law Firms" [ref=e361] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/gemini-legal-and-filevine-announce-strategic-partnership-to-advance-efficiency-for-california-workers-compensation-law-firms-302483883.html
+                          - generic [ref=e362]: Gemini Legal and Filevine Announce Strategic Partnership to Advance Efficiency for California Workers' Compensation Law Firms
+                      - generic [ref=e363]: 2025-06-21
+                    - generic [ref=e365]:
+                      - generic [ref=e366]:
+                        - generic [ref=e367]: PR Newswire
+                        - link "Anytime AI Welcomes John Blake as Vice President of Revenue" [ref=e369] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/anytime-ai-welcomes-john-blake-as-vice-president-of-revenue-302422112.html
+                          - generic [ref=e370]: Anytime AI Welcomes John Blake as Vice President of Revenue
+                      - generic [ref=e371]: 2025-04-07
+                - generic [ref=e373]: Company data provided by crunchbase
+        - complementary [ref=e374]:
+          - generic [ref=e377]:
+            - generic [ref=e378]: Boost Your Interview Chances
+            - generic [ref=e379]:
+              - generic [ref=e380]:
+                - generic [ref=e381]: Improve Resume Match Score
+                - generic [ref=e382]: FREE
+              - generic [ref=e383]:
+                - generic [ref=e384]:
+                  - generic [ref=e387]:
+                    - img [ref=e388]
+                    - paragraph [ref=e402]: "?"
+                  - generic [ref=e403]: Your Score
+                - generic [ref=e405]:
+                  - generic [ref=e408]:
+                    - img [ref=e409]
+                    - paragraph [ref=e412]: "-"
+                  - generic [ref=e413]: Top Applicants
+              - generic [ref=e414]:
+                - generic [ref=e415]:
+                  - img "skill icon" [ref=e417]
+                  - generic [ref=e418]: Must-Have Skills for This Role
+                - generic [ref=e420]:
+                  - generic [ref=e421] [cursor=pointer]: Windows support
+                  - generic [ref=e422] [cursor=pointer]: macOS support
+                  - generic [ref=e423] [cursor=pointer]: Microsoft 365
+                  - generic [ref=e424] [cursor=pointer]: Google Workspace
+                  - generic [ref=e425] [cursor=pointer]: Networking fundamentals
+              - button "Optimize my Resume" [ref=e427] [cursor=pointer]:
+                - generic [ref=e428]: Optimize my Resume
+            - generic [ref=e429]:
+              - generic [ref=e430]:
+                - generic [ref=e431]: Get Referral Via linkedIn
+                - generic [ref=e432]: FREE
+              - generic [ref=e433]: 3× Higher Response via Email Outreach
+              - generic [ref=e436]:
+                - generic [ref=e437]:
+                  - generic [ref=e441] [cursor=pointer]: K
+                  - generic [ref=e443]:
+                    - generic [ref=e444]: Kraig J.
+                    - generic [ref=e445]: Human Resource Manager
+                - generic [ref=e446]:
+                  - img "email" [ref=e448] [cursor=pointer]
+                  - img "linkedin" [ref=e450] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e452] [cursor=pointer]:
+                - generic [ref=e453]: Draft Message to Connect
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - generic [ref=e456]: Apply Faster with Autofill Plugin
+                - generic [ref=e457]: FREE
+              - img "autofill" [ref=e459]
+              - button "Apply With Autofill" [ref=e461] [cursor=pointer]:
+                - generic [ref=e462]: Apply With Autofill
+  - alert [ref=e463]

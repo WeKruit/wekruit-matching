@@ -1,0 +1,257 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "J.B. Hunt Transport Services, Inc. · 10 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: J.B. Hunt Transport Services, Inc.
+                        - generic [ref=e52]: · 10 hours ago
+                      - heading "Customer Experience Internship, Summer 2026" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Lowell, AR
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "workcard" [ref=e75]
+                      - generic [ref=e76]: Start in 2026 Summer
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: J.B. Hunt Transport Services, Inc.
+                    - text: is a leading transportation company, and they are seeking a Customer Experience Intern for Summer 2026. This role provides hands-on experience in enhancing customer experience by partnering with internal teams and learning about operational workflows and technology integration in the transportation industry.
+                  - generic [ref=e81]:
+                    - generic [ref=e82]:
+                      - generic [ref=e83]: Logistics
+                      - generic [ref=e84]: Transportation
+                      - generic [ref=e85]: Shipping
+                    - generic [ref=e87]:
+                      - img "bad" [ref=e88]
+                      - text: No H1B
+                      - img "note" [ref=e89]
+              - separator [ref=e90]
+              - generic [ref=e91]:
+                - heading "Responsibilities" [level=2] [ref=e93]
+                - generic [ref=e94]:
+                  - generic [ref=e99]: Gain exposure and understanding of the transportation industry
+                  - generic [ref=e104]: Work with a managed client base to continuously improve shipment operations, such as automated tracking, online booking/shipment management, communication on accessorials, and offering solutions based on shipping patterns and needs
+                  - generic [ref=e109]: Build an understanding of operational considerations (capacity, seasonality, pricing, etc.), key performance indicators, and customer needs that influence freight movement, growth opportunities, and customer interactions
+                  - generic [ref=e114]: Observe and practice account management strategies through understanding J.B. Hunt service offerings, market impacts, and scorecards to be able to identify correlated solutions J.B. Hunt can provide
+                  - generic [ref=e119]: Learn about the technology and tools J.B. Hunt leverages to streamline workflows and enable customer access to order management
+              - separator [ref=e120]
+              - generic [ref=e121]:
+                - heading "Qualification" [level=2] [ref=e123]
+                - generic [ref=e125] [cursor=pointer]: Microsoft Office Suite
+                - generic [ref=e126]:
+                  - heading "Required" [level=4] [ref=e127]
+                  - generic [ref=e131]: Currently enrolled in an undergraduate degree program OR graduate degree program in good standing at an accredited college or university
+                  - generic [ref=e135]: Must be able to work 40 hours a week during the summer
+                  - generic [ref=e139]: This position is not eligible for employment-based sponsorship
+                - generic [ref=e140]:
+                  - heading "Preferred" [level=4] [ref=e141]
+                  - generic [ref=e145]: Junior or Senior level preferred
+                  - generic [ref=e149]: Ability to adapt to a dynamic work environment and shifting priorities and directives
+                  - generic [ref=e153]: Proficient in Microsoft Office Suite (Excel, Word, PowerPoint, Outlook, etc.)
+                  - generic [ref=e157]: Willingness to work flexible hours
+              - separator [ref=e158]
+              - generic [ref=e159]:
+                - heading "Benefits" [level=2] [ref=e161]
+                - generic [ref=e162]:
+                  - generic [ref=e166]: Medical benefit
+                  - generic [ref=e170]: Dental benefit
+                  - generic [ref=e174]: Vision benefit
+                  - generic [ref=e178]: 401(k) retirement plan
+                  - generic [ref=e182]: Life insurance
+                  - generic [ref=e186]: Short-term and long-term disability coverage
+                  - generic [ref=e190]: Paid time off commensurate with tenure (includes vacation and sick time)
+                  - generic [ref=e194]: Six weeks of paid maternity leave along with two weeks of paid parental leave
+                  - generic [ref=e198]: Six paid holidays annually
+            - separator [ref=e199]
+            - generic [ref=e200]:
+              - heading "Company" [level=2] [ref=e202]
+              - generic [ref=e204]:
+                - generic [ref=e207]:
+                  - generic [ref=e208]:
+                    - generic [ref=e209]:
+                      - heading "J.B. Hunt Transport Services, Inc." [level=2] [ref=e210]
+                      - generic [ref=e211]:
+                        - link "twitter" [ref=e212] [cursor=pointer]:
+                          - /url: https://x.com/jbhunt360
+                          - img "twitter" [ref=e213]
+                        - link "twitter" [ref=e214] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/164527
+                          - img "twitter" [ref=e215]
+                        - link "twitter" [ref=e216] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/j-b-hunt-transport
+                          - img "twitter" [ref=e217]
+                        - link "Glassdoor 3.4" [ref=e218] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-J-B-Hunt-Transport-EI_IE1540.11,29.htm
+                          - generic [ref=e219]:
+                            - generic [ref=e220]: Glassdoor
+                            - generic "3.4 Stars" [ref=e221]:
+                              - img [ref=e223]
+                              - img [ref=e226]
+                              - img [ref=e229]
+                              - img [ref=e232]
+                              - img [ref=e235]
+                            - generic [ref=e237]: "3.4"
+                    - img "company-logo" [ref=e239]
+                  - generic [ref=e240]: J.B. Hunt specializes in freight shipping for customers of all sizes.
+                - generic [ref=e243]:
+                  - generic [ref=e244]:
+                    - img "date" [ref=e245]
+                    - text: Founded in 1961
+                  - generic [ref=e246]:
+                    - img "location" [ref=e247]
+                    - generic [ref=e248]: Lowell, Massachusetts, USA
+                  - generic [ref=e249]:
+                    - img "people-size" [ref=e250]
+                    - text: 10001+ employees
+                  - generic [ref=e251]:
+                    - img "web-link" [ref=e252]
+                    - link "http://www.jbhunt.com" [ref=e254] [cursor=pointer]:
+                      - /url: http://www.jbhunt.com
+              - generic [ref=e255]:
+                - generic [ref=e256]:
+                  - heading "Funding" [level=2] [ref=e258]
+                  - generic [ref=e259]:
+                    - generic [ref=e261]:
+                      - generic [ref=e262]:
+                        - generic [ref=e263]: Current Stage
+                        - text: Public Company
+                      - generic [ref=e264]:
+                        - generic [ref=e265]: Total Funding
+                        - text: $1.7B
+                    - generic [ref=e268]:
+                      - generic [ref=e269]:
+                        - generic [ref=e270]: 2025-11-25
+                        - generic [ref=e271]: Post Ipo Debt· $1.7B
+                      - generic [ref=e272]:
+                        - generic [ref=e273]: 1983-12-02
+                        - generic [ref=e274]: IPO
+                - generic [ref=e275]:
+                  - heading "Leadership Team" [level=2] [ref=e277]
+                  - generic [ref=e278]:
+                    - generic [ref=e280] [cursor=pointer]:
+                      - img "leader-logo" [ref=e282]
+                      - generic [ref=e283]:
+                        - generic [ref=e284]: Shelley Simpson
+                        - generic [ref=e285]: President and Chief Executive Officer
+                      - link "linkedin" [ref=e286]:
+                        - /url: https://www.linkedin.com/in/shelley-simpson-3a571b10
+                        - img "linkedin" [ref=e287]
+                    - generic [ref=e289] [cursor=pointer]:
+                      - img "leader-logo" [ref=e291]
+                      - generic [ref=e292]:
+                        - generic [ref=e293]: Nick Hobbs
+                        - generic [ref=e294]: Chief Operating Officer
+                      - link "linkedin" [ref=e295]:
+                        - /url: https://www.linkedin.com/in/nick-hobbs-31b6333b
+                        - img "linkedin" [ref=e296]
+                - generic [ref=e297]:
+                  - heading "Recent News" [level=2] [ref=e299]
+                  - generic [ref=e300]:
+                    - generic [ref=e302]:
+                      - generic [ref=e303]:
+                        - generic [ref=e304]: Benzinga.com
+                        - link "Markets Fear Prolonged Iran War – These 2 'Hormuz Stock Baskets' Show Why" [ref=e306] [cursor=pointer]:
+                          - /url: https://www.benzinga.com/markets/equities/26/03/51313150/iran-war-hormuz-closed-reopen-stocks-basket-winners-losers
+                          - generic [ref=e307]: Markets Fear Prolonged Iran War – These 2 'Hormuz Stock Baskets' Show Why
+                      - generic [ref=e308]: 2026-03-18
+                    - generic [ref=e310]:
+                      - generic [ref=e311]:
+                        - generic [ref=e312]: Talk Business & Politics
+                        - link "J.B. Hunt joins dual-listing exchange Nasdaq Texas" [ref=e314] [cursor=pointer]:
+                          - /url: https://talkbusiness.net/2026/03/j-b-hunt-joins-dual-listing-exchange-nasdaq-texas/
+                          - generic [ref=e315]: J.B. Hunt joins dual-listing exchange Nasdaq Texas
+                      - generic [ref=e316]: 2026-03-10
+                    - generic [ref=e318]:
+                      - generic [ref=e319]:
+                        - generic [ref=e320]: Business Wire
+                        - link "J.B. Hunt Transport Services, Inc. Announces Participation in Upcoming Investor Conference" [ref=e322] [cursor=pointer]:
+                          - /url: https://www.businesswire.com/news/home/20260304503335/en/J.B.-Hunt-Transport-Services-Inc.-Announces-Participation-in-Upcoming-Investor-Conference
+                          - generic [ref=e323]: J.B. Hunt Transport Services, Inc. Announces Participation in Upcoming Investor Conference
+                      - generic [ref=e324]: 2026-03-05
+                - generic [ref=e326]: Company data provided by crunchbase
+        - complementary [ref=e327]:
+          - generic [ref=e330]:
+            - generic [ref=e331]: Boost Your Interview Chances
+            - generic [ref=e332]:
+              - generic [ref=e333]:
+                - generic [ref=e334]: Improve Resume Match Score
+                - generic [ref=e335]: FREE
+              - generic [ref=e336]:
+                - generic [ref=e337]:
+                  - generic [ref=e340]:
+                    - img [ref=e341]
+                    - paragraph [ref=e355]: "?"
+                  - generic [ref=e356]: Your Score
+                - generic [ref=e358]:
+                  - generic [ref=e361]:
+                    - img [ref=e362]
+                    - paragraph [ref=e365]: "-"
+                  - generic [ref=e366]: Top Applicants
+              - generic [ref=e367]:
+                - generic [ref=e368]:
+                  - img "skill icon" [ref=e370]
+                  - generic [ref=e371]: Must-Have Skills for This Role
+                - generic [ref=e374] [cursor=pointer]: Microsoft Office Suite
+              - button "Optimize my Resume" [ref=e376] [cursor=pointer]:
+                - generic [ref=e377]: Optimize my Resume
+            - generic [ref=e378]:
+              - generic [ref=e379]:
+                - generic [ref=e380]: Get Referral Via linkedIn
+                - generic [ref=e381]: FREE
+              - generic [ref=e382]: 3× Higher Response via Email Outreach
+              - generic [ref=e385]:
+                - generic [ref=e386]:
+                  - generic [ref=e390] [cursor=pointer]: L
+                  - generic [ref=e392]:
+                    - generic [ref=e393]: Linda L.
+                    - generic [ref=e394]: Technical Recruiter
+                - generic [ref=e395]:
+                  - img "email" [ref=e397] [cursor=pointer]
+                  - img "linkedin" [ref=e399] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e401] [cursor=pointer]:
+                - generic [ref=e402]: Draft Message to Connect
+            - generic [ref=e403]:
+              - generic [ref=e404]:
+                - generic [ref=e405]: Apply Faster with Autofill Plugin
+                - generic [ref=e406]: FREE
+              - img "autofill" [ref=e408]
+              - button "Apply With Autofill" [ref=e410] [cursor=pointer]:
+                - generic [ref=e411]: Apply With Autofill
+  - alert [ref=e412]

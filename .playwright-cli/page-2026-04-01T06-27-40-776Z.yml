@@ -1,0 +1,274 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Aircastle · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Aircastle
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "Intern, IT" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Stamford, Stamford, CT, US
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $18/hr - $20/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Aircastle
+                    - text: is seeking a Copilot Studio Developer Summer Intern to support the adoption of Microsoft Copilot and AI-driven productivity tools. The role involves assisting in the design, development, and enhancement of Copilot Studio agents and workflows, providing hands-on experience with generative AI and enterprise automation.
+                  - generic [ref=e81]:
+                    - generic [ref=e82]:
+                      - generic [ref=e83]: Aerospace
+                      - generic [ref=e84]: Commercial
+                      - generic [ref=e85]: Service Industry
+                    - generic [ref=e86]:
+                      - generic [ref=e87]:
+                        - img "check" [ref=e89]
+                        - text: Comp. & Benefits
+                      - generic [ref=e90]:
+                        - img "check" [ref=e92]
+                        - text: H1B Sponsor Likely
+                        - img "note" [ref=e93]
+              - separator [ref=e94]
+              - generic [ref=e95]:
+                - heading "Responsibilities" [level=2] [ref=e97]
+                - generic [ref=e98]:
+                  - generic [ref=e103]: Assist in the development and configuration of Microsoft Copilot Studio agents to support internal business use cases
+                  - generic [ref=e108]: Help design conversational flows, prompts, and logic using low-code / no-code tools
+                  - generic [ref=e113]: Support integration of Copilot agents with Microsoft 365 services (SharePoint, Teams, OneDrive, Power Platform)
+                  - generic [ref=e118]: Participate in testing, troubleshooting, and refining Copilot workflows and responses
+                  - generic [ref=e123]: Assist with documentation of Copilot use cases, configurations, and governance considerations
+              - separator [ref=e124]
+              - generic [ref=e125]:
+                - heading "Qualification" [level=2] [ref=e127]
+                - generic [ref=e128]:
+                  - generic [ref=e129] [cursor=pointer]: Microsoft 365
+                  - generic [ref=e130] [cursor=pointer]: Low-code/no-code platforms
+                  - generic [ref=e131] [cursor=pointer]: AI technologies
+                  - generic [ref=e132] [cursor=pointer]: Data privacy
+                  - generic [ref=e133] [cursor=pointer]: Security concepts
+                  - generic [ref=e134] [cursor=pointer]: Governance principles
+                  - generic [ref=e135] [cursor=pointer]: Analytical skills
+                - generic [ref=e136]:
+                  - heading "Required" [level=4] [ref=e137]
+                  - generic [ref=e141]: Currently pursuing a bachelor's degree in computer science, Information Systems, Data Science, Engineering, or a related field
+                  - generic [ref=e145]: Familiarity with Microsoft 365 (Teams, SharePoint, OneDrive)
+                  - generic [ref=e149]: Strong analytical and problem-solving skills
+                  - generic [ref=e153]: Ability to learn new technologies quickly in a fast-paced environment
+                  - generic [ref=e157]: High attention to detail and accuracy
+                  - generic [ref=e161]: Strong written and verbal communication skills
+                  - generic [ref=e165]: Ability to collaborate effectively with technical and non-technical stakeholders
+                  - generic [ref=e169]: Organized, self-motivated, and able to manage multiple tasks
+                  - generic [ref=e173]: Professional curiosity and enthusiasm for emerging AI technologies
+                - generic [ref=e174]:
+                  - heading "Preferred" [level=4] [ref=e175]
+                  - generic [ref=e179]: Coursework or exposure to AI, automation, cloud technologies, or software development
+                  - generic [ref=e183]: Basic understanding of low-code/no-code platforms (Power Platform, Copilot Studio, or similar tools preferred)
+                  - generic [ref=e187]: Understanding of data privacy, security concepts, or governance principles is beneficial
+            - separator [ref=e188]
+            - generic [ref=e189]:
+              - heading "Company" [level=2] [ref=e191]
+              - generic [ref=e193]:
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]:
+                      - heading "Aircastle" [level=2] [ref=e199]
+                      - generic [ref=e200]:
+                        - link "twitter" [ref=e201] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/362112
+                          - img "twitter" [ref=e202]
+                        - link "twitter" [ref=e203] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/air-castle
+                          - img "twitter" [ref=e204]
+                    - img "company-logo" [ref=e206]
+                  - generic [ref=e207]: Aircastle is a company that acquires, leases and sells high-utility commercial jet aircraft to customers worldwide.
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - img "date" [ref=e212]
+                    - text: Founded in 2005
+                  - generic [ref=e213]:
+                    - img "location" [ref=e214]
+                    - generic [ref=e215]: Stamford, Connecticut, USA
+                  - generic [ref=e216]:
+                    - img "people-size" [ref=e217]
+                    - text: 51-200 employees
+                  - generic [ref=e218]:
+                    - img "web-link" [ref=e219]
+                    - link "http://www.aircastle.com" [ref=e221] [cursor=pointer]:
+                      - /url: http://www.aircastle.com
+              - generic [ref=e222]:
+                - generic [ref=e223]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e225]
+                  - generic [ref=e227]:
+                    - text: Aircastle has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e228]: (Data Powered by US Department of Labor)
+                  - generic [ref=e229]:
+                    - generic [ref=e230]:
+                      - generic [ref=e231]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e238]: Represents job field similar to this job
+                    - generic [ref=e239]:
+                      - generic [ref=e240]: Trends of Total Sponsorships
+                      - generic [ref=e241]:
+                        - generic [ref=e242]:
+                          - text: "2023"
+                          - generic [ref=e243]: (1)
+                        - progressbar [ref=e244]
+                      - generic [ref=e248]:
+                        - generic [ref=e249]:
+                          - text: "2021"
+                          - generic [ref=e250]: (2)
+                        - progressbar [ref=e251]
+                - generic [ref=e255]:
+                  - heading "Funding" [level=2] [ref=e257]
+                  - generic [ref=e258]:
+                    - generic [ref=e260]:
+                      - generic [ref=e261]:
+                        - generic [ref=e262]: Current Stage
+                        - text: Public Company
+                      - generic [ref=e263]:
+                        - generic [ref=e264]: Total Funding
+                        - text: $4.55B
+                    - generic [ref=e266]:
+                      - generic [ref=e267]: Key Investors
+                      - generic [ref=e268]:
+                        - generic [ref=e269]: Marubeni,Mizuho Leasing Company
+                        - generic [ref=e270]: Mizuho Marubeni Leasing Corporation
+                    - generic [ref=e273]:
+                      - generic [ref=e274]:
+                        - generic [ref=e275]: 2025-07-14
+                        - generic [ref=e276]: Debt Financing· $650M
+                      - generic [ref=e277]:
+                        - generic [ref=e278]: 2025-05-05
+                        - generic [ref=e279]: Debt Financing· $600M
+                      - generic [ref=e280]:
+                        - generic [ref=e281]: 2025-01-27
+                        - generic [ref=e282]: Debt Financing· $500M
+                - generic [ref=e283]:
+                  - heading "Leadership Team" [level=2] [ref=e285]
+                  - generic [ref=e286]:
+                    - generic [ref=e288]:
+                      - img "leader-logo" [ref=e290]
+                      - generic [ref=e291]:
+                        - generic [ref=e292]: Michael Inglese
+                        - generic [ref=e293]: CEO
+                    - generic [ref=e295]:
+                      - img "leader-logo" [ref=e297]
+                      - generic [ref=e298]:
+                        - generic [ref=e299]: Aaron Dahlke
+                        - generic [ref=e300]: CFO
+                - generic [ref=e301]:
+                  - heading "Recent News" [level=2] [ref=e303]
+                  - generic [ref=e304]:
+                    - generic [ref=e306]:
+                      - generic [ref=e307]:
+                        - generic [ref=e308]: Morningstar.com
+                        - link "Aircastle Announces Third Quarter 2025 Results" [ref=e310] [cursor=pointer]:
+                          - /url: https://www.morningstar.com/news/pr-newswire/20260113ny61601/aircastle-announces-third-quarter-2025-results
+                          - generic [ref=e311]: Aircastle Announces Third Quarter 2025 Results
+                      - generic [ref=e312]: 2026-01-14
+                    - generic [ref=e314]:
+                      - generic [ref=e315]:
+                        - generic [ref=e316]: PR Newswire
+                        - link "Aircastle to Announce Third Quarter 2025 Results on January 13, 2026" [ref=e318] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/aircastle-to-announce-third-quarter-2025-results-on-january-13-2026-302650814.html
+                          - generic [ref=e319]: Aircastle to Announce Third Quarter 2025 Results on January 13, 2026
+                      - generic [ref=e320]: 2025-12-31
+                    - generic [ref=e322]:
+                      - generic [ref=e323]:
+                        - generic [ref=e324]: PR Newswire
+                        - link "Aircastle Announces Second Quarter 2025 Results" [ref=e326] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/aircastle-announces-second-quarter-2025-results-302579219.html
+                          - generic [ref=e327]: Aircastle Announces Second Quarter 2025 Results
+                      - generic [ref=e328]: 2025-10-09
+                - generic [ref=e330]: Company data provided by crunchbase
+        - complementary [ref=e331]:
+          - generic [ref=e334]:
+            - generic [ref=e335]: Boost Your Interview Chances
+            - generic [ref=e336]:
+              - generic [ref=e337]:
+                - generic [ref=e338]: Improve Resume Match Score
+                - generic [ref=e339]: FREE
+              - generic [ref=e340]:
+                - generic [ref=e341]:
+                  - generic [ref=e344]:
+                    - img [ref=e345]
+                    - paragraph [ref=e359]: "?"
+                  - generic [ref=e360]: Your Score
+                - generic [ref=e362]:
+                  - generic [ref=e365]:
+                    - img [ref=e366]
+                    - paragraph [ref=e369]: "-"
+                  - generic [ref=e370]: Top Applicants
+              - generic [ref=e371]:
+                - generic [ref=e372]:
+                  - img "skill icon" [ref=e374]
+                  - generic [ref=e375]: Must-Have Skills for This Role
+                - generic [ref=e377]:
+                  - generic [ref=e378] [cursor=pointer]: Microsoft 365
+                  - generic [ref=e379] [cursor=pointer]: Low-code/no-code platforms
+                  - generic [ref=e380] [cursor=pointer]: AI technologies
+                  - generic [ref=e381] [cursor=pointer]: Data privacy
+                  - generic [ref=e382] [cursor=pointer]: Security concepts
+              - button "Optimize my Resume" [ref=e384] [cursor=pointer]:
+                - generic [ref=e385]: Optimize my Resume
+            - generic [ref=e386]:
+              - generic [ref=e387]:
+                - generic [ref=e388]: Get Referral Via linkedIn
+                - generic [ref=e389]: FREE
+              - generic [ref=e390]: 3× Higher Response via Email Outreach
+              - generic [ref=e393]:
+                - generic [ref=e394]:
+                  - generic [ref=e398] [cursor=pointer]: L
+                  - generic [ref=e400]:
+                    - generic [ref=e401]: Lissette S.
+                    - generic [ref=e402]: People Operations Generalist
+                - generic [ref=e403]:
+                  - img "email" [ref=e405] [cursor=pointer]
+                  - img "linkedin" [ref=e407] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e409] [cursor=pointer]:
+                - generic [ref=e410]: Draft Message to Connect
+            - generic [ref=e411]:
+              - generic [ref=e412]:
+                - generic [ref=e413]: Apply Faster with Autofill Plugin
+                - generic [ref=e414]: FREE
+              - img "autofill" [ref=e416]
+              - button "Apply With Autofill" [ref=e418] [cursor=pointer]:
+                - generic [ref=e419]: Apply With Autofill
+  - alert [ref=e420]

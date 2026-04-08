@@ -1,0 +1,259 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "RDO Equipment Co. · 12 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: RDO Equipment Co.
+                        - generic [ref=e52]: · 12 hours ago
+                      - heading "Access Your Future Service Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Great Falls, MT
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $18/hr - $24/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: RDO Equipment Co.
+                    - text: is sponsoring a program for students interested in a career as a Service Technician in the equipment industry. The internship provides educational support, financial incentives, and hands-on experience while attending a college program.
+                  - generic [ref=e81]:
+                    - generic [ref=e83]: Agriculture
+                    - generic [ref=e84]:
+                      - generic [ref=e85]:
+                        - img "check" [ref=e87]
+                        - text: Growth Opportunities
+                      - generic [ref=e88]:
+                        - img "bad" [ref=e89]
+                        - text: No H1B
+                        - img "note" [ref=e90]
+              - separator [ref=e91]
+              - generic [ref=e92]:
+                - heading "Responsibilities" [level=2] [ref=e94]
+                - generic [ref=e95]:
+                  - generic [ref=e100]: Partner with mentor to diagnose, inspect, recondition, repair, assemble, and service equipment as assigned by the supervisor
+                  - generic [ref=e105]: Document machine information and repairs completed on work order, including parts and fluids used
+                  - generic [ref=e110]: Maintain a clean work area, as well as care for all shop tools, machines, and equipment
+                  - generic [ref=e115]: Follow all safety rules and regulations while performing work assignments and adhere to all policies and procedures as specified in company manuals and as directed in the employee handbook
+                  - generic [ref=e120]: Conduct self in the presence of customers and community so as to present a professional image of RDO Equipment Co
+                  - generic [ref=e125]: Proactively seek and participate in available company-sponsored training, in an effort to develop and advance knowledge base and skill set
+                  - generic [ref=e130]: Participate in all company/location driven communication efforts, including open book meetings, huddles, department meetings and other related efforts
+                  - generic [ref=e135]: Maintain a positive and professional working relationship with peers, management, and support resources, with a constant commitment to teamwork and exemplary customer service
+                  - generic [ref=e140]: Perform all other duties as assigned by management in a professional and efficient manner
+              - separator [ref=e141]
+              - generic [ref=e142]:
+                - heading "Qualification" [level=2] [ref=e144]
+                - generic [ref=e145]:
+                  - generic [ref=e146] [cursor=pointer]: Mechanical Skills
+                  - generic [ref=e147] [cursor=pointer]: Trade Specific Tooling
+                  - generic [ref=e148] [cursor=pointer]: Hand Tools
+                  - generic [ref=e149] [cursor=pointer]: Pneumatic Tools
+                  - generic [ref=e150] [cursor=pointer]: Computer Skills
+                  - generic [ref=e151] [cursor=pointer]: Equipment Maintenance
+                  - generic [ref=e152] [cursor=pointer]: Customer Service
+                - generic [ref=e153]:
+                  - heading "Required" [level=4] [ref=e154]
+                  - generic [ref=e158]: Must enroll or be attending an approved Heavy Equipment Service, Diesel Technology or other technical service program approved by RDO Equipment Co
+                  - generic [ref=e162]: Maintain a GPA of 3.0 (on a 4.0 scale) while in program
+                  - generic [ref=e166]: Maintain acceptable attendance record while in program
+                  - generic [ref=e170]: Provide a copy of transcripts and diploma to RDO Equipment Co. in order to receive the financial incentive and sign on bonus upon full time employment
+                  - generic [ref=e174]: Adhere to academic policies, rules and regulations set forth by the higher learning center the student is attending
+                  - generic [ref=e178]: Accept full time employment within a RDO Equipment Co. following graduation
+                  - generic [ref=e182]: Mechanical skills
+                  - generic [ref=e186]: Trade specific tooling, including hand and pneumatic tools
+                  - generic [ref=e190]: Strong computer skills
+                  - generic [ref=e194]: Excellent customer service skills
+                  - generic [ref=e198]: Ability to perform maintenance functions on equipment
+                  - generic [ref=e202]: Excellent communication and written skills
+                  - generic [ref=e206]: Strong organizational skills
+                  - generic [ref=e210]: Candidates must have valid work authorization and be able to work in the U.S. without company sponsorship
+              - separator [ref=e211]
+              - generic [ref=e212]:
+                - heading "Benefits" [level=2] [ref=e214]
+                - generic [ref=e215]:
+                  - generic [ref=e219]: Paid internship employment at a sponsoring store while attending college.
+                  - generic [ref=e223]: Company paid tools based on your educational requirements.
+                  - generic [ref=e227]: Graduation sign on bonus upon completion of your education and transition to full time work at RDO Equipment Co.
+                  - generic [ref=e231]: 4 years of post-graduation financial incentives as you start your Service Technician career with RDO Equipment Co.
+            - separator [ref=e232]
+            - generic [ref=e233]:
+              - heading "Company" [level=2] [ref=e235]
+              - generic [ref=e237]:
+                - generic [ref=e240]:
+                  - generic [ref=e241]:
+                    - generic [ref=e242]:
+                      - heading "RDO Equipment Co." [level=2] [ref=e243]
+                      - generic [ref=e244]:
+                        - link "twitter" [ref=e245] [cursor=pointer]:
+                          - /url: https://x.com/rdoequipment
+                          - img "twitter" [ref=e246]
+                        - link "twitter" [ref=e247] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/85123
+                          - img "twitter" [ref=e248]
+                        - link "twitter" [ref=e249] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/rdo-equipment
+                          - img "twitter" [ref=e250]
+                    - img "company-logo" [ref=e252]
+                  - generic [ref=e253]: Founded in 1968, RDO Equipment Co.
+                - generic [ref=e256]:
+                  - generic [ref=e257]:
+                    - img "date" [ref=e258]
+                    - text: Founded in 1968
+                  - generic [ref=e259]:
+                    - img "location" [ref=e260]
+                    - generic [ref=e261]: Fargo, North Dakota, USA
+                  - generic [ref=e262]:
+                    - img "people-size" [ref=e263]
+                    - text: 1001-5000 employees
+                  - generic [ref=e264]:
+                    - img "web-link" [ref=e265]
+                    - link "http://www.rdoequipment.com/" [ref=e267] [cursor=pointer]:
+                      - /url: http://www.rdoequipment.com/
+              - generic [ref=e268]:
+                - generic [ref=e269]:
+                  - heading "Funding" [level=2] [ref=e271]
+                  - generic [ref=e272]:
+                    - generic [ref=e274]:
+                      - generic [ref=e275]:
+                        - generic [ref=e276]: Current Stage
+                        - text: Public Company
+                      - generic [ref=e277]:
+                        - generic [ref=e278]: Total Funding
+                        - text: unknown
+                    - generic [ref=e282]:
+                      - generic [ref=e283]: 1997-01-24
+                      - generic [ref=e284]: IPO
+                - generic [ref=e285]:
+                  - heading "Leadership Team" [level=2] [ref=e287]
+                  - generic [ref=e288]:
+                    - generic [ref=e290] [cursor=pointer]:
+                      - img "leader-logo" [ref=e292]
+                      - generic [ref=e293]:
+                        - generic [ref=e294]: Dan Wiese
+                        - generic [ref=e295]: ACCOUNT MANAGER
+                      - link "linkedin" [ref=e296]:
+                        - /url: https://www.linkedin.com/in/dan-wiese-205aa36b
+                        - img "linkedin" [ref=e297]
+                    - generic [ref=e299] [cursor=pointer]:
+                      - img "leader-logo" [ref=e301]
+                      - generic [ref=e302]:
+                        - generic [ref=e303]: RYAN MILLER
+                        - generic [ref=e304]: SALES COORDINATOR
+                      - link "linkedin" [ref=e305]:
+                        - /url: https://www.linkedin.com/in/ryan-miller-50811a69
+                        - img "linkedin" [ref=e306]
+                - generic [ref=e307]:
+                  - heading "Recent News" [level=2] [ref=e309]
+                  - generic [ref=e310]:
+                    - generic [ref=e312]:
+                      - generic [ref=e313]:
+                        - generic [ref=e314]: Ecorobotix SA
+                        - link "Ecorobotix and RDO to Introduce AI Sprayer Technology in Australia" [ref=e316] [cursor=pointer]:
+                          - /url: https://www.globenewswire.com/news-release/2025/04/08/3057729/0/en/Ecorobotix-and-RDO-to-Introduce-AI-Sprayer-Technology-in-Australia.html
+                          - generic [ref=e317]: Ecorobotix and RDO to Introduce AI Sprayer Technology in Australia
+                      - generic [ref=e318]: 2025-04-08
+                    - generic [ref=e320]:
+                      - generic [ref=e321]:
+                        - generic [ref=e322]: Agweek
+                        - link "Minnesota RDO facility gets upsized to fit today’s massive equipment" [ref=e324] [cursor=pointer]:
+                          - /url: https://www.agweek.com/agribusiness/minnesota-rdo-facility-gets-upsized-to-fit-todays-massive-equipment
+                          - generic [ref=e325]: Minnesota RDO facility gets upsized to fit today’s massive equipment
+                      - generic [ref=e326]: 2025-01-11
+                    - generic [ref=e328]:
+                      - generic [ref=e329]:
+                        - generic [ref=e330]: PR Newswire
+                        - link "FarmWise & RDO Equipment Co. Form Exclusive Partnership to Revolutionize Precision Weeding in Specialty Crops" [ref=e332] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/farmwise--rdo-equipment-co-form-exclusive-partnership-to-revolutionize-precision-weeding-in-specialty-crops-302246722.html
+                          - generic [ref=e333]: FarmWise & RDO Equipment Co. Form Exclusive Partnership to Revolutionize Precision Weeding in Specialty Crops
+                      - generic [ref=e334]: 2025-01-11
+                - generic [ref=e336]: Company data provided by crunchbase
+        - complementary [ref=e337]:
+          - generic [ref=e340]:
+            - generic [ref=e341]: Boost Your Interview Chances
+            - generic [ref=e342]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: Improve Resume Match Score
+                - generic [ref=e345]: FREE
+              - generic [ref=e346]:
+                - generic [ref=e347]:
+                  - generic [ref=e350]:
+                    - img [ref=e351]
+                    - paragraph [ref=e365]: "?"
+                  - generic [ref=e366]: Your Score
+                - generic [ref=e368]:
+                  - generic [ref=e371]:
+                    - img [ref=e372]
+                    - paragraph [ref=e386]: "9.3"
+                  - generic [ref=e387]: Top Applicants
+              - generic [ref=e388]:
+                - generic [ref=e389]:
+                  - img "skill icon" [ref=e391]
+                  - generic [ref=e392]: Must-Have Skills for This Role
+                - generic [ref=e394]:
+                  - generic [ref=e395] [cursor=pointer]: Mechanical Skills
+                  - generic [ref=e396] [cursor=pointer]: Trade Specific Tooling
+                  - generic [ref=e397] [cursor=pointer]: Hand Tools
+                  - generic [ref=e398] [cursor=pointer]: Pneumatic Tools
+                  - generic [ref=e399] [cursor=pointer]: Computer Skills
+              - button "Optimize my Resume" [ref=e401] [cursor=pointer]:
+                - generic [ref=e402]: Optimize my Resume
+            - generic [ref=e403]:
+              - generic [ref=e404]:
+                - generic [ref=e405]: Get Referral Via linkedIn
+                - generic [ref=e406]: FREE
+              - generic [ref=e407]: 3× Higher Response via Email Outreach
+              - generic [ref=e410]:
+                - generic [ref=e411]:
+                  - generic [ref=e415] [cursor=pointer]: L
+                  - generic [ref=e417]:
+                    - generic [ref=e418]: Linda L.
+                    - generic [ref=e419]: Technical Recruiter
+                - generic [ref=e420]:
+                  - img "email" [ref=e422] [cursor=pointer]
+                  - img "linkedin" [ref=e424] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e426] [cursor=pointer]:
+                - generic [ref=e427]: Draft Message to Connect
+            - generic [ref=e428]:
+              - generic [ref=e429]:
+                - generic [ref=e430]: Apply Faster with Autofill Plugin
+                - generic [ref=e431]: FREE
+              - img "autofill" [ref=e433]
+              - button "Apply With Autofill" [ref=e435] [cursor=pointer]:
+                - generic [ref=e436]: Apply With Autofill
+  - alert [ref=e437]

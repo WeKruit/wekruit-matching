@@ -1,0 +1,230 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Marvin · 10 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Marvin
+                        - generic [ref=e52]: · 10 hours ago
+                      - heading "Customer Services Intern" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Minnesota, United States
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $19/hr - $23/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Marvin
+                    - text: is a family-owned and -led window and door company committed to creating better ways of living. The Customer Service Intern will support real customer inquiries, contribute to process improvements, and collaborate with teams across the business while gaining professional communication and operational skills.
+                  - generic [ref=e83]: Real Estate
+              - separator [ref=e84]
+              - generic [ref=e85]:
+                - heading "Responsibilities" [level=2] [ref=e87]
+                - generic [ref=e88]:
+                  - generic [ref=e93]: Work with a dedicated mentor on clear goals
+                  - generic [ref=e98]: Support customer inquiry research and resolution
+                  - generic [ref=e103]: Assist with projects and process improvements
+                  - generic [ref=e108]: Learn Marvin tools and systems, including Microsoft Office and Salesforce
+                  - generic [ref=e113]: Build professional communication skills with internal and external partners
+              - separator [ref=e114]
+              - generic [ref=e115]:
+                - heading "Qualification" [level=2] [ref=e117]
+                - generic [ref=e118]:
+                  - generic [ref=e119] [cursor=pointer]: Microsoft Office
+                  - generic [ref=e120] [cursor=pointer]: Salesforce
+                  - generic [ref=e121] [cursor=pointer]: Customer Service
+                  - generic [ref=e122] [cursor=pointer]: Curiosity
+                - generic [ref=e123]:
+                  - heading "Required" [level=4] [ref=e124]
+                  - generic [ref=e128]: Strong written and verbal communication
+                  - generic [ref=e132]: A positive, professional approach with customers and teammates
+                  - generic [ref=e136]: Curiosity, problem‑solving skills, and willingness to ask questions
+                  - generic [ref=e140]: Ability to juggle multiple tasks with attention to detail
+                  - generic [ref=e144]: Comfort learning new systems and working collaboratively
+                  - generic [ref=e148]: Enrollment in an associate or bachelor's program in Business, Communications, Management, Architecture or related field
+                  - generic [ref=e152]: Interest in customer service or business operations
+                - generic [ref=e153]:
+                  - heading "Preferred" [level=4] [ref=e154]
+                  - generic [ref=e158]: Prior customer service or office experience (helpful but not required)
+              - separator [ref=e159]
+              - generic [ref=e160]:
+                - heading "Benefits" [level=2] [ref=e162]
+                - generic [ref=e163]:
+                  - generic [ref=e167]: Better Living Day! (a paid day off to go have some fun)
+                  - generic [ref=e171]: Annual profit sharing – recognizing everyone’s contribution to Marvin’s success
+                  - generic [ref=e175]: Giving at Marvin – participate in organized volunteer opportunities
+                  - generic [ref=e179]: Brighter Days Fund – financial support from your colleagues and the Marvin family during personal hardships
+            - separator [ref=e180]
+            - generic [ref=e181]:
+              - heading "Company" [level=2] [ref=e183]
+              - generic [ref=e185]:
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - generic [ref=e190]:
+                      - heading "Marvin" [level=2] [ref=e191]
+                      - generic [ref=e192]:
+                        - link "twitter" [ref=e193] [cursor=pointer]:
+                          - /url: https://x.com/themarvinbrand
+                          - img "twitter" [ref=e194]
+                        - link "twitter" [ref=e195] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/22534
+                          - img "twitter" [ref=e196]
+                        - link "twitter" [ref=e197] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/marvin-3
+                          - img "twitter" [ref=e198]
+                    - img "company-logo" [ref=e200]
+                  - generic [ref=e201]: Building and keeping relationships is as important to us as the unwavering quality of our product.
+                - generic [ref=e204]:
+                  - generic [ref=e205]:
+                    - img "date" [ref=e206]
+                    - text: Founded in 1912
+                  - generic [ref=e207]:
+                    - img "location" [ref=e208]
+                    - generic [ref=e209]: Warroad, Minnesota, USA
+                  - generic [ref=e210]:
+                    - img "people-size" [ref=e211]
+                    - text: 5001-10000 employees
+                  - generic [ref=e212]:
+                    - img "web-link" [ref=e213]
+                    - link "http://www.marvin.com/" [ref=e215] [cursor=pointer]:
+                      - /url: http://www.marvin.com/
+              - generic [ref=e216]:
+                - generic [ref=e217]:
+                  - heading "Funding" [level=2] [ref=e219]
+                  - generic [ref=e223]:
+                    - generic [ref=e224]: Current Stage
+                    - text: Late Stage
+                - generic [ref=e225]:
+                  - heading "Leadership Team" [level=2] [ref=e227]
+                  - generic [ref=e228]:
+                    - generic [ref=e230] [cursor=pointer]:
+                      - img "leader-logo" [ref=e232]
+                      - generic [ref=e233]:
+                        - generic [ref=e234]: Paul Marvin
+                        - generic [ref=e235]: CEO & Chair of the Board
+                      - link "linkedin" [ref=e236]:
+                        - /url: https://www.linkedin.com/in/paulhmarvin
+                        - img "linkedin" [ref=e237]
+                    - generic [ref=e239] [cursor=pointer]:
+                      - img "leader-logo" [ref=e241]
+                      - generic [ref=e242]:
+                        - generic [ref=e243]: Joseph Sedgwick
+                        - generic [ref=e244]: Chief Financial Officer
+                      - link "linkedin" [ref=e245]:
+                        - /url: https://www.linkedin.com/in/joseph-sedgwick-3949b21
+                        - img "linkedin" [ref=e246]
+                - generic [ref=e247]:
+                  - heading "Recent News" [level=2] [ref=e249]
+                  - generic [ref=e250]:
+                    - generic [ref=e252]:
+                      - generic [ref=e253]:
+                        - generic [ref=e254]: Canadian News Wire
+                        - link "Apolo IV Acquisition Corp. and Marviken Ontario Inc. enter into Binding Letter of Intent to Complete Qualifying Transaction" [ref=e256] [cursor=pointer]:
+                          - /url: https://www.newswire.ca/news-releases/apolo-iv-acquisition-corp-and-marviken-ontario-inc-enter-into-binding-letter-of-intent-to-complete-qualifying-transaction-816756890.html
+                          - generic [ref=e257]: Apolo IV Acquisition Corp. and Marviken Ontario Inc. enter into Binding Letter of Intent to Complete Qualifying Transaction
+                      - generic [ref=e258]: 2024-10-22
+                    - generic [ref=e260]:
+                      - generic [ref=e261]:
+                        - generic [ref=e262]: Hartford Business Journal
+                        - link "Window manufacturer Marvin’s relocation to Windsor satisfies need for ‘significantly more space’" [ref=e264] [cursor=pointer]:
+                          - /url: https://www.hartfordbusiness.com/article/window-manufacturer-marvins-relocation-to-windsor-satisfies-need-for-significantly-more
+                          - generic [ref=e265]: Window manufacturer Marvin’s relocation to Windsor satisfies need for ‘significantly more space’
+                      - generic [ref=e266]: 2024-05-04
+                    - generic [ref=e268]:
+                      - generic [ref=e269]:
+                        - generic [ref=e270]: GlobeNewswire News Room
+                        - link "$MARVIN Develops a Cosmic Canine Companion on Solana" [ref=e272] [cursor=pointer]:
+                          - /url: https://www.globenewswire.com/en/news-release/2024/02/15/2830244/0/en/MARVIN-Develops-a-Cosmic-Canine-Companion-on-Solana.html
+                          - generic [ref=e273]: $MARVIN Develops a Cosmic Canine Companion on Solana
+                      - generic [ref=e274]: 2024-02-23
+                - generic [ref=e276]: Company data provided by crunchbase
+        - complementary [ref=e277]:
+          - generic [ref=e280]:
+            - generic [ref=e281]: Boost Your Interview Chances
+            - generic [ref=e282]:
+              - generic [ref=e283]:
+                - generic [ref=e284]: Improve Resume Match Score
+                - generic [ref=e285]: FREE
+              - generic [ref=e286]:
+                - generic [ref=e287]:
+                  - generic [ref=e290]:
+                    - img [ref=e291]
+                    - paragraph [ref=e305]: "?"
+                  - generic [ref=e306]: Your Score
+                - generic [ref=e308]:
+                  - generic [ref=e311]:
+                    - img [ref=e312]
+                    - paragraph [ref=e315]: "-"
+                  - generic [ref=e316]: Top Applicants
+              - generic [ref=e317]:
+                - generic [ref=e318]:
+                  - img "skill icon" [ref=e320]
+                  - generic [ref=e321]: Must-Have Skills for This Role
+                - generic [ref=e323]:
+                  - generic [ref=e324] [cursor=pointer]: Microsoft Office
+                  - generic [ref=e325] [cursor=pointer]: Salesforce
+                  - generic [ref=e326] [cursor=pointer]: Customer Service
+                  - generic [ref=e327] [cursor=pointer]: Curiosity
+              - button "Optimize my Resume" [ref=e329] [cursor=pointer]:
+                - generic [ref=e330]: Optimize my Resume
+            - generic [ref=e331]:
+              - generic [ref=e332]:
+                - generic [ref=e333]: Get Referral Via linkedIn
+                - generic [ref=e334]: FREE
+              - generic [ref=e335]: 3× Higher Response via Email Outreach
+              - generic [ref=e338]:
+                - generic [ref=e339]:
+                  - generic [ref=e343] [cursor=pointer]: T
+                  - generic [ref=e345]:
+                    - generic [ref=e346]: Tyler C.
+                    - generic [ref=e347]: Service Representative
+                - generic [ref=e348]:
+                  - img "email" [ref=e350] [cursor=pointer]
+                  - img "linkedin" [ref=e352] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e354] [cursor=pointer]:
+                - generic [ref=e355]: Draft Message to Connect
+            - generic [ref=e356]:
+              - generic [ref=e357]:
+                - generic [ref=e358]: Apply Faster with Autofill Plugin
+                - generic [ref=e359]: FREE
+              - img "autofill" [ref=e361]
+              - button "Apply With Autofill" [ref=e363] [cursor=pointer]:
+                - generic [ref=e364]: Apply With Autofill
+  - alert [ref=e365]

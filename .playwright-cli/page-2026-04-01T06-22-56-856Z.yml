@@ -1,0 +1,293 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Prisma Health · 11 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Prisma Health
+                        - generic [ref=e52]: · 11 hours ago
+                      - heading "Pharmacy Intern (Retail), PRN-Tuomey" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Sumter, SC
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - strong [ref=e75]: Prisma Health
+                    - text: is dedicated to transforming healthcare for the communities they serve. They are seeking a Pharmacy Intern to assist pharmacists in providing pharmaceutical care, including preparing and distributing medications and supporting compliance with relevant regulations.
+                  - generic [ref=e77]:
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: Healthcare
+                      - generic [ref=e80]: Hospital
+                      - generic [ref=e81]: Health Care
+                      - generic [ref=e82]: Medical
+                    - generic [ref=e84]:
+                      - img "check" [ref=e86]
+                      - text: H1B Sponsor Likely
+                      - img "note" [ref=e87]
+              - separator [ref=e88]
+              - generic [ref=e89]:
+                - heading "Responsibilities" [level=2] [ref=e91]
+                - generic [ref=e92]:
+                  - generic [ref=e97]: Obtains supplies, prepares and labels drug orders under the direct supervision of a pharmacist
+                  - generic [ref=e102]: Calculates and compounds aliquot doses
+                  - generic [ref=e107]: Distributes and/or transports medications to appropriate patient care areas in a timely manner and under a pharmacist's supervision
+                  - generic [ref=e112]: Makes beneficial recommendations for improvements in procedures, guidelines and continuing education training
+                  - generic [ref=e117]: Monitors inventory levels, stocks shelve, maintains order and cleanliness in assigned areas and maintains all required records
+                  - generic [ref=e122]: Receives and/or initiates verbal medication orders if authorized to do so by his/her supervising pharmacist
+                  - generic [ref=e127]: Serves as a good steward of the institution's resources, including time on the job
+                  - generic [ref=e132]: Provides training and participates in the in servicing of departmental employees and students
+                  - generic [ref=e137]: Performs other duties as assigned
+              - separator [ref=e138]
+              - generic [ref=e139]:
+                - heading "Qualification" [level=2] [ref=e141]
+                - generic [ref=e142]:
+                  - generic [ref=e143] [cursor=pointer]: Pharmacy intern registration
+                  - generic [ref=e144] [cursor=pointer]: National regulations
+                  - generic [ref=e145] [cursor=pointer]: State regulations
+                  - generic [ref=e146] [cursor=pointer]: Corporate regulations
+                  - generic [ref=e147] [cursor=pointer]: Medical terminology
+                  - generic [ref=e148] [cursor=pointer]: Pharmacy terminology
+                  - generic [ref=e149] [cursor=pointer]: Mathematical skills
+                  - generic [ref=e150] [cursor=pointer]: Handle urgent
+                  - generic [ref=e151] [cursor=pointer]: Stressful situations
+                  - generic [ref=e152] [cursor=pointer]: Work in team situations
+                - generic [ref=e153]:
+                  - heading "Required" [level=4] [ref=e154]
+                  - generic [ref=e158]: Completion of a South Carolina Board of Pharmacy approved technician course OR current enrollment in a professional academic pharmacy program at an accredited university
+                  - generic [ref=e162]: Satisfactory progress maintained in the professional academic pharmacy program
+                  - generic [ref=e166]: Current registration with SC Board of Pharmacy as a pharmacy intern
+                  - generic [ref=e170]: Knowledge of National, State, and Corporate regulations and standards
+                  - generic [ref=e174]: Knowledge of medical and pharmacy terminology
+                  - generic [ref=e178]: Mathematical skills
+                  - generic [ref=e182]: Problem-solving abilities
+                  - generic [ref=e186]: Ability to work in team situations
+                  - generic [ref=e190]: Ability to handle urgent, stressful situations
+                  - generic [ref=e194]: Corporate and departmental mandatory training required annually
+                  - generic [ref=e198]: Ability to exhibit interpersonal skills in interacting with supervisors, peers, and others outside pharmacy
+            - separator [ref=e199]
+            - generic [ref=e200]:
+              - heading "Company" [level=2] [ref=e202]
+              - generic [ref=e204]:
+                - generic [ref=e207]:
+                  - generic [ref=e208]:
+                    - generic [ref=e209]:
+                      - heading "Prisma Health" [level=2] [ref=e210]
+                      - generic [ref=e211]:
+                        - link "twitter" [ref=e212] [cursor=pointer]:
+                          - /url: https://x.com/theprismahealth
+                          - img "twitter" [ref=e213]
+                        - link "twitter" [ref=e214] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/12606850
+                          - img "twitter" [ref=e215]
+                        - link "twitter" [ref=e216] [cursor=pointer]:
+                          - /url: https://www.crunchbase.com/organization/prisma-health-d097
+                          - img "twitter" [ref=e217]
+                        - link "Glassdoor 3.4" [ref=e218] [cursor=pointer]:
+                          - /url: https://www.glassdoor.com/Overview/Working-at-Prisma-Health-EI_IE4675.11,24.htm
+                          - generic [ref=e219]:
+                            - generic [ref=e220]: Glassdoor
+                            - generic "3.4 Stars" [ref=e221]:
+                              - img [ref=e223]
+                              - img [ref=e226]
+                              - img [ref=e229]
+                              - img [ref=e232]
+                              - img [ref=e235]
+                            - generic [ref=e237]: "3.4"
+                    - img "company-logo" [ref=e239]
+                  - generic [ref=e240]: Prisma Health is the largest not-for-profit health organization in South Carolina, serving more than 1.2 million patients annually.
+                - generic [ref=e243]:
+                  - generic [ref=e244]:
+                    - img "date" [ref=e245]
+                    - text: Founded in 2017
+                  - generic [ref=e246]:
+                    - img "location" [ref=e247]
+                    - generic [ref=e248]: Greenville, South Carolina, USA
+                  - generic [ref=e249]:
+                    - img "people-size" [ref=e250]
+                    - text: 10001+ employees
+                  - generic [ref=e251]:
+                    - img "web-link" [ref=e252]
+                    - link "https://www.prismahealth.org" [ref=e254] [cursor=pointer]:
+                      - /url: https://www.prismahealth.org
+              - generic [ref=e255]:
+                - generic [ref=e256]:
+                  - heading "H1B Sponsorship" [level=2] [ref=e258]
+                  - generic [ref=e260]:
+                    - text: Prisma Health has a track record of offering H1B sponsorships. Please note that this does not guarantee sponsorship for this specific role. Below presents additional info for your reference.
+                    - generic [ref=e261]: (Data Powered by US Department of Labor)
+                  - generic [ref=e262]:
+                    - generic [ref=e263]:
+                      - generic [ref=e264]: Distribution of Different Job Fields Receiving Sponsorship
+                      - generic [ref=e271]: Represents job field similar to this job
+                    - generic [ref=e272]:
+                      - generic [ref=e273]: Trends of Total Sponsorships
+                      - generic [ref=e274]:
+                        - generic [ref=e275]:
+                          - text: "2024"
+                          - generic [ref=e276]: (1)
+                        - progressbar [ref=e277]
+                      - generic [ref=e281]:
+                        - generic [ref=e282]:
+                          - text: "2022"
+                          - generic [ref=e283]: (1)
+                        - progressbar [ref=e284]
+                - generic [ref=e288]:
+                  - heading "Funding" [level=2] [ref=e290]
+                  - generic [ref=e291]:
+                    - generic [ref=e293]:
+                      - generic [ref=e294]:
+                        - generic [ref=e295]: Current Stage
+                        - text: Late Stage
+                      - generic [ref=e296]:
+                        - generic [ref=e297]: Total Funding
+                        - text: unknown
+                    - generic [ref=e299]:
+                      - generic [ref=e300]: Key Investors
+                      - generic [ref=e302]: CDA Foundation
+                    - generic [ref=e306]:
+                      - generic [ref=e307]: 2024-07-30
+                      - generic [ref=e308]: Grant
+                - generic [ref=e309]:
+                  - heading "Leadership Team" [level=2] [ref=e311]
+                  - generic [ref=e312]:
+                    - generic [ref=e314] [cursor=pointer]:
+                      - img "leader-logo" [ref=e316]
+                      - generic [ref=e317]:
+                        - generic [ref=e318]: Mark O'Halla
+                        - generic [ref=e319]: President & CEO
+                      - link "linkedin" [ref=e320]:
+                        - /url: https://www.linkedin.com/in/mark-o-halla-3509443
+                        - img "linkedin" [ref=e321]
+                    - generic [ref=e323] [cursor=pointer]:
+                      - generic [ref=e326]: B
+                      - generic [ref=e327]:
+                        - generic [ref=e328]: Barrett Ludley
+                        - generic [ref=e329]: Facility Chief Financial Officer
+                      - link "linkedin" [ref=e330]:
+                        - /url: https://www.linkedin.com/in/barrett-ludley-25b659174
+                        - img "linkedin" [ref=e331]
+                - generic [ref=e332]:
+                  - heading "Recent News" [level=2] [ref=e334]
+                  - generic [ref=e335]:
+                    - generic [ref=e337]:
+                      - generic [ref=e338]:
+                        - generic [ref=e339]: SCBiz
+                        - link "USC, Prisma Health partner on Brain Health Center in Columbia" [ref=e341] [cursor=pointer]:
+                          - /url: https://scbiz.com/usc-prisma-brain-health-center-columbia/
+                          - generic [ref=e342]: USC, Prisma Health partner on Brain Health Center in Columbia
+                      - generic [ref=e343]: 2026-03-23
+                    - generic [ref=e345]:
+                      - generic [ref=e346]:
+                        - generic [ref=e347]: PR Newswire
+                        - link "Prisma Health Expands Partnership With Minerra™ Health and Announces Strategic Investment to Scale Obesity Care Platform" [ref=e349] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/prisma-health-expands-partnership-with-minerra-health-and-announces-strategic-investment-to-scale-obesity-care-platform-302711398.html
+                          - generic [ref=e350]: Prisma Health Expands Partnership With Minerra™ Health and Announces Strategic Investment to Scale Obesity Care Platform
+                      - generic [ref=e351]: 2026-03-11
+                    - generic [ref=e353]:
+                      - generic [ref=e354]:
+                        - generic [ref=e355]: PR Newswire
+                        - link "Prisma Health and Atlas Healthcare Partners Launch Joint Venture to Expand Outpatient Surgical Care Across the Southeast" [ref=e357] [cursor=pointer]:
+                          - /url: https://www.prnewswire.com/news-releases/prisma-health-and-atlas-healthcare-partners-launch-joint-venture-to-expand-outpatient-surgical-care-across-the-southeast-302692508.html
+                          - generic [ref=e358]: Prisma Health and Atlas Healthcare Partners Launch Joint Venture to Expand Outpatient Surgical Care Across the Southeast
+                      - generic [ref=e359]: 2026-02-20
+                - generic [ref=e361]: Company data provided by crunchbase
+        - complementary [ref=e362]:
+          - generic [ref=e365]:
+            - generic [ref=e366]: Boost Your Interview Chances
+            - generic [ref=e367]:
+              - generic [ref=e368]:
+                - generic [ref=e369]: Improve Resume Match Score
+                - generic [ref=e370]: FREE
+              - generic [ref=e371]:
+                - generic [ref=e372]:
+                  - generic [ref=e375]:
+                    - img [ref=e376]
+                    - paragraph [ref=e390]: "?"
+                  - generic [ref=e391]: Your Score
+                - generic [ref=e393]:
+                  - generic [ref=e396]:
+                    - img [ref=e397]
+                    - paragraph [ref=e411]: "8.9"
+                  - generic [ref=e412]: Top Applicants
+              - generic [ref=e413]:
+                - generic [ref=e414]:
+                  - img "skill icon" [ref=e416]
+                  - generic [ref=e417]: Must-Have Skills for This Role
+                - generic [ref=e419]:
+                  - generic [ref=e420] [cursor=pointer]: Pharmacy intern registration
+                  - generic [ref=e421] [cursor=pointer]: National regulations
+                  - generic [ref=e422] [cursor=pointer]: State regulations
+                  - generic [ref=e423] [cursor=pointer]: Corporate regulations
+                  - generic [ref=e424] [cursor=pointer]: medical terminology
+              - button "Optimize my Resume" [ref=e426] [cursor=pointer]:
+                - generic [ref=e427]: Optimize my Resume
+            - generic [ref=e428]:
+              - generic [ref=e429]:
+                - generic [ref=e430]: Get Referral Via linkedIn
+                - generic [ref=e431]: FREE
+              - generic [ref=e432]: 3× Higher Response via Email Outreach
+              - generic [ref=e433]:
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - generic [ref=e440] [cursor=pointer]: "N"
+                    - generic [ref=e442]:
+                      - generic [ref=e443]: Nicole K.
+                      - generic [ref=e444]: Staff Pharmacist
+                  - generic [ref=e445]:
+                    - img "email" [ref=e447] [cursor=pointer]
+                    - img "linkedin" [ref=e449] [cursor=pointer]
+                - generic [ref=e451]:
+                  - generic [ref=e452]:
+                    - generic [ref=e456] [cursor=pointer]: G
+                    - generic [ref=e458]:
+                      - generic [ref=e459]: Gresham H.
+                      - generic [ref=e460]: Clinical Pharmacist
+                  - generic [ref=e461]:
+                    - img "email" [ref=e463] [cursor=pointer]
+                    - img "linkedin" [ref=e465] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e467] [cursor=pointer]:
+                - generic [ref=e468]: Draft Message to Connect
+            - generic [ref=e469]:
+              - generic [ref=e470]:
+                - generic [ref=e471]: Apply Faster with Autofill Plugin
+                - generic [ref=e472]: FREE
+              - img "autofill" [ref=e474]
+              - button "Apply With Autofill" [ref=e476] [cursor=pointer]:
+                - generic [ref=e477]: Apply With Autofill
+  - alert [ref=e478]

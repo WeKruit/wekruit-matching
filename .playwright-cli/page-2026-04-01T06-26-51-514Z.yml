@@ -1,0 +1,179 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - link [ref=e8] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]:
+          - generic [ref=e12] [cursor=pointer]: SIGN IN
+          - button "JOIN NOW" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - main [ref=e15]:
+          - generic [ref=e17]:
+            - generic [ref=e20]:
+              - generic [ref=e24]:
+                - link "Overview" [ref=e27] [cursor=pointer]:
+                  - /url: "#overview"
+                - link "Company" [ref=e29] [cursor=pointer]:
+                  - /url: "#company"
+              - generic [ref=e30]:
+                - generic [ref=e31]:
+                  - img "cer-icon" [ref=e33]
+                  - generic [ref=e34]: Apply on Employer Site
+                - button "APPLY NOW arr-right" [ref=e35] [cursor=pointer]:
+                  - generic [ref=e36]: APPLY NOW
+                  - img "arr-right" [ref=e37]
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e41]:
+                  - generic [ref=e44]:
+                    - img "company-logo" [ref=e47] [cursor=pointer]
+                    - generic [ref=e48]:
+                      - heading "Aquarion Water Company · 11 hours ago" [level=2] [ref=e50]:
+                        - generic [ref=e51]: Aquarion Water Company
+                        - generic [ref=e52]: · 11 hours ago
+                      - heading "Intern, IT" [level=1] [ref=e54]
+                  - generic [ref=e56]:
+                    - generic [ref=e58]:
+                      - img "position" [ref=e59]
+                      - generic [ref=e60]: Monroe, CT, US, 06468
+                    - generic [ref=e62]:
+                      - img "time" [ref=e63]
+                      - generic [ref=e64]: Internship
+                    - generic [ref=e66]:
+                      - img "remote" [ref=e67]
+                      - generic [ref=e68]: Onsite
+                    - generic [ref=e70]:
+                      - img "seniority" [ref=e71]
+                      - generic [ref=e72]: Intern
+                    - generic [ref=e74]:
+                      - img "money" [ref=e75]
+                      - generic [ref=e76]: $18/hr - $18/hr
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - strong [ref=e79]: Aquarion Water Company
+                    - text: is the public water supply company for more than 750,000 people in Connecticut. The Information Technology - End User Computing Team is looking for interns to assist with end user setup, hardware and software changes, and new user requests.
+                  - generic [ref=e83]: Utilities
+              - separator [ref=e84]
+              - generic [ref=e85]:
+                - heading "Responsibilities" [level=2] [ref=e87]
+                - generic [ref=e88]:
+                  - generic [ref=e93]: End User Setup - Office Moves - Imaging - Research and Testing
+                  - generic [ref=e98]: Hardware and Software Changes, Decommissioning, Troubleshooting
+                  - generic [ref=e103]: New User Requests and Setup - Printer Setup, Changes and Fixes
+              - separator [ref=e104]
+              - generic [ref=e105]:
+                - heading "Qualification" [level=2] [ref=e107]
+                - generic [ref=e108]:
+                  - generic [ref=e109] [cursor=pointer]: Bachelor's degree in Computer Science
+                  - generic [ref=e110] [cursor=pointer]: IT experience
+                  - generic [ref=e111] [cursor=pointer]: Desire to learn
+                  - generic [ref=e112] [cursor=pointer]: Interest in IT
+                - generic [ref=e113]:
+                  - heading "Required" [level=4] [ref=e114]
+                  - generic [ref=e118]: Have or be pursuing a Bachelor's degree in Computer Science or related field
+                  - generic [ref=e122]: A valid driver's license is required
+                - generic [ref=e123]:
+                  - heading "Preferred" [level=4] [ref=e124]
+                  - generic [ref=e128]: Previous IT experience helpful/not required
+                  - generic [ref=e132]: Desire or interest to work in IT field or as part of education
+            - separator [ref=e133]
+            - generic [ref=e134]:
+              - heading "Company" [level=2] [ref=e136]
+              - generic [ref=e138]:
+                - generic [ref=e141]:
+                  - generic [ref=e142]:
+                    - generic [ref=e143]:
+                      - heading "Aquarion Water Company" [level=2] [ref=e144]
+                      - link "twitter" [ref=e146] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/company/35739
+                        - img "twitter" [ref=e147]
+                    - img "company-logo" [ref=e149]
+                  - generic [ref=e150]: Aquarion Water Company is the public water supply and wastewater treatment company for more than 780,000 people in 73 cities and towns in Connecticut, Massachusetts and New Hampshire.
+                - generic [ref=e153]:
+                  - generic [ref=e154]:
+                    - img "date" [ref=e155]
+                    - text: Founded in 1857
+                  - generic [ref=e156]:
+                    - img "location" [ref=e157]
+                    - generic [ref=e158]: Bridgeport, Connecticut, US
+                  - generic [ref=e159]:
+                    - img "people-size" [ref=e160]
+                    - text: 201-500 employees
+                  - generic [ref=e161]:
+                    - img "web-link" [ref=e162]
+                    - link "http://www.aquarionwater.com" [ref=e164] [cursor=pointer]:
+                      - /url: http://www.aquarionwater.com
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - heading "Funding" [level=2] [ref=e168]
+                  - generic [ref=e172]:
+                    - generic [ref=e173]: Current Stage
+                    - text: Growth Stage
+                - generic [ref=e174]:
+                  - heading "Leadership Team" [level=2] [ref=e176]
+                  - generic [ref=e177]:
+                    - generic [ref=e179] [cursor=pointer]:
+                      - img "leader-logo" [ref=e181]
+                      - generic [ref=e182]:
+                        - generic [ref=e183]: Joy Hyde
+                        - generic [ref=e184]: Executive Assistant to CFO
+                      - link "linkedin" [ref=e185]:
+                        - /url: https://www.linkedin.com/in/joy-hyde-10708926
+                        - img "linkedin" [ref=e186]
+                    - generic [ref=e188] [cursor=pointer]:
+                      - img "leader-logo" [ref=e190]
+                      - generic [ref=e191]:
+                        - generic [ref=e192]: Ken Zima
+                        - generic [ref=e193]: CIO-Director, Information Technology
+                      - link "linkedin" [ref=e194]:
+                        - /url: https://www.linkedin.com/in/kenzima6
+                        - img "linkedin" [ref=e195]
+                - generic [ref=e197]: Company data provided by crunchbase
+        - complementary [ref=e198]:
+          - generic [ref=e201]:
+            - generic [ref=e202]: Boost Your Interview Chances
+            - generic [ref=e203]:
+              - generic [ref=e204]:
+                - generic [ref=e205]: Improve Resume Match Score
+                - generic [ref=e206]: FREE
+              - generic [ref=e207]:
+                - generic [ref=e208]:
+                  - generic [ref=e211]:
+                    - img [ref=e212]
+                    - paragraph [ref=e226]: "?"
+                  - generic [ref=e227]: Your Score
+                - generic [ref=e229]:
+                  - generic [ref=e232]:
+                    - img [ref=e233]
+                    - paragraph [ref=e236]: "-"
+                  - generic [ref=e237]: Top Applicants
+              - generic [ref=e239]:
+                - img "skill icon" [ref=e241]
+                - generic [ref=e242]: Must-Have Skills for This Role
+              - button "Optimize my Resume" [ref=e244] [cursor=pointer]:
+                - generic [ref=e245]: Optimize my Resume
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - generic [ref=e248]: Get Referral Via linkedIn
+                - generic [ref=e249]: FREE
+              - generic [ref=e250]: 3× Higher Response via Email Outreach
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - generic [ref=e258] [cursor=pointer]: D
+                  - generic [ref=e260]:
+                    - generic [ref=e261]: Dana M.
+                    - generic [ref=e262]: Human Resources Business Partner, Benefits
+                - generic [ref=e263]:
+                  - img "email" [ref=e265] [cursor=pointer]
+                  - img "linkedin" [ref=e267] [cursor=pointer]
+              - button "Draft Message to Connect" [ref=e269] [cursor=pointer]:
+                - generic [ref=e270]: Draft Message to Connect
+            - generic [ref=e271]:
+              - generic [ref=e272]:
+                - generic [ref=e273]: Apply Faster with Autofill Plugin
+                - generic [ref=e274]: FREE
+              - img "autofill" [ref=e276]
+              - button "Apply With Autofill" [ref=e278] [cursor=pointer]:
+                - generic [ref=e279]: Apply With Autofill
+  - alert [ref=e280]

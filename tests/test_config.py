@@ -9,6 +9,8 @@ def test_settings_loads_from_env(monkeypatch, tmp_path):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("GITHUB_TOKEN", "github_pat_test")
+    monkeypatch.setenv("API_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("SILICONFLOW_API_KEY", "sf-test")
 
     # Import inside test to avoid module-level .env read polluting other tests
     import importlib
@@ -28,6 +30,8 @@ def test_settings_raises_on_missing_database_url(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("GITHUB_TOKEN", "github_pat_test")
+    monkeypatch.setenv("API_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("SILICONFLOW_API_KEY", "sf-test")
 
     import importlib
     import wekruit_matching.config as cfg_module
@@ -45,6 +49,8 @@ def test_settings_raises_on_missing_anthropic_key(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("GITHUB_TOKEN", "github_pat_test")
+    monkeypatch.setenv("API_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("SILICONFLOW_API_KEY", "sf-test")
 
     import importlib
     import wekruit_matching.config as cfg_module

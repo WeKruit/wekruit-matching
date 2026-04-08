@@ -1,0 +1,122 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - generic [ref=e8]: WeKruit Matching
+            - generic [ref=e9]: Jobs console for inventory, freshness, and pipeline health
+          - generic [ref=e10]: internal
+        - navigation "Primary navigation" [ref=e11]:
+          - link "Active Jobs" [ref=e12] [cursor=pointer]:
+            - /url: /internal/jobs?status=active
+          - link "Stale Jobs" [ref=e13] [cursor=pointer]:
+            - /url: /internal/jobs?status=inactive
+          - link "Stats" [ref=e14] [cursor=pointer]:
+            - /url: /internal/stats
+          - link "Pipeline" [ref=e15] [cursor=pointer]:
+            - /url: /internal/pipeline
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - paragraph [ref=e18]: Pipeline Health
+        - heading "Pipeline" [level=1] [ref=e19]
+        - paragraph [ref=e20]: Show JD coverage, queue depth, quality, and stage freshness in product language instead of raw operational shorthand.
+        - generic "Pipeline summary" [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]: Waiting for JD fetch
+            - generic [ref=e24]: 1,913
+          - generic [ref=e25]:
+            - generic [ref=e26]: Failed attempts
+            - generic [ref=e27]: "0"
+          - generic [ref=e28]:
+            - generic [ref=e29]: Waiting for embedding
+            - generic [ref=e30]: "72"
+          - generic [ref=e31]:
+            - generic [ref=e32]: Last embed
+            - generic [ref=e33]: 2026-03-31 11:45
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e37]:
+            - heading "Processing backlog" [level=2] [ref=e38]
+            - paragraph [ref=e39]: Lead with the queues that matter so people can tell immediately whether the system is keeping up.
+          - generic [ref=e40]:
+            - article [ref=e41]:
+              - generic [ref=e42]: Jobs waiting for JD fetch
+              - generic [ref=e43]: 1,913
+              - generic [ref=e44]: Active listings still missing a fetched description and not yet attempted.
+            - article [ref=e45]:
+              - generic [ref=e46]: Failed JD attempts
+              - generic [ref=e47]: "0"
+              - generic [ref=e48]: Listings already attempted once but still missing fetched job-description content.
+            - article [ref=e49]:
+              - generic [ref=e50]: Jobs waiting for embeddings
+              - generic [ref=e51]: "72"
+              - generic [ref=e52]: Listings that already have metadata but are not ready for semantic matching yet.
+        - generic [ref=e53]:
+          - generic [ref=e55]:
+            - heading "JD coverage by source" [level=2] [ref=e56]
+            - paragraph [ref=e57]: Separate successful JD coverage from remaining gaps by fetch source so operators can see where the pipeline is strong or weak.
+          - table "JD coverage by source" [ref=e59]:
+            - caption [ref=e60]: JD coverage by source
+            - rowgroup [ref=e61]:
+              - row "Source With JD Without JD" [ref=e62]:
+                - columnheader "Source" [ref=e63]
+                - columnheader "With JD" [ref=e64]
+                - columnheader "Without JD" [ref=e65]
+            - rowgroup [ref=e66]:
+              - row "null 4,943 44,488" [ref=e67]:
+                - cell "null" [ref=e68]:
+                  - generic [ref=e69]: "null"
+                - cell "4,943" [ref=e70]
+                - cell "44,488" [ref=e71]
+        - generic [ref=e72]:
+          - generic [ref=e74]:
+            - heading "Quality distribution" [level=2] [ref=e75]
+            - paragraph [ref=e76]: Bucket JD quality scores so low-confidence fetches surface immediately.
+          - generic [ref=e77]:
+            - article [ref=e78]:
+              - generic [ref=e79]: Below 50
+              - generic [ref=e80]: "0"
+              - generic [ref=e81]: Low-confidence descriptions that still need operator attention.
+            - article [ref=e82]:
+              - generic [ref=e83]: 50-79
+              - generic [ref=e84]: "0"
+              - generic [ref=e85]: Usable descriptions with some missing structure or missing salary detail.
+            - article [ref=e86]:
+              - generic [ref=e87]: 80+
+              - generic [ref=e88]: "0"
+              - generic [ref=e89]: High-quality descriptions ready for downstream use.
+            - article [ref=e90]:
+              - generic [ref=e91]: Not scored
+              - generic [ref=e92]: 49,431
+              - generic [ref=e93]: Active jobs that still have no JD quality score recorded.
+        - generic [ref=e94]:
+          - generic [ref=e96]:
+            - heading "Recent pipeline activity" [level=2] [ref=e97]
+            - paragraph [ref=e98]: Translate internal timestamps into stage names that still make sense in a later customer-facing surface.
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - term [ref=e101]: Scrape refresh
+              - definition [ref=e102]:
+                - text: 2026-03-31 21:45
+                - generic [ref=e103]: Latest time the source inventory was refreshed.
+            - generic [ref=e104]:
+              - term [ref=e105]: Metadata enrichment
+              - definition [ref=e106]:
+                - text: 2026-04-01 00:01
+                - generic [ref=e107]: Latest time job classification and enrichment completed.
+            - generic [ref=e108]:
+              - term [ref=e109]: Embedding generation
+              - definition [ref=e110]:
+                - text: 2026-03-31 11:45
+                - generic [ref=e111]: Latest time semantic vectors were written for matching.
+        - generic [ref=e112]:
+          - generic [ref=e114]:
+            - heading "Operational note" [level=2] [ref=e115]
+            - paragraph [ref=e116]: Keep the unavoidable implementation detail isolated instead of making it the page headline.
+          - generic [ref=e117]:
+            - text: The daily pipeline currently runs once each morning. Operational logs live at
+            - code [ref=e118]: /tmp/matching-daily-update.log
+            - text: .
