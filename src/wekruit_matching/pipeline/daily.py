@@ -155,6 +155,16 @@ def run_daily_pipeline() -> dict:
         stale_jobs=stale_jobs,
     )
 
+    # v1.5 Stream-A2 — emit normalized stat tokens for the bash webhook in
+    # scripts/post-pipeline-webhook.sh. Token names must match the grep -oE
+    # patterns in scripts/daily-update.sh. scrape_stats shape:
+    # {repo_slug: {inserted, updated, unchanged, stale}} or {repo_slug: {error}}.
+    print(f"jobsScraped={sum(s.get('inserted',0)+s.get('updated',0)+s.get('unchanged',0) for s in scrape_stats.values() if 'error' not in s)}")
+    print(f"jobsNew={sum(s.get('inserted',0) for s in scrape_stats.values() if 'error' not in s)}")
+    print(f"jobsUpdated={sum(s.get('updated',0) for s in scrape_stats.values() if 'error' not in s)}")
+    print(f"jobsErrored={len(errors)}")
+    print(f"costUsd=0")  # no cost_usd field exists in any stats dict — plumb separately
+
     return {
         "scrape": scrape_stats,
         "jd_enrichment": jd_stats,
