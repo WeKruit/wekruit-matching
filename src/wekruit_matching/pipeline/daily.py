@@ -1,3 +1,4 @@
+import os
 """Unified daily pipeline orchestrator.
 
 Runs scrape -> enrich -> embed in sequence, captures stats and errors,
@@ -76,6 +77,9 @@ def run_daily_pipeline() -> dict:
         errors.append(f"ATS JD enrichment crash: {e}")
 
     # --- Stage 2.5: URL Resolution ---
+    # iter34 hotfix 2026-05-05 — Stage 2.5 hangs on Supabase pooler poll().
+    # Adding multiprocess-level timeout so a stuck stage cannot block
+    # Stage 3/4. Honor SKIP_URL_RESOLUTION env to skip entirely.
     logger.info("=== Stage 2.5: URL Resolution ===")
     url_stats = {
         "simplify": {},
@@ -84,13 +88,29 @@ def run_daily_pipeline() -> dict:
         "total_resolved": 0,
         "resolution_rate": 0.0,
     }
-    try:
-        with get_connection() as conn:
-            url_stats = run_url_resolution(conn=conn, batch_size=500)
-        logger.info("URL resolution stats: {}", url_stats)
-    except Exception as e:
-        logger.error("URL resolution crashed: {}", e)
-        errors.append(f"URL resolution crash: {e}")
+    if os.environ.get("SKIP_URL_RESOLUTION", "").lower() in ("1", "true", "yes"):
+        logger.warning("Stage 2.5 skipped via SKIP_URL_RESOLUTION env")
+    else:
+        import threading
+        result_holder: dict = {}
+        def _runner():
+            try:
+                with get_connection() as conn:
+                    result_holder["stats"] = run_url_resolution(conn=conn, batch_size=500)
+            except Exception as e:
+                result_holder["error"] = e
+        t = threading.Thread(target=_runner, daemon=True)
+        t.start()
+        t.join(timeout=600)  # 10 min hard cap
+        if t.is_alive():
+            logger.error("URL resolution timed out after 10min — proceeding to Stage 3")
+            errors.append("URL resolution timeout (Supabase pooler hang)")
+        elif "error" in result_holder:
+            logger.error("URL resolution crashed: {}", result_holder["error"])
+            errors.append(f"URL resolution crash: {result_holder['error']}")
+        else:
+            url_stats = result_holder.get("stats", url_stats)
+            logger.info("URL resolution stats: {}", url_stats)
 
     # --- Stage 2c: LLM fallback for metadata classification ---
     logger.info("=== Stage 2c: LLM Enrichment (metadata classification) ===")

@@ -42,9 +42,23 @@ def get_pool() -> ConnectionPool:
         min_size=2,
         max_size=20,
         timeout=5.0,
-        max_idle=300.0,
+        # iter34 hotfix 2026-05-05 — Supabase pgBouncer drops idle conns
+        # silently. max_idle=300s let stale conns persist; pipeline hung in
+        # poll() forever on first re-use. Lower to 60s + check_connection
+        # validates with SELECT 1 before hand-out + tcp keepalives so the
+        # client OS detects dead sockets quickly.
+        max_idle=60.0,
         max_lifetime=1800.0,
-        kwargs={"row_factory": dict_row},
+        check=ConnectionPool.check_connection,
+        kwargs={
+            "row_factory": dict_row,
+            "connect_timeout": 10,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 3,
+            "options": "-c statement_timeout=120000",
+        },
     )
     return pool
 
