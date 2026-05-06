@@ -101,6 +101,48 @@ def run_daily_pipeline() -> dict:
             senior_stats["otta"] = {"error": str(e)}
             errors.append(f"Otta scrape: {e}")
 
+    # --- Stage 1.6 — Phase 73 career-ops port: direct public-API scrapers ---
+    # Greenhouse / Lever / Ashby expose unauthenticated JSON job-board APIs.
+    # Default-on (no API key required, low risk). Same Job-shape, same dedup
+    # path, same upsert path as the Stage 1.5 sources.
+    if os.environ.get("ENABLE_GREENHOUSE_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.greenhouse_direct import (
+                scrape_greenhouse_direct,
+            )
+            gh_jobs = scrape_greenhouse_direct()
+            senior_jobs.extend(gh_jobs)
+            senior_stats["greenhouse_direct"] = {"scraped": len(gh_jobs)}
+            logger.info("greenhouse_direct scraped {} jobs", len(gh_jobs))
+        except Exception as e:
+            logger.warning("greenhouse_direct scrape failed: {}", e)
+            senior_stats["greenhouse_direct"] = {"error": str(e)}
+            errors.append(f"Greenhouse direct: {e}")
+
+    if os.environ.get("ENABLE_LEVER_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.lever_direct import scrape_lever_direct
+            lv_jobs = scrape_lever_direct()
+            senior_jobs.extend(lv_jobs)
+            senior_stats["lever_direct"] = {"scraped": len(lv_jobs)}
+            logger.info("lever_direct scraped {} jobs", len(lv_jobs))
+        except Exception as e:
+            logger.warning("lever_direct scrape failed: {}", e)
+            senior_stats["lever_direct"] = {"error": str(e)}
+            errors.append(f"Lever direct: {e}")
+
+    if os.environ.get("ENABLE_ASHBY_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.ashby_direct import scrape_ashby_direct
+            ab_jobs = scrape_ashby_direct()
+            senior_jobs.extend(ab_jobs)
+            senior_stats["ashby_direct"] = {"scraped": len(ab_jobs)}
+            logger.info("ashby_direct scraped {} jobs", len(ab_jobs))
+        except Exception as e:
+            logger.warning("ashby_direct scrape failed: {}", e)
+            senior_stats["ashby_direct"] = {"error": str(e)}
+            errors.append(f"Ashby direct: {e}")
+
     if senior_jobs:
         try:
             from wekruit_matching.scraper.dedup import dedup_multi_source

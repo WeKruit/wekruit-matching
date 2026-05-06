@@ -34,7 +34,46 @@ SOURCE_PRIORITY = {
     "wellfound": 3,
     "linkedin": 4,
     "otta": 1,
+    # Phase 73 — career-ops port direct APIs (matched by source_repo prefix
+    # in _priority_for_repo() because keys carry per-company suffix
+    # like "greenhouse:anthropic").
+    "greenhouse": 2,
+    "lever": 2,
+    "ashby": 2,
 }
+
+
+def _priority_for_repo(repo: str | None) -> int:
+    """Resolve SOURCE_PRIORITY for a source_repo string.
+
+    Phase 73: source_repo for direct-API scrapers is namespaced as
+    "greenhouse:anthropic" / "lever:netflix" / "ashby:ramp". Strip the
+    suffix before lookup so all greenhouse/lever/ashby entries collapse to
+    the same tier.
+    """
+    if not repo:
+        return 0
+    if repo in SOURCE_PRIORITY:
+        return SOURCE_PRIORITY[repo]
+    if ":" in repo:
+        prefix = repo.split(":", 1)[0]
+        if prefix in SOURCE_PRIORITY:
+            return SOURCE_PRIORITY[prefix]
+    return 0
+
+
+def _canonical_source(repo: str | None) -> str | None:
+    """Return the canonical source name for a source_repo string.
+
+    Phase 73: "greenhouse:anthropic" → "greenhouse". Used by
+    dedup_multi_source so the sources array stays clean (per-company suffix
+    is implementation detail of the scraper, not user-facing).
+    """
+    if not repo:
+        return None
+    if ":" in repo:
+        return repo.split(":", 1)[0]
+    return repo
 
 
 def canonicalize_url(url: str) -> str:
@@ -121,16 +160,21 @@ def dedup_multi_source(jobs: list[Job]) -> list[Job]:
         if key not in seen:
             # Ensure sources is populated — fall back to source_repo
             if not job.sources:
-                job.sources = [job.source_repo] if job.source_repo else []
+                canon = _canonical_source(job.source_repo)
+                job.sources = [canon] if canon else []
             seen[key] = job
             continue
 
         existing = seen[key]
-        # Merge sources — sorted, deduped
+        # Merge sources — sorted, deduped, canonicalized.
+        # Phase 73: source_repo may be namespaced (e.g. "greenhouse:anthropic");
+        # strip the suffix before merging so the sources array stays clean.
+        canon = _canonical_source(job.source_repo)
+        extra = [canon] if canon and canon not in (existing.sources or []) else []
         merged_sources = sorted(set(
             (existing.sources or [])
             + (job.sources or [])
-            + ([job.source_repo] if job.source_repo and job.source_repo not in (existing.sources or []) else [])
+            + extra
         ))
         existing.sources = merged_sources
 
@@ -149,8 +193,8 @@ def dedup_multi_source(jobs: list[Job]) -> list[Job]:
         # Promote to higher-priority source_repo so downstream pipelines
         # treat this row as coming from the richer source.
         if (
-            SOURCE_PRIORITY.get(job.source_repo, 0)
-            > SOURCE_PRIORITY.get(existing.source_repo, 0)
+            _priority_for_repo(job.source_repo)
+            > _priority_for_repo(existing.source_repo)
         ):
             existing.source_repo = job.source_repo
             # Preserve richer payload fields if available
@@ -219,7 +263,7 @@ def dedup_by_url(
 
         # Sort: prefer higher source priority, then has_jd, then has_skills, then has_embedding
         group.sort(key=lambda r: (
-            SOURCE_PRIORITY.get(r["source_repo"], 0),
+            _priority_for_repo(r["source_repo"]),
             r["has_jd"],
             r["has_skills"],
             r["has_embedding"],
