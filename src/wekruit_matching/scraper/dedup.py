@@ -15,6 +15,8 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 import psycopg
 from loguru import logger
 
+from wekruit_matching.models.job import Job
+
 # Tracking params to strip from URLs before comparison
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
@@ -28,6 +30,10 @@ SOURCE_PRIORITY = {
     "New-Grad-Positions": 1,
     "jobright-intern": 2,
     "jobright-newgrad": 2,
+    # Phase 63 — multi-source v1.7
+    "wellfound": 3,
+    "linkedin": 4,
+    "otta": 1,
 }
 
 
@@ -64,6 +70,106 @@ def canonicalize_url(url: str) -> str:
         return canonical
     except Exception:
         return url.strip().lower()
+
+
+def _normalize_company(company: str | None) -> str:
+    """Lowercase + strip non-alphanumerics for dedup company key."""
+    if not company:
+        return ""
+    return re.sub(r"[^a-z0-9]", "", company.lower())
+
+
+def _normalize_title(title: str | None) -> str:
+    """Lowercase + sort tokens for fuzzy title key.
+
+    Sorting tokens means "Senior Software Engineer" and "Software Engineer,
+    Senior" hash to the same key.
+    """
+    if not title:
+        return ""
+    tokens = sorted(title.lower().split())
+    return " ".join(tokens)
+
+
+def dedup_multi_source(jobs: list[Job]) -> list[Job]:
+    """Collapse the same job appearing in multiple sources into one Job.
+
+    Phase 63 — v1.7. Run BEFORE upsert_jobs() so each (company, title,
+    apply_url) shows up once with a merged ``sources`` array.
+
+    Key: ``f"{company_norm}|{title_norm}|{apply_url_canonical}"``
+        - company_norm: lowercase, alphanumeric-only
+        - title_norm: lowercase, tokens sorted
+        - apply_url_canonical: stripped of utm_*, ref, etc.
+
+    On hit: merge ``sources`` arrays + take freshest ``first_seen_at``.
+    The kept Job is the one with higher SOURCE_PRIORITY (linkedin > wellfound
+    > jobright > simplify), preserving the richest payload available.
+
+    Args:
+        jobs: list of Job objects from one or more scrapers.
+
+    Returns:
+        Deduplicated list. Length ≤ len(jobs). Ordering not preserved.
+    """
+    if not jobs:
+        return []
+
+    seen: dict[str, Job] = {}
+    for job in jobs:
+        key = _build_key(job)
+        if key not in seen:
+            # Ensure sources is populated — fall back to source_repo
+            if not job.sources:
+                job.sources = [job.source_repo] if job.source_repo else []
+            seen[key] = job
+            continue
+
+        existing = seen[key]
+        # Merge sources — sorted, deduped
+        merged_sources = sorted(set(
+            (existing.sources or [])
+            + (job.sources or [])
+            + ([job.source_repo] if job.source_repo and job.source_repo not in (existing.sources or []) else [])
+        ))
+        existing.sources = merged_sources
+
+        # Take fresher first_seen_at if newer
+        if job.first_seen_at and (
+            not existing.first_seen_at or job.first_seen_at > existing.first_seen_at
+        ):
+            existing.first_seen_at = job.first_seen_at
+
+        # Keep last_seen_at as the latest of the two
+        if job.last_seen_at and (
+            not existing.last_seen_at or job.last_seen_at > existing.last_seen_at
+        ):
+            existing.last_seen_at = job.last_seen_at
+
+        # Promote to higher-priority source_repo so downstream pipelines
+        # treat this row as coming from the richer source.
+        if (
+            SOURCE_PRIORITY.get(job.source_repo, 0)
+            > SOURCE_PRIORITY.get(existing.source_repo, 0)
+        ):
+            existing.source_repo = job.source_repo
+            # Preserve richer payload fields if available
+            if job.job_description and not existing.job_description:
+                existing.job_description = job.job_description
+            if job.required_skills and not existing.required_skills:
+                existing.required_skills = job.required_skills
+            if job.seniority_level and not existing.seniority_level:
+                existing.seniority_level = job.seniority_level
+
+    return list(seen.values())
+
+
+def _build_key(job: Job) -> str:
+    """3-tuple dedup key: company_norm | title_norm | url_canonical."""
+    company = _normalize_company(job.company_name)
+    title = _normalize_title(job.role_title)
+    url = canonicalize_url(job.primary_url or "")
+    return f"{company}|{title}|{url}"
 
 
 def dedup_by_url(

@@ -54,6 +54,90 @@ def run_daily_pipeline() -> dict:
         scrape_stats = {"pipeline": {"error": str(e)}}
         errors.append(f"Scraper crash: {e}")
 
+    # --- Stage 1.5: Multi-source senior scrapers (Phase 63 v1.7) ---
+    # LinkedIn / Wellfound / Otta — gated by ENABLE_<SRC>_SCRAPE env flags
+    # in /Users/Shared/wekruit/.env-secrets. Each scraper is independently
+    # toggleable so partial outages don't block the rest of the pipeline.
+    # Output is collected, deduped against the in-memory pool with
+    # dedup_multi_source(), then upserted with sources=[...] preserved on
+    # each Job. The Firebase sync layer reads `sources` and writes
+    # matching-jobs.{id}.sources arrays.
+    logger.info("=== Stage 1.5: Multi-source senior scrapers (Phase 63) ===")
+    senior_stats: dict[str, dict] = {}
+    senior_jobs: list = []
+
+    if os.environ.get("ENABLE_WELLFOUND_SCRAPE", "1") == "1":
+        try:
+            from wekruit_matching.scraper.wellfound import scrape_wellfound
+            wf_jobs = scrape_wellfound()
+            senior_jobs.extend(wf_jobs)
+            senior_stats["wellfound"] = {"scraped": len(wf_jobs)}
+            logger.info("wellfound scraped {} jobs", len(wf_jobs))
+        except Exception as e:
+            logger.warning("wellfound scrape failed: {}", e)
+            senior_stats["wellfound"] = {"error": str(e)}
+            errors.append(f"Wellfound scrape: {e}")
+
+    if os.environ.get("ENABLE_LINKEDIN_SCRAPE", "0") == "1":
+        try:
+            from wekruit_matching.scraper.linkedin import scrape_linkedin
+            li_jobs = scrape_linkedin()
+            senior_jobs.extend(li_jobs)
+            senior_stats["linkedin"] = {"scraped": len(li_jobs)}
+            logger.info("linkedin scraped {} jobs", len(li_jobs))
+        except Exception as e:
+            logger.warning("linkedin scrape failed: {}", e)
+            senior_stats["linkedin"] = {"error": str(e)}
+            errors.append(f"LinkedIn scrape: {e}")
+
+    if os.environ.get("ENABLE_OTTA_SCRAPE", "0") == "1":
+        try:
+            from wekruit_matching.scraper.otta import scrape_otta
+            ot_jobs = scrape_otta()
+            senior_jobs.extend(ot_jobs)
+            senior_stats["otta"] = {"scraped": len(ot_jobs)}
+            logger.info("otta scraped {} jobs", len(ot_jobs))
+        except Exception as e:
+            logger.warning("otta scrape failed: {}", e)
+            senior_stats["otta"] = {"error": str(e)}
+            errors.append(f"Otta scrape: {e}")
+
+    if senior_jobs:
+        try:
+            from wekruit_matching.scraper.dedup import dedup_multi_source
+            from wekruit_matching.scraper.upsert import (
+                mark_stale_jobs as _mark_stale,
+                upsert_jobs as _upsert,
+            )
+
+            deduped = dedup_multi_source(senior_jobs)
+            logger.info(
+                "Stage 1.5 dedup: {} → {} after multi-source collapse",
+                len(senior_jobs), len(deduped),
+            )
+            with get_connection() as conn:
+                # Group by source_repo for upsert + stale-mark scoping.
+                by_repo: dict[str, list] = {}
+                for j in deduped:
+                    by_repo.setdefault(j.source_repo, []).append(j)
+                for repo_slug, group in by_repo.items():
+                    upsert_stats = _upsert(group, conn)
+                    seen_ids = {j.job_id for j in group}
+                    stale_count = _mark_stale(seen_ids, repo_slug, conn)
+                    senior_stats[repo_slug] = {
+                        **(senior_stats.get(repo_slug) or {}),
+                        **upsert_stats,
+                        "stale": stale_count,
+                    }
+        except Exception as e:
+            logger.error("Stage 1.5 upsert crashed: {}", e)
+            errors.append(f"Stage 1.5 upsert: {e}")
+
+    # Merge senior_stats into scrape_stats so downstream email + webhook
+    # token totals see them.
+    for k, v in senior_stats.items():
+        scrape_stats.setdefault(k, v)
+
     # --- Stage 2a: Enrich from JobRight pages (FREE — no LLM) ---
     logger.info("=== Stage 2a: JobRight Page Enrichment (free) ===")
     jobright_stats = {"enriched": 0, "failed": 0, "skills_found": 0}
