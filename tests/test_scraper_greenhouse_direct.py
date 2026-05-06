@@ -9,12 +9,12 @@ import pytest
 from wekruit_matching.scraper.greenhouse_direct import (
     GREENHOUSE_COMPANIES,
     SOURCE_NAME,
-    _infer_seniority,
     _strip_html,
     _to_job,
     scrape_greenhouse_company,
     scrape_greenhouse_direct,
 )
+from wekruit_matching.scraper.title_inference import infer_seniority as _infer_seniority
 
 
 # ---------------------------------------------------------------------------

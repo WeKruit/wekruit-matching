@@ -8,11 +8,11 @@ import httpx
 from wekruit_matching.scraper.lever_direct import (
     LEVER_COMPANIES,
     SOURCE_NAME,
-    _infer_seniority,
     _to_job,
     scrape_lever_company,
     scrape_lever_direct,
 )
+from wekruit_matching.scraper.title_inference import infer_seniority as _infer_seniority
 
 
 # ---------------------------------------------------------------------------

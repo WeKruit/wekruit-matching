@@ -32,6 +32,7 @@ from wekruit_matching.scraper.id_utils import (
     generate_job_id,
     normalize_company_name,
 )
+from wekruit_matching.scraper.title_inference import infer_role_function, infer_seniority
 
 OTTA_BASE = "https://app.otta.com"
 OTTA_SITEMAP = "https://app.otta.com/sitemap.xml"
@@ -46,27 +47,6 @@ SOURCE_REPO_SLUG = "otta"
 # derived from the slug only. Defer until Wellfound + LinkedIn coverage is
 # insufficient. Phase 63 ships this as a stub returning [] when the
 # sitemap returns no parseable entries.
-
-SENIORITY_REGEX = [
-    (re.compile(r"\bprincipal\b", re.IGNORECASE), "principal"),
-    (re.compile(r"\bstaff\b", re.IGNORECASE), "staff"),
-    (
-        re.compile(
-            r"\b(senior|sr\.?\s+(eng(ineer)?|developer|analyst|manager|associate|consultant|designer|scientist|architect|director))\b",
-            re.IGNORECASE,
-        ),
-        "senior",
-    ),
-]
-
-
-def _infer_seniority(title: str) -> str:
-    if not title or not isinstance(title, str):
-        return "mid_level"
-    for pattern, level in SENIORITY_REGEX:
-        if pattern.search(title):
-            return level
-    return "mid_level"
 
 
 def scrape_otta(
@@ -169,7 +149,7 @@ def _to_job(raw: dict) -> Optional[Job]:
 
     job_id = generate_job_id(company, title, apply_url)
     content_hash = compute_content_hash(company, title)
-    seniority = _infer_seniority(title)
+    seniority = infer_seniority(title)
 
     posted = raw.get("posted_date")
     if isinstance(posted, datetime):
@@ -191,6 +171,7 @@ def _to_job(raw: dict) -> Optional[Job]:
         status=JobStatus.ACTIVE,
         content_hash=content_hash,
         seniority_level=seniority,
+        role_function=infer_role_function(title),
         first_seen_at=datetime.now(UTC),
         last_seen_at=datetime.now(UTC),
     )

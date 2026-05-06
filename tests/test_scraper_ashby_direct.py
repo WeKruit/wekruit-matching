@@ -10,11 +10,11 @@ from wekruit_matching.scraper.ashby_direct import (
     SOURCE_NAME,
     _extract_company_display,
     _extract_jobs_array,
-    _infer_seniority,
     _to_job,
     scrape_ashby_company,
     scrape_ashby_direct,
 )
+from wekruit_matching.scraper.title_inference import infer_seniority as _infer_seniority
 
 
 # ---------------------------------------------------------------------------

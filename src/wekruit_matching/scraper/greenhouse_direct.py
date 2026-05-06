@@ -38,6 +38,7 @@ from wekruit_matching.scraper.id_utils import (
     generate_job_id,
     normalize_company_name,
 )
+from wekruit_matching.scraper.title_inference import infer_role_function, infer_seniority
 
 # ---------------------------------------------------------------------------
 # Endpoints + tunables
@@ -80,63 +81,6 @@ GREENHOUSE_COMPANIES: list[str] = [
     # Security / health
     "abnormalsecurity", "axonius", "benevity", "ionq",
 ]
-
-# ---------------------------------------------------------------------------
-# Title-based seniority regex — matches linkedin.py / wellfound.py shape.
-# Order matters: more specific patterns come first.
-# ---------------------------------------------------------------------------
-
-SENIORITY_REGEX: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b(c[teafmid]o|cxo)\b", re.IGNORECASE), "c_level"),
-    (re.compile(r"\bchief\s+\w+(\s+\w+)?\s+officer\b", re.IGNORECASE), "c_level"),
-    (re.compile(r"\b(vp|vice\s*president)\b", re.IGNORECASE), "vp"),
-    (re.compile(r"\b(director|head\s+of)\b", re.IGNORECASE), "director"),
-    (
-        re.compile(
-            r"\b(manager|engineering\s+lead|tech\s+lead|team\s+lead|architect)\b",
-            re.IGNORECASE,
-        ),
-        "manager",
-    ),
-    (re.compile(r"\bprincipal\b", re.IGNORECASE), "principal"),
-    (re.compile(r"\bstaff\b", re.IGNORECASE), "staff"),
-    (re.compile(r"\b(intern(ship)?|co-?op)\b", re.IGNORECASE), "intern"),
-    (
-        re.compile(
-            r"\b(new\s*grad(uate)?|entry[\s-]*level|early\s*career)\b",
-            re.IGNORECASE,
-        ),
-        "entry_level",
-    ),
-    (
-        re.compile(
-            r"\b(senior|sr\.?\s+(eng(ineer)?|developer|analyst|manager|associate|consultant|designer|scientist|architect))\b",
-            re.IGNORECASE,
-        ),
-        "senior",
-    ),
-    (
-        re.compile(
-            r"\b(junior|jr\.?\s+(eng(ineer)?|developer|analyst|associate|consultant))\b",
-            re.IGNORECASE,
-        ),
-        "junior",
-    ),
-]
-
-
-def _infer_seniority(title: str) -> str:
-    """Map a free-text title to a canonical seniority bucket.
-
-    Falls back to ``"mid_level"`` when no pattern matches — Greenhouse listings
-    that are simply "Software Engineer" are typically mid-level/IC.
-    """
-    if not title or not isinstance(title, str):
-        return "mid_level"
-    for pattern, level in SENIORITY_REGEX:
-        if pattern.search(title):
-            return level
-    return "mid_level"
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +251,7 @@ def _to_job(
     description_html = raw.get("content")
     description = _strip_html(description_html)[:5000] if description_html else None
 
-    seniority = _infer_seniority(title)
+    seniority = infer_seniority(title)
     now = datetime.now(UTC)
 
     return Job(
@@ -322,6 +266,7 @@ def _to_job(
         status=JobStatus.ACTIVE,
         content_hash=content_hash,
         seniority_level=seniority,
+        role_function=infer_role_function(title),
         first_seen_at=now,
         last_seen_at=now,
         job_description=description,

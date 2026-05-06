@@ -10,12 +10,12 @@ from wekruit_matching.scraper.linkedin import (
     SOURCE_REPO_SLUG,
     _fetch_via_api,
     _fetch_via_html,
-    _infer_seniority,
     _normalize_api_items,
     _parse_html_jobs,
     _to_job,
     scrape_linkedin,
 )
+from wekruit_matching.scraper.title_inference import infer_seniority as _infer_seniority
 
 
 # ---------------------------------------------------------------------------

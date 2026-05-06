@@ -9,11 +9,11 @@ import pytest
 
 from wekruit_matching.scraper.wellfound import (
     SOURCE_REPO_SLUG,
-    _infer_seniority,
     _normalize_json_items,
     _to_job,
     scrape_wellfound,
 )
+from wekruit_matching.scraper.title_inference import infer_seniority as _infer_seniority
 
 
 # ---------------------------------------------------------------------------

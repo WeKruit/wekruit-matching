@@ -72,6 +72,19 @@ class Job(BaseModel):
     # downstream enrichment.
     seniority_level: str | None = None
 
+    # P10-audit fix (2026-05-06) — jobright-canonical role-function bucket(s).
+    # 17 enum values matching wekruit-pa
+    # `packages/shared-tags/src/canonical/role-function.ts`. Used by V16
+    # `queryMatchingJobs` as an array-contains-any HARD FILTER, so wrong/
+    # missing values silently drop the job from match. Computed at scrape
+    # time from `role_title` via
+    # `wekruit_matching.scraper.title_inference.infer_role_function()`.
+    # Empty list = unmatched (V16 will drop).
+    role_function: list[str] = Field(
+        default_factory=list,
+        description="Jobright role-function tokens (D1, hard-filter axis).",
+    )
+
     # Embedding fields (populated in Phase 4)
     # NOTE: embedding is NOT in this pydantic model — stored directly in DB as vector(1536)
     embedding_model: str | None = None  # e.g. "text-embedding-3-small"
