@@ -24,7 +24,6 @@ from wekruit_matching.notifications.email import (
 )
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
-from wekruit_matching.pipeline.run_url_resolution import run_url_resolution
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
 
@@ -160,41 +159,13 @@ def run_daily_pipeline() -> dict:
         logger.error("ATS JD enrichment crashed: {}", e)
         errors.append(f"ATS JD enrichment crash: {e}")
 
-    # --- Stage 2.5: URL Resolution ---
-    # iter34 hotfix 2026-05-05 — Stage 2.5 hangs on Supabase pooler poll().
-    # Adding multiprocess-level timeout so a stuck stage cannot block
-    # Stage 3/4. Honor SKIP_URL_RESOLUTION env to skip entirely.
-    logger.info("=== Stage 2.5: URL Resolution ===")
-    url_stats = {
-        "simplify": {},
-        "slug_registry": {},
-        "serper": {},
-        "total_resolved": 0,
-        "resolution_rate": 0.0,
-    }
-    if os.environ.get("SKIP_URL_RESOLUTION", "").lower() in ("1", "true", "yes"):
-        logger.warning("Stage 2.5 skipped via SKIP_URL_RESOLUTION env")
-    else:
-        import threading
-        result_holder: dict = {}
-        def _runner():
-            try:
-                with get_connection() as conn:
-                    result_holder["stats"] = run_url_resolution(conn=conn, batch_size=500)
-            except Exception as e:
-                result_holder["error"] = e
-        t = threading.Thread(target=_runner, daemon=True)
-        t.start()
-        t.join(timeout=600)  # 10 min hard cap
-        if t.is_alive():
-            logger.error("URL resolution timed out after 10min — proceeding to Stage 3")
-            errors.append("URL resolution timeout (Supabase pooler hang)")
-        elif "error" in result_holder:
-            logger.error("URL resolution crashed: {}", result_holder["error"])
-            errors.append(f"URL resolution crash: {result_holder['error']}")
-        else:
-            url_stats = result_holder.get("stats", url_stats)
-            logger.info("URL resolution stats: {}", url_stats)
+    # --- Stage 2.5 deleted (Phase 66, 2026-05-06) ---
+    # URL resolution migrated to wekruit-pa Cloud Function `paBackfillAtsUrlsBatch`
+    # (hourly schedule). macmini no longer resolves URLs — it just scrapes and
+    # syncs raw Jobright/Wellfound data to Firebase. The CF reads matching-jobs
+    # and writes ats_apply_url back to Firestore. Removes Supabase pooler hang
+    # risk (iter34 hotfix Stage 2.5 → SKIP_URL_RESOLUTION=1 environment toggle
+    # now permanently obsolete).
 
     # --- Stage 2c: LLM fallback for metadata classification ---
     logger.info("=== Stage 2c: LLM Enrichment (metadata classification) ===")
@@ -251,7 +222,6 @@ def run_daily_pipeline() -> dict:
     send_pipeline_complete_email(
         scrape_stats=scrape_stats,
         jd_stats=jd_stats,
-        url_resolution_stats=url_stats,
         enrich_stats=enrich_stats,
         embed_stats=embed_stats,
         duration_seconds=duration,
@@ -272,7 +242,6 @@ def run_daily_pipeline() -> dict:
     return {
         "scrape": scrape_stats,
         "jd_enrichment": jd_stats,
-        "url_resolution": url_stats,
         "enrich": enrich_stats,
         "embed": embed_stats,
         "sync": sync_stats,

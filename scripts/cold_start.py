@@ -3,9 +3,11 @@
 Stages:
   1. JobRight parsing (loops internally) — ~2K jobs missing skills
   2. ATS JD enrichment (loops internally) — non-JobRight jobs without JD
-  3. URL resolution — 3 passes (simplify, slug registry, serper)
-  4. LLM gap-fill (loops until 0 pending) — Qwen3-8B, free
-  5. Embedding (loops until 0 pending) — OpenAI text-embedding-3-small
+  3. LLM gap-fill (loops until 0 pending) — Qwen3-8B, free
+  4. Embedding (loops until 0 pending) — OpenAI text-embedding-3-small
+
+Phase 66 (2026-05-06): URL resolution stage removed — migrated to wekruit-pa
+Cloud Function `paBackfillAtsUrlsBatch` (hourly).
 
 Usage:
     cd wekruit-matching
@@ -27,7 +29,6 @@ from wekruit_matching.db.connection import get_connection
 from wekruit_matching.embedding.worker import embed_pending
 from wekruit_matching.enrichment.worker import enrich_pending
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
-from wekruit_matching.pipeline.run_url_resolution import run_url_resolution
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs
 
 
@@ -80,15 +81,10 @@ def main():
         jd_stats = run_jd_enrichment(conn=conn)
     logger.info("ATS JD enrichment done in {:.1f}m: {}", (time.monotonic() - t0) / 60, jd_stats)
 
-    # --- Stage 3: URL resolution ---
-    logger.info("--- Stage 3: URL resolution ---")
-    t0 = time.monotonic()
-    with get_connection() as conn:
-        url_stats = run_url_resolution(conn=conn, batch_size=500)
-    logger.info("URL resolution done in {:.1f}m: {}", (time.monotonic() - t0) / 60, url_stats)
-
-    # --- Stage 4: LLM gap-fill (loop until 0 pending) ---
-    logger.info("--- Stage 4: LLM gap-fill (Qwen3-8B, free) ---")
+    # --- Stage 3 (was Stage 4): LLM gap-fill (loop until 0 pending) ---
+    # Phase 66: previous Stage 3 (URL resolution) removed — wekruit-pa CF
+    # paBackfillAtsUrlsBatch handles it on an hourly cadence.
+    logger.info("--- Stage 3: LLM gap-fill (Qwen3-8B, free) ---")
     t0 = time.monotonic()
     total_enriched = total_failed = 0
     round_num = 0
@@ -109,8 +105,8 @@ def main():
         (time.monotonic() - t0) / 60, total_enriched, total_failed,
     )
 
-    # --- Stage 5: Embedding (loop until 0 pending) ---
-    logger.info("--- Stage 5: Embedding (OpenAI text-embedding-3-small) ---")
+    # --- Stage 4 (was Stage 5): Embedding (loop until 0 pending) ---
+    logger.info("--- Stage 4: Embedding (OpenAI text-embedding-3-small) ---")
     t0 = time.monotonic()
     total_embedded = total_embed_failed = 0
     round_num = 0
