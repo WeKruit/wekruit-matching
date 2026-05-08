@@ -229,7 +229,7 @@ def analyze_url(request: Request, body: AnalyzeUrlRequest, _: None = Depends(ver
     Uses the same Claude Haiku classifier as batch enrichment — cheap & structured.
     """
     import httpx
-    from wekruit_matching.enrichment.classifier import classify_job, KNOWN_SKILLS
+    from wekruit_matching.enrichment.classifier import classify_job  # KNOWN_SKILLS deleted (P7-C 2026-05-08)
     from wekruit_matching.models.job import Job
 
     # Step 1: Fetch the job page
