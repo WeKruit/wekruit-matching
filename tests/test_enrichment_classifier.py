@@ -1,6 +1,13 @@
 """Tests for the LLM job classifier.
 
 These tests run without a real Anthropic API key — all API calls are mocked.
+
+NOTE (2026-05-08, P7-C unified-canonical-tags): The classifier's `industry`
+output is informational free-form (canonical mapping owned by wekruit-pa
+`paMatchingJobsAutoEnrich` Firestore trigger). Tests that previously
+asserted vocab rejection (`test_invalid_industry_rejected`,
+`test_skills_not_in_vocab_are_dropped`) have been replaced with
+free-form passthrough assertions matching the new contract.
 """
 import json
 from unittest.mock import MagicMock, patch
@@ -44,25 +51,43 @@ class TestEnrichmentResultValidation:
         )
         assert r.industry == "unknown"
 
-    def test_invalid_industry_rejected(self):
+    def test_freeform_industry_passes_through_unchanged(self):
+        """v1.6 D5 + P7-C 2026-05-08: industry is free-form (canonical
+        owned by wekruit-pa). Any lowercase snake_case string is accepted;
+        the old `INDUSTRY_VOCAB` 38-abbreviation gate has been removed."""
         from wekruit_matching.enrichment.classifier import EnrichmentResult
-        with pytest.raises(ValidationError):
-            EnrichmentResult(
-                industry="unicorn_industry",
-                company_size="startup",
-                required_skills=[],
-                sponsorship=None,
-            )
+        r = EnrichmentResult(
+            industry="some_unusual_sector",
+            company_size="startup",
+            required_skills=[],
+            sponsorship=None,
+        )
+        assert r.industry == "some_unusual_sector"
 
-    def test_invalid_company_size_rejected(self):
+    def test_industry_normalized_lowercase_underscore(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
-        with pytest.raises(ValidationError):
-            EnrichmentResult(
-                industry="tech",
-                company_size="giant",
-                required_skills=[],
-                sponsorship=None,
-            )
+        r = EnrichmentResult(
+            industry="Financial Technology",  # mixed-case + spaces
+            company_size="midsize",
+            required_skills=[],
+            sponsorship=None,
+        )
+        # Normalizer lowercases + replaces spaces with underscore
+        assert r.industry == "financial_technology"
+
+    def test_invalid_company_size_normalized_to_unknown(self):
+        """v1.6 D5: company_size is a closed 4-enum. Out-of-vocab → 'unknown'.
+        (Note: pre-2026-05-08 this raised ValidationError for industry;
+        company_size still uses a closed enum because there are only 4
+        legitimate values and the normalizer falls through to 'unknown'.)"""
+        from wekruit_matching.enrichment.classifier import EnrichmentResult
+        r = EnrichmentResult(
+            industry="tech",
+            company_size="giant",
+            required_skills=[],
+            sponsorship=None,
+        )
+        assert r.company_size == "unknown"
 
     def test_sponsorship_bool_or_none_accepted(self):
         from wekruit_matching.enrichment.classifier import EnrichmentResult
@@ -97,8 +122,11 @@ class TestClassifyJob:
         return msg
 
     def test_valid_response_produces_enrichment_result(self):
-        from wekruit_matching.enrichment.classifier import KNOWN_SKILLS, classify_job
-        skill = next(iter(KNOWN_SKILLS))  # pick one real skill
+        from wekruit_matching.enrichment.classifier import classify_job
+        # P7-C 2026-05-08: KNOWN_SKILLS deleted; tests now use literal strings.
+        # Skills are informational hints, canonical bucketed Skill[] computed by
+        # wekruit-pa pa-job-tag-enricher.
+        skill = "python"
         payload = {
             "industry": "tech",
             "company_size": "startup",
@@ -127,7 +155,11 @@ class TestClassifyJob:
         assert result.required_skills == []
         assert result.sponsorship is None
 
-    def test_skills_not_in_vocab_are_dropped(self):
+    def test_oov_skills_pass_through_under_freeform_contract(self):
+        """v1.6 D5 + P7-C 2026-05-08: required_skills is informational
+        free-form (canonical owned by wekruit-pa). The old `KNOWN_SKILLS`
+        gate has been removed; OOV skills are preserved for downstream
+        consumers (Postgres + Firebase sync). Capped at 15 + dedupe."""
         from wekruit_matching.enrichment.classifier import classify_job
         payload = {
             "industry": "tech",
@@ -139,8 +171,26 @@ class TestClassifyJob:
         mock_client.chat.completions.create.return_value = self._mock_llm_response(payload)
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
-        assert "not_a_real_skill_xyz" not in result.required_skills
+        # Both kept — wekruit-pa enricher will canonicalize on the Firestore side.
+        assert "not_a_real_skill_xyz" in result.required_skills
         assert "python" in result.required_skills
+
+    def test_skills_capped_at_15_and_deduped(self):
+        from wekruit_matching.enrichment.classifier import classify_job
+        skills = [f"skill_{i}" for i in range(20)] + ["python", "python"]  # dupes
+        payload = {
+            "industry": "tech",
+            "company_size": "startup",
+            "skills_inferred": skills,
+            "likely_sponsors_visa": None,
+        }
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = self._mock_llm_response(payload)
+        with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
+            result = classify_job(_make_job())
+        assert len(result.required_skills) == 15
+        # Dedupe occurs before slicing, so 'python' appears only once
+        assert result.required_skills.count("python") <= 1
 
     def test_unknown_industry_from_llm_passes_through(self):
         from wekruit_matching.enrichment.classifier import classify_job
@@ -161,8 +211,8 @@ class TestClassifyJob:
     def test_429_triggers_retry(self):
         import openai
 
-        from wekruit_matching.enrichment.classifier import KNOWN_SKILLS, classify_job
-        skill = next(iter(KNOWN_SKILLS))
+        from wekruit_matching.enrichment.classifier import classify_job
+        skill = "python"
         good_payload = {
             "industry": "fintech",
             "company_size": "midsize",

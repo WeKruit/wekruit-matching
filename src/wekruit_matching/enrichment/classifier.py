@@ -1,10 +1,47 @@
-"""LLM-based job classifier using Anthropic Claude Haiku.
+"""LLM-based job classifier — INFORMATIONAL only. Canonical tagging
+owned by wekruit-pa.
 
-classify_job(job) -> EnrichmentResult
+CANONICAL TAGGING ARCHITECTURE (v1.6/v1.7/v1.8 unified — 2026-05-08):
 
-Controlled vocabularies ensure no hallucinated values enter the database.
-null/unknown are first-class values — never replaced by a guess.
-Tenacity retries handle 429/5xx from the Anthropic API.
+This module's `industry` output is a free-form informational hint; it is
+NOT the canonical match-time signal. The unified canonical-tag pipeline
+lives in wekruit-pa (`packages/shared-tags` + `packages/pa-job-tag-enricher`)
+and runs automatically via the Firestore trigger
+`paMatchingJobsAutoEnrich` (deployed CF) on every active matching-jobs
+write. That trigger calls the canonical LLM enricher and writes the
+match-time fields:
+
+    roleFunction       (17 closed enum, hard filter — D1)
+    industrySector     (42 closed enum, soft score — D2)
+    relevantTags       (open vocab, max 12 — D6)
+    requiredSkills     (Skill[] objects with bucket+baseWeight — D7)
+    seniorityLevel     (13 enum)
+    locationBuckets    (130+ enum)
+    jobType            (10 enum)
+
+Adam-locked decisions (2026-05-05): "tag must be managed in one place"
+— that one place is `packages/shared-tags`. Macmini does NOT duplicate
+the vocab, does NOT enforce the 38-abbreviation `INDUSTRY_VOCAB` (which
+violated D5: NO abbreviations), and does NOT need to know the canonical
+schema. It supplies raw enrichment hints; PA owns canonical mapping.
+
+See `docs/canonical-tags-sync.md` for the full rationale + 3-repo arch.
+
+This module's job (post-2026-05-08):
+- Pull a free-form industry hint (informational only — `jobs.industry`)
+- Pull a `company_size` hint (informational only — `jobs.company_size`)
+- Pull a flat `required_skills: list[str]` hint (informational only —
+  the canonical bucketed `requiredSkills: Skill[]` is computed by
+  wekruit-pa's enricher and lives on the matching-jobs Firestore doc)
+- Pull a `sponsorship: bool | None` hint (informational only — the
+  canonical `sponsorship` is set by the v1.7 sponsor-allowlist + LLM
+  inference path on the wekruit-pa side)
+
+These fields are written to the Postgres `jobs` table for ops/debug
+visibility and for the rare case the auto-enrich trigger fails (then
+PA falls back to the raw `industry` string for soft scoring).
+
+Tenacity retries handle 429/5xx from the SiliconFlow API.
 """
 from __future__ import annotations
 
@@ -26,36 +63,18 @@ from wekruit_matching.models.job import Job
 
 # ---------------------------------------------------------------------------
 # Controlled vocabularies
+#
+# 2026-05-08 — `INDUSTRY_VOCAB` deleted (P7-C unified-canonical-tags). It
+# previously shipped 38 abbreviations like `ai_ml`, `c++`, `nextjs` which
+# violated v1.6 D5 (NO abbreviations) and confused downstream consumers.
+# The canonical 42-token enum lives in
+# `wekruit-pa/packages/shared-tags/src/canonical/industry-sector.ts`.
+# Macmini emits free-form `industry` strings; the LLM may produce any
+# label and PA's `paMatchingJobsAutoEnrich` overwrites with canonical
+# `industrySector[]` at Firestore-doc time.
 # ---------------------------------------------------------------------------
 
-INDUSTRY_VOCAB: frozenset[str] = frozenset({
-    "tech", "fintech", "healthtech", "healthcare", "ecommerce",
-    "enterprise_saas", "ai_ml", "cybersecurity", "gaming", "social_media",
-    "hardware", "consulting", "telecom", "automotive", "aerospace_defense",
-    "construction", "defense", "security", "manufacturing", "retail",
-    "media", "education", "government", "energy", "transportation",
-    "hospitality", "real_estate", "nonprofit", "legal", "pharma",
-    "banking", "finance", "insurance", "logistics", "food_service",
-    "agriculture", "mining", "utilities",
-    "other", "unknown",
-})
-
 COMPANY_SIZE_VOCAB: frozenset[str] = frozenset({"startup", "midsize", "large", "unknown"})
-
-KNOWN_SKILLS: frozenset[str] = frozenset({
-    "python", "java", "javascript", "typescript", "go", "rust", "c", "c++",
-    "c#", "swift", "kotlin", "ruby", "scala", "r", "matlab", "sql",
-    "react", "angular", "vue", "node.js", "django", "flask", "fastapi",
-    "spring", "rails", "express", "nextjs",
-    "aws", "gcp", "azure", "docker", "kubernetes", "terraform", "linux",
-    "git", "ci/cd", "jenkins", "github_actions",
-    "machine_learning", "deep_learning", "nlp", "computer_vision",
-    "pytorch", "tensorflow", "scikit_learn", "pandas", "numpy",
-    "spark", "kafka", "airflow", "dbt",
-    "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-    "graphql", "rest", "grpc",
-    "data_structures", "algorithms", "system_design", "distributed_systems",
-})
 
 
 # ---------------------------------------------------------------------------
@@ -65,8 +84,13 @@ KNOWN_SKILLS: frozenset[str] = frozenset({
 class EnrichmentResult(BaseModel):
     """Validated enrichment output from the LLM classifier.
 
-    All fields use controlled vocabularies. null/unknown are valid values.
-    Pydantic validators reject out-of-vocabulary strings at construction time.
+    `industry` is FREE-FORM informational text (lowercase snake_case) — NOT a
+    closed enum. The canonical 42-token `industrySector` enum is enforced on
+    the wekruit-pa side via `pa-job-tag-enricher` (paMatchingJobsAutoEnrich
+    Firestore trigger). See module docstring for the canonical-tag pipeline.
+
+    null/'unknown' are valid values everywhere — the LLM may produce them
+    when the JD doesn't carry a clear signal.
     """
     industry: str
     company_size: str
@@ -76,7 +100,11 @@ class EnrichmentResult(BaseModel):
     @field_validator("industry")
     @classmethod
     def industry_normalized(cls, v: str) -> str:
-        """Lowercase, strip, default to 'unknown'. Accept any value."""
+        """Lowercase + strip + space->underscore. Default 'unknown'.
+
+        2026-05-08: vocabulary check removed — `industry` is a free-form
+        hint, canonical mapping owned by wekruit-pa.
+        """
         val = v.lower().strip().replace(" ", "_") if v else "unknown"
         return val or "unknown"
 
@@ -85,14 +113,19 @@ class EnrichmentResult(BaseModel):
     def company_size_normalized(cls, v: str) -> str:
         """Normalize to known sizes or 'unknown'."""
         val = v.lower().strip() if v else "unknown"
-        if val not in ("startup", "midsize", "large", "unknown"):
+        if val not in COMPANY_SIZE_VOCAB:
             return "unknown"
         return val
 
     @field_validator("required_skills")
     @classmethod
     def skills_normalized(cls, v: list[str]) -> list[str]:
-        """Normalize skills to lowercase, deduplicate, cap at 15."""
+        """Normalize skills to lowercase, deduplicate, cap at 15.
+
+        Note: this is the FLAT informational list. Canonical bucketed
+        `requiredSkills: Skill[]` (with bucket + baseWeight) is computed by
+        wekruit-pa `pa-job-tag-enricher`.
+        """
         seen: set[str] = set()
         out: list[str] = []
         for s in v:
@@ -133,14 +166,14 @@ _SYSTEM_PROMPT = """\
 You are a job-listing classifier. Return ONLY valid JSON with these keys:
 
 {
-  "industry": "<lowercase snake_case industry, e.g. tech, healthcare, retail, banking>",
+  "industry": "<lowercase snake_case industry, e.g. financial_technology, healthcare_and_life_sciences, software_and_saas>",
   "company_size": "<startup | midsize | large | unknown>",
   "skills_inferred": ["<skill1>", "<skill2>", ...],
   "likely_sponsors_visa": <true | false | null>
 }
 
 Rules:
-- industry: use a short, specific label. Use "unknown" only when truly uncertain.
+- industry: free-form lowercase_snake_case label. Use the most specific term that fits the company; spell out fully (no abbreviations: write "artificial_intelligence_and_machine_learning" not "ai_ml"). Use "unknown" only when truly uncertain.
 - skills_inferred: list key skills for the role (technical, soft, or domain-specific). Max 8.
 - likely_sponsors_visa: true = explicitly offers, false = explicitly does not, null = no signal.
 - Output valid JSON only. No markdown, no explanation.
@@ -181,12 +214,17 @@ def _call_llm(client: OpenAI, prompt: str) -> str:
 
 
 def classify_job(job: Job) -> EnrichmentResult:
-    """Classify a single job listing using GPT-5.4 Nano.
+    """Classify a single job listing — INFORMATIONAL hints only.
 
-    Returns an EnrichmentResult with controlled-vocabulary fields.
-    On any API or parse failure, returns _safe_default() — never raises.
-    The caller (enrichment worker) is responsible for deciding whether to
-    retry the entire job or accept the safe default.
+    The result populates Postgres `jobs.industry`, `jobs.company_size`,
+    `jobs.required_skills` (flat strings), and `jobs.sponsorship` (bool|None).
+    These are not authoritative for matching: wekruit-pa's
+    `paMatchingJobsAutoEnrich` Firestore trigger overwrites with canonical
+    `industrySector[]`, `requiredSkills: Skill[]`, `roleFunction[]`, etc.
+
+    Returns an EnrichmentResult. On any API or parse failure, returns
+    `_safe_default()` — never raises. The caller (enrichment worker) decides
+    whether to retry the entire job or accept the safe default.
     """
     prompt = (
         f"Company: {job.company_name}\n"
