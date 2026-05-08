@@ -327,6 +327,13 @@ def test_finalizer_email_fires_on_full_pipeline_crash(monkeypatch):
     from wekruit_matching.pipeline.daily import run_daily_pipeline
 
     call_order = _patch_all_stages(monkeypatch)
+    # Disable real-network senior scrapers (Stage 1.5+1.6) for unit-test
+    # isolation — we only want to test the new try/finally + status logic.
+    for var in (
+        "ENABLE_WELLFOUND_SCRAPE", "ENABLE_LINKEDIN_SCRAPE", "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT", "ENABLE_LEVER_DIRECT", "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(var, "0")
     email_fired = {"called": False}
 
     def _track_email(**kw):
@@ -368,6 +375,13 @@ def test_pipeline_status_success_when_all_ok(monkeypatch):
     from wekruit_matching.pipeline.daily import run_daily_pipeline
 
     _patch_all_stages(monkeypatch)
+    # Disable real-network senior scrapers (Stage 1.5+1.6) for unit-test
+    # isolation — we only want to test the new try/finally + status logic.
+    for var in (
+        "ENABLE_WELLFOUND_SCRAPE", "ENABLE_LINKEDIN_SCRAPE", "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT", "ENABLE_LEVER_DIRECT", "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(var, "0")
     result = run_daily_pipeline()
 
     assert result["pipeline_status"] == "success", (

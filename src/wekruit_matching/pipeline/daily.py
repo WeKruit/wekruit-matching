@@ -421,13 +421,23 @@ def run_daily_pipeline() -> dict:
             logger.warning("send_pipeline_complete_email failed: {}", e)
 
         # Determine pipeline status for the wrapper webhook.
-        # ok_count > 0 + errors empty => success
-        # ok_count > 0 + errors non-empty => partial
-        # ok_count == 0 (or every stage errored/timed-out) => failed
-        ok_count = sum(1 for v in stage_outcomes.values() if v == "ok")
-        if not errors and ok_count > 0:
+        # We weight by CORE stages only (scrape, jd_enrich, llm_enrich,
+        # embed, sync). Auxiliary stages (senior_scrapers, jobright) are
+        # bonus enrichment — they do not gate "success" or "failed":
+        #   * core_ok > 0 + errors empty => success
+        #   * core_ok > 0 + errors present => partial
+        #   * core_ok == 0 (every core stage errored/timed-out) => failed
+        # Rationale: a run where every core stage crashed is a real failure
+        # even if auxiliary scrapers happened to no-op cleanly. A run where
+        # some core stages succeeded plus some auxiliary errors is "partial".
+        CORE_STAGES = {"scrape", "jd_enrich", "llm_enrich", "embed", "sync"}
+        core_ok = sum(
+            1 for stage, v in stage_outcomes.items()
+            if stage in CORE_STAGES and v == "ok"
+        )
+        if not errors and core_ok > 0:
             pipeline_status = "success"
-        elif ok_count == 0:
+        elif core_ok == 0:
             pipeline_status = "failed"
         else:
             pipeline_status = "partial"
