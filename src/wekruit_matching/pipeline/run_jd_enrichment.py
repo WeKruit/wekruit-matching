@@ -1,4 +1,33 @@
-"""Stage 2b orchestrator for ATS JD enrichment."""
+"""Stage 2b orchestrator for ATS JD enrichment.
+
+Two-clause SELECT gating (P7-F, 2026-05-08):
+
+  Clause 1 (entry): ``jd_fetch_attempted_at IS NULL``
+                    OR (``jd_fetch_source = 'failed'``
+                        AND COALESCE(permanent_404, FALSE) = FALSE
+                        AND ``jd_fetch_attempted_at < NOW() - 7d``)
+
+  Clause 2 (data gap): ``job_description IS NULL OR job_description = ''``
+
+Both must hold. Successfully-fetched jobs (have JD) never re-enter regardless
+of age. Permanent-404 jobs (employer pulled the listing) are excluded entirely.
+Recoverable failures (Firecrawl down, Workday 5xx, connection timeout) become
+eligible after STAGE2B_STALE_DAYS days, giving upstream services time to
+recover before we re-spend a fetch.
+
+Why a 7-day staleness window: short enough that real outages (Firecrawl was
+down 5+ weeks in early-2026 — a transient like that needs slack to recover)
+don't burn through retry attempts in one day; long enough that we don't burn
+LLM credits weekly on permanently-empty rows. Tunable via STAGE2B_STALE_DAYS
+module constant; mirror of P7-E's ENRICH_STALE_DAYS at Stage 2c.
+
+Why a boolean ``permanent_404`` rather than a 3-value enum: additive boolean
+is a cheaper migration (one column, defaults FALSE) and ``success`` is
+already implicit in row state (``job_description`` populated, ``jd_fetch_source``
+non-failed). An enum would duplicate that signal. NULL-safety via
+COALESCE(permanent_404, FALSE) handles any rows missed by the default
+backfill.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -8,6 +37,7 @@ from hashlib import sha256
 from types import SimpleNamespace
 from urllib.parse import urlparse
 
+import httpx
 from loguru import logger
 
 from wekruit_matching.config import get_settings
@@ -25,6 +55,14 @@ from wekruit_matching.pipeline.firecrawl_enricher import (
 )
 from wekruit_matching.pipeline.url_classifier import FetchRoute, classify_job_url, normalize_job_url
 
+# Re-attempt window for *recoverable* Stage 2b failures (P7-F gating fix).
+# Jobs whose previous fetch failed transiently (5xx, connection error,
+# timeout, Firecrawl outage) become eligible after this many days. Permanent
+# failures (404 / Job not found) carry ``permanent_404 = TRUE`` and never
+# re-enter the queue. Mirror of ENRICH_STALE_DAYS at Stage 2c (worker.py).
+STAGE2B_STALE_DAYS = 7
+
+
 _AGGREGATOR_HOSTS = (
     "linkedin.com",
     "indeed.com",
@@ -37,6 +75,30 @@ _AGGREGATOR_HOSTS = (
 def _is_aggregator_url(url: str) -> bool:
     hostname = urlparse(normalize_job_url(url)).netloc.lower()
     return any(host in hostname for host in _AGGREGATOR_HOSTS)
+
+
+def _is_permanent_404(exc: BaseException) -> bool:
+    """Return True if ``exc`` indicates a permanently-dead URL.
+
+    Permanent: HTTP 404 from any ATS / Firecrawl / Workday fetcher; also
+    LookupError raised when the page genuinely has no job posting (Workday
+    CXS endpoint not discoverable). Both signal the listing is gone — retry
+    won't help.
+
+    Recoverable (NOT permanent): HTTP 5xx, connection errors, timeouts,
+    parse errors, anything else. These get the staleness retry window.
+    """
+    # httpx.HTTPStatusError carries .response.status_code
+    if isinstance(exc, httpx.HTTPStatusError):
+        try:
+            return exc.response.status_code == 404
+        except AttributeError:
+            return False
+    # Workday CXS discovery failure — page exposed no job (employer pulled it
+    # or path wasn't a real job page). Treated as permanent.
+    if isinstance(exc, LookupError):
+        return True
+    return False
 
 
 def _throttle_domain(
@@ -114,7 +176,8 @@ def _write_success(conn, job_id: str, result: AtsJobData) -> None:
           data_quality_score = %(data_quality_score)s,
           ats_content_hash = %(ats_content_hash)s,
           jd_fetch_source = %(jd_fetch_source)s,
-          jd_fetch_attempted_at = NOW()
+          jd_fetch_attempted_at = NOW(),
+          permanent_404 = FALSE
         WHERE job_id = %(job_id)s
         """,
         {
@@ -131,17 +194,27 @@ def _write_success(conn, job_id: str, result: AtsJobData) -> None:
     )
 
 
-def _write_failure(conn, job_id: str) -> None:
-    """Persist a failed JD attempt."""
+def _write_failure(conn, job_id: str, *, permanent_404: bool = False) -> None:
+    """Persist a failed JD attempt.
+
+    ``permanent_404`` defaults False (recoverable) so the row re-enters the
+    queue after STAGE2B_STALE_DAYS days. Set True only when ``_is_permanent_404``
+    confirms a 404 / dead URL — those are excluded from the queue forever.
+    """
     conn.execute(
         """
         UPDATE jobs
         SET
           jd_fetch_source = %(jd_fetch_source)s,
-          jd_fetch_attempted_at = NOW()
+          jd_fetch_attempted_at = NOW(),
+          permanent_404 = %(permanent_404)s
         WHERE job_id = %(job_id)s
         """,
-        {"job_id": job_id, "jd_fetch_source": "failed"},
+        {
+            "job_id": job_id,
+            "jd_fetch_source": "failed",
+            "permanent_404": permanent_404,
+        },
     )
 
 
@@ -180,14 +253,21 @@ def run_jd_enrichment(
 
     while True:
         rows = conn.execute(
-            """
+            f"""
             SELECT job_id, company_name, role_title, primary_url
             FROM jobs
             WHERE status = 'active'
               AND (job_description IS NULL OR job_description = '')
               AND primary_url IS NOT NULL
               AND primary_url NOT LIKE 'https://jobright.ai/%%'
-              AND jd_fetch_attempted_at IS NULL
+              AND (
+                jd_fetch_attempted_at IS NULL
+                OR (
+                  jd_fetch_source = 'failed'
+                  AND COALESCE(permanent_404, FALSE) = FALSE
+                  AND jd_fetch_attempted_at < NOW() - INTERVAL '{STAGE2B_STALE_DAYS} days'
+                )
+              )
             ORDER BY first_seen_at DESC
             LIMIT %(limit)s
             """,
@@ -226,14 +306,23 @@ def run_jd_enrichment(
                     if route is FetchRoute.FIRECRAWL and not settings.firecrawl_api_key:
                         skipped += 1
                         continue
-                    _write_failure(conn, row["job_id"])
+                    # ``result is None`` means the fetcher succeeded transport-wise
+                    # but extracted no JD (e.g. Firecrawl extract returned empty).
+                    # That's a recoverable signal — content might surface next run.
+                    _write_failure(conn, row["job_id"], permanent_404=False)
                     failed_by_source[route.value] += 1
                     failed += 1
                     continue
                 _write_success(conn, row["job_id"], result)
             except Exception as exc:
-                logger.warning("JD enrichment failed for {}: {}", row["job_id"], exc)
-                _write_failure(conn, row["job_id"])
+                permanent = _is_permanent_404(exc)
+                logger.warning(
+                    "JD enrichment failed for {} (permanent_404={}): {}",
+                    row["job_id"],
+                    permanent,
+                    exc,
+                )
+                _write_failure(conn, row["job_id"], permanent_404=permanent)
                 failed_by_source[route.value] += 1
                 failed += 1
 
