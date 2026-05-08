@@ -235,3 +235,172 @@ def test_pipeline_smoke_1k_jobs(monkeypatch):
     assert len(result["errors"]) == 0, (
         f"Smoke test pipeline errors: {result['errors']}"
     )
+
+
+# ---------------------------------------------------------------------------
+# P7-B: Per-stage timeout + always-fire finalizer tests
+# ---------------------------------------------------------------------------
+
+def test_stage_timeout_isolated_to_one_stage(monkeypatch):
+    """Stage 2c LLM enrich timeout must NOT prevent embed/sync/email.
+
+    Simulates the real-world failure mode that cost two days of pipeline
+    output: the wrapper SIGALRM killed python mid-Stage-2c, never reaching
+    Stage 3 (embed) or Stage 4 (sync) or the completion email.
+
+    Test: shrink the LLM stage budget to 1s and make ``enrich_all`` sleep
+    for 3s. Assert:
+      * ``errors`` contains a TIMEOUT entry for ``llm_enrich``
+      * embed_all + sync_jobs_to_firebase + send_pipeline_complete_email
+        WERE called after the timeout
+      * pipeline_status == 'partial' (some stages ok, errors present)
+    """
+    import time as _time
+    from wekruit_matching.pipeline import daily as daily_mod
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+
+    # Track whether the completion email fires — the critical regression test
+    email_fired = {"called": False}
+
+    def _track_email(**kw):
+        email_fired["called"] = True
+        return True
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.send_pipeline_complete_email",
+        _track_email,
+    )
+
+    # Shrink the LLM budget to 1s; sleep 3s in enrich_all to force timeout
+    monkeypatch.setitem(daily_mod.STAGE_BUDGETS, "llm_enrich", 1)
+
+    def _slow_enrich():
+        _time.sleep(3)
+        return {"enriched": 0, "failed": 0, "skipped": 0}
+
+    monkeypatch.setattr("wekruit_matching.pipeline.daily.enrich_all", _slow_enrich)
+
+    result = run_daily_pipeline()
+
+    # 1. Timeout was recorded
+    timeout_entries = [e for e in result["errors"] if "TIMEOUT" in e and "llm_enrich" in e]
+    assert timeout_entries, (
+        f"Expected llm_enrich TIMEOUT in errors, got: {result['errors']}"
+    )
+
+    # 2. Downstream stages still ran (the whole point of P7-B)
+    assert "embed" in call_order, (
+        "embed_all must run after llm_enrich timeout — got: " + repr(call_order)
+    )
+    assert "job_sync" in call_order, (
+        "sync_jobs_to_firebase must run after llm_enrich timeout — got: "
+        + repr(call_order)
+    )
+
+    # 3. Completion email fired (always-fire finalizer)
+    assert email_fired["called"], (
+        "send_pipeline_complete_email MUST fire even on stage timeout"
+    )
+
+    # 4. pipeline_status == 'partial' (some stages ok + errors present)
+    assert result["pipeline_status"] == "partial", (
+        f"Expected partial, got {result['pipeline_status']} "
+        f"(stage_outcomes={result['stage_outcomes']})"
+    )
+
+    # 5. stage_outcomes records the timeout
+    assert result["stage_outcomes"].get("llm_enrich") == "timeout", (
+        f"Expected stage_outcomes['llm_enrich']='timeout', "
+        f"got {result['stage_outcomes']}"
+    )
+
+
+def test_finalizer_email_fires_on_full_pipeline_crash(monkeypatch):
+    """If Stage 1 itself crashes hard (non-timeout), email + tokens still fire.
+
+    Tests the try/finally outer block — even if a stage raises something
+    weirder than a normal Exception (e.g. KeyboardInterrupt should NOT
+    swallow, but a regular crash chain shouldn't either).
+    """
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+    # Disable real-network senior scrapers (Stage 1.5+1.6) for unit-test
+    # isolation — we only want to test the new try/finally + status logic.
+    for var in (
+        "ENABLE_WELLFOUND_SCRAPE", "ENABLE_LINKEDIN_SCRAPE", "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT", "ENABLE_LEVER_DIRECT", "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(var, "0")
+    email_fired = {"called": False}
+
+    def _track_email(**kw):
+        email_fired["called"] = True
+        return True
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.send_pipeline_complete_email",
+        _track_email,
+    )
+
+    # Make every "real work" stage crash
+    def _crash():
+        raise RuntimeError("simulated crash")
+
+    monkeypatch.setattr("wekruit_matching.pipeline.daily.scrape_all", _crash)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.run_jd_enrichment",
+        lambda **kw: _crash(),
+    )
+    monkeypatch.setattr("wekruit_matching.pipeline.daily.enrich_all", _crash)
+    monkeypatch.setattr("wekruit_matching.pipeline.daily.embed_all", _crash)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
+        lambda **kw: _crash(),
+    )
+
+    result = run_daily_pipeline()
+
+    assert email_fired["called"], "Email MUST fire even when every stage crashed"
+    assert result["pipeline_status"] == "failed", (
+        f"All stages crashed -> expected 'failed', got {result['pipeline_status']}"
+    )
+    assert len(result["errors"]) > 0
+
+
+def test_pipeline_status_success_when_all_ok(monkeypatch):
+    """Healthy pipeline -> status='success', no errors."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    # Disable real-network senior scrapers (Stage 1.5+1.6) for unit-test
+    # isolation — we only want to test the new try/finally + status logic.
+    for var in (
+        "ENABLE_WELLFOUND_SCRAPE", "ENABLE_LINKEDIN_SCRAPE", "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT", "ENABLE_LEVER_DIRECT", "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(var, "0")
+    result = run_daily_pipeline()
+
+    assert result["pipeline_status"] == "success", (
+        f"All stages ok -> expected 'success', got {result['pipeline_status']}"
+    )
+    assert result["errors"] == [], (
+        f"Healthy pipeline should have no errors, got {result['errors']}"
+    )
+
+
+def test_stdout_emits_pipeline_status_token(monkeypatch, capsys):
+    """The wrapper greps stdout for ``pipelineStatus=...`` — must always be emitted."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    run_daily_pipeline()
+
+    captured = capsys.readouterr()
+    assert "pipelineStatus=" in captured.out, (
+        f"Wrapper depends on stdout 'pipelineStatus=' token; not found in: "
+        f"{captured.out!r}"
+    )
