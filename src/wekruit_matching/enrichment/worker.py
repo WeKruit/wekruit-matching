@@ -17,12 +17,28 @@ Why the staleness window matters (P7-E, 2026-05-08):
 
 Per-job failure isolation: a single classify_job exception or DB write
 error logs a warning and increments the failed counter — the batch continues.
+
+PARALLELISM (2026-05-08):
+The previous sequential `for row in rows` loop ran ~30s/job (Qwen3-8B HTTP),
+hitting the 4hr SIGALRM kill at ~500 jobs/day. We now fan out classification
+across a ThreadPoolExecutor (default 10 workers). Each worker grabs its OWN
+connection from the psycopg pool (psycopg connections are NOT thread-safe),
+runs classify_job + UPDATE in isolation, and commits independently.
+Wall-time target: 10x reduction (250min -> ~25min).
+
+Connection-pool note: get_pool() is configured with max_size=20, so 10
+workers + the main-thread reader connection stays well under the cap.
 """
+from __future__ import annotations
+
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 
 import psycopg
 from loguru import logger
 
+from wekruit_matching.db.connection import get_connection
 from wekruit_matching.enrichment.classifier import classify_job
 from wekruit_matching.models.job import Job
 
@@ -38,7 +54,75 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
+def _row_to_job(row: dict) -> Job:
+    return Job(
+        job_id=row["job_id"],
+        source_repo=row["source_repo"],
+        company_name=row["company_name"],
+        role_title=row["role_title"],
+        location_raw=row["location_raw"] or "",
+        content_hash=row["content_hash"],
+        job_description=row["job_description"],
+    )
+
+
+def _process_one_job(row: dict) -> tuple[bool, str, Exception | None]:
+    """Worker-thread payload: classify one job and write the result.
+
+    Each worker acquires its own pooled connection — psycopg Connection
+    objects are NOT thread-safe, so we cannot share the caller's conn.
+
+    Returns (success, job_id_short, exc_if_any). Never raises — every
+    exception is captured and reported back so the main thread can keep
+    counting failures without losing siblings.
+    """
+    job = _row_to_job(row)
+    short_id = job.job_id[:8]
+    try:
+        result = classify_job(job)
+    except Exception as exc:
+        return False, short_id, exc
+
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE jobs SET
+                    industry        = %(industry)s,
+                    company_size    = %(company_size)s,
+                    required_skills = %(required_skills)s,
+                    sponsorship     = %(sponsorship)s,
+                    enriched_at     = %(enriched_at)s
+                WHERE job_id = %(job_id)s
+                """,
+                {
+                    "job_id": job.job_id,
+                    "industry": result.industry,
+                    "company_size": result.company_size,
+                    "required_skills": result.required_skills,
+                    "sponsorship": result.sponsorship,
+                    "enriched_at": _utcnow(),
+                },
+            )
+            conn.commit()
+    except Exception as exc:
+        return False, short_id, exc
+
+    logger.debug(
+        "Enriched {}: industry={} company_size={} sponsorship={}",
+        short_id,
+        result.industry,
+        result.company_size,
+        result.sponsorship,
+    )
+    return True, short_id, None
+
+
+def enrich_pending(
+    conn: psycopg.Connection,
+    *,
+    max_workers: int = 10,
+) -> dict[str, int]:
     """Classify active jobs that are missing a JD or skills (ENRICH-01 gap-fill).
 
     Query: SELECT ... FROM jobs WHERE status = 'active'
@@ -57,6 +141,17 @@ def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
     the queue, regardless of age. Stuck jobs (have ``enriched_at`` stamped
     from an empty pass but still missing JD or skills) become eligible after
     7 days — giving Stage 2b time to land a real JD before we re-classify.
+
+    Concurrency (P7-A): jobs are classified in parallel using a
+    ThreadPoolExecutor of size `max_workers` (default 10). Each worker grabs
+    its own pooled connection for the UPDATE — `conn` (the caller's
+    connection) is used only for the initial SELECT.
+
+    Args:
+        conn: psycopg connection used for the SELECT. Workers do NOT share
+            this connection; they each get their own from the pool.
+        max_workers: ThreadPoolExecutor size. Pass 1 for sequential behaviour
+            (useful for tests or debugging). Default 10.
 
     For each job:
       1. Call classify_job(job) — returns EnrichmentResult (never raises)
@@ -95,55 +190,32 @@ def enrich_pending(conn: psycopg.Connection) -> dict[str, int]:
         logger.info("No gap-fill jobs found — nothing to do")
         return {"enriched": 0, "failed": 0, "skipped": 0}
 
-    logger.info("Found {} gap-fill job(s) to classify (missing JD or skills)", len(rows))
+    logger.info(
+        "Found {} gap-fill job(s) to classify (missing JD or skills) — fanning out across {} worker(s)",
+        len(rows),
+        max_workers,
+    )
     enriched = failed = 0
+    counter_lock = threading.Lock()  # guards loguru ordering of progress logs
 
-    for row in rows:
-        job = Job(
-            job_id=row["job_id"],
-            source_repo=row["source_repo"],
-            company_name=row["company_name"],
-            role_title=row["role_title"],
-            location_raw=row["location_raw"] or "",
-            content_hash=row["content_hash"],
-            job_description=row["job_description"],
-        )
-        try:
-            result = classify_job(job)
-            conn.execute(
-                """
-                UPDATE jobs SET
-                    industry        = %(industry)s,
-                    company_size    = %(company_size)s,
-                    required_skills = %(required_skills)s,
-                    sponsorship     = %(sponsorship)s,
-                    enriched_at     = %(enriched_at)s
-                WHERE job_id = %(job_id)s
-                """,
-                {
-                    "job_id": job.job_id,
-                    "industry": result.industry,
-                    "company_size": result.company_size,
-                    "required_skills": result.required_skills,
-                    "sponsorship": result.sponsorship,
-                    "enriched_at": _utcnow(),
-                },
-            )
-            conn.commit()
-            enriched += 1
-            logger.debug(
-                "Enriched {}: industry={} company_size={} sponsorship={}",
-                job.job_id[:8],
-                result.industry,
-                result.company_size,
-                result.sponsorship,
-            )
-        except Exception as exc:
-            failed += 1
-            logger.warning("Failed to enrich job {}: {}", job.job_id[:8], exc)
-            # Roll back any partial writes so the connection is clean for the next job
-            conn.rollback()
-            # Continue to next job — per-job isolation
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_process_one_job, row) for row in rows]
+        for fut in as_completed(futures):
+            try:
+                success, short_id, exc = fut.result()
+            except Exception as inner_exc:  # _process_one_job should never raise, defensive
+                with counter_lock:
+                    failed += 1
+                logger.warning("Worker raised unexpectedly: {}", inner_exc)
+                continue
+
+            if success:
+                with counter_lock:
+                    enriched += 1
+            else:
+                with counter_lock:
+                    failed += 1
+                logger.warning("Failed to enrich job {}: {}", short_id, exc)
 
     logger.info("Enrichment complete: enriched={} failed={}", enriched, failed)
     return {"enriched": enriched, "failed": failed, "skipped": 0}
