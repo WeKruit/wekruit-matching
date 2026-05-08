@@ -30,6 +30,10 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
     Uses UNNEST-based batch INSERT ... ON CONFLICT for 50-100x speedup
     over row-by-row. Processes in chunks of 500 for Supabase timeout safety.
 
+    P10-audit fix (2026-05-06): persist seniority_level, role_function,
+    sources, and job_description on insert (previously dropped silently —
+    scrapers set them but they never reached the DB).
+
     Returns: {"inserted": N, "updated": N, "unchanged": N}
     """
     if not jobs:
@@ -59,13 +63,17 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                 primary_url, location_raw, date_posted_raw,
                 status, first_seen_at, last_seen_at, content_hash,
                 industry, company_size, required_skills, sponsorship,
-                enriched_at
+                enriched_at,
+                seniority_level, role_function, sources,
+                job_description
             ) VALUES (
                 %(job_id)s, %(source_repo)s, %(company_name)s, %(role_title)s,
                 %(primary_url)s, %(location_raw)s, %(date_posted_raw)s,
                 'active', %(now)s, %(now)s, %(content_hash)s,
                 %(industry)s, %(company_size)s, %(required_skills)s, %(sponsorship)s,
-                %(enriched_at)s
+                %(enriched_at)s,
+                %(seniority_level)s, %(role_function)s, %(sources)s,
+                %(job_description)s
             )
             ON CONFLICT (job_id) DO UPDATE SET
                 location_raw    = EXCLUDED.location_raw,
@@ -96,7 +104,26 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
                     THEN NULL
                     ELSE jobs.embedded_at
-                END
+                END,
+                -- P10-audit fix: keep seniority_level / role_function /
+                -- sources / job_description fresh on every upsert. These
+                -- are derived from role_title which is stable per job_id,
+                -- so overwriting with EXCLUDED is always safe.
+                seniority_level = COALESCE(EXCLUDED.seniority_level, jobs.seniority_level),
+                role_function   = CASE
+                    WHEN cardinality(EXCLUDED.role_function) > 0
+                    THEN EXCLUDED.role_function
+                    ELSE jobs.role_function
+                END,
+                sources         = CASE
+                    WHEN cardinality(EXCLUDED.sources) > 0
+                    THEN (
+                        SELECT array_agg(DISTINCT s)
+                        FROM unnest(jobs.sources || EXCLUDED.sources) AS s
+                    )
+                    ELSE jobs.sources
+                END,
+                job_description = COALESCE(EXCLUDED.job_description, jobs.job_description)
             """,
             [
                 {
@@ -113,6 +140,10 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     "required_skills": job.required_skills or [],
                     "sponsorship": job.sponsorship,
                     "enriched_at": now if job.industry else None,
+                    "seniority_level": job.seniority_level,
+                    "role_function": job.role_function or [],
+                    "sources": job.sources or [],
+                    "job_description": job.job_description,
                     "now": now,
                 }
                 for job in batch

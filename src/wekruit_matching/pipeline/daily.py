@@ -24,7 +24,6 @@ from wekruit_matching.notifications.email import (
 )
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
-from wekruit_matching.pipeline.run_url_resolution import run_url_resolution
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
 
@@ -54,6 +53,132 @@ def run_daily_pipeline() -> dict:
         scrape_stats = {"pipeline": {"error": str(e)}}
         errors.append(f"Scraper crash: {e}")
 
+    # --- Stage 1.5: Multi-source senior scrapers (Phase 63 v1.7) ---
+    # LinkedIn / Wellfound / Otta — gated by ENABLE_<SRC>_SCRAPE env flags
+    # in /Users/Shared/wekruit/.env-secrets. Each scraper is independently
+    # toggleable so partial outages don't block the rest of the pipeline.
+    # Output is collected, deduped against the in-memory pool with
+    # dedup_multi_source(), then upserted with sources=[...] preserved on
+    # each Job. The Firebase sync layer reads `sources` and writes
+    # matching-jobs.{id}.sources arrays.
+    logger.info("=== Stage 1.5: Multi-source senior scrapers (Phase 63) ===")
+    senior_stats: dict[str, dict] = {}
+    senior_jobs: list = []
+
+    if os.environ.get("ENABLE_WELLFOUND_SCRAPE", "1") == "1":
+        try:
+            from wekruit_matching.scraper.wellfound import scrape_wellfound
+            wf_jobs = scrape_wellfound()
+            senior_jobs.extend(wf_jobs)
+            senior_stats["wellfound"] = {"scraped": len(wf_jobs)}
+            logger.info("wellfound scraped {} jobs", len(wf_jobs))
+        except Exception as e:
+            logger.warning("wellfound scrape failed: {}", e)
+            senior_stats["wellfound"] = {"error": str(e)}
+            errors.append(f"Wellfound scrape: {e}")
+
+    if os.environ.get("ENABLE_LINKEDIN_SCRAPE", "0") == "1":
+        try:
+            from wekruit_matching.scraper.linkedin import scrape_linkedin
+            li_jobs = scrape_linkedin()
+            senior_jobs.extend(li_jobs)
+            senior_stats["linkedin"] = {"scraped": len(li_jobs)}
+            logger.info("linkedin scraped {} jobs", len(li_jobs))
+        except Exception as e:
+            logger.warning("linkedin scrape failed: {}", e)
+            senior_stats["linkedin"] = {"error": str(e)}
+            errors.append(f"LinkedIn scrape: {e}")
+
+    if os.environ.get("ENABLE_OTTA_SCRAPE", "0") == "1":
+        try:
+            from wekruit_matching.scraper.otta import scrape_otta
+            ot_jobs = scrape_otta()
+            senior_jobs.extend(ot_jobs)
+            senior_stats["otta"] = {"scraped": len(ot_jobs)}
+            logger.info("otta scraped {} jobs", len(ot_jobs))
+        except Exception as e:
+            logger.warning("otta scrape failed: {}", e)
+            senior_stats["otta"] = {"error": str(e)}
+            errors.append(f"Otta scrape: {e}")
+
+    # --- Stage 1.6 — Phase 73 career-ops port: direct public-API scrapers ---
+    # Greenhouse / Lever / Ashby expose unauthenticated JSON job-board APIs.
+    # Default-on (no API key required, low risk). Same Job-shape, same dedup
+    # path, same upsert path as the Stage 1.5 sources.
+    if os.environ.get("ENABLE_GREENHOUSE_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.greenhouse_direct import (
+                scrape_greenhouse_direct,
+            )
+            gh_jobs = scrape_greenhouse_direct()
+            senior_jobs.extend(gh_jobs)
+            senior_stats["greenhouse_direct"] = {"scraped": len(gh_jobs)}
+            logger.info("greenhouse_direct scraped {} jobs", len(gh_jobs))
+        except Exception as e:
+            logger.warning("greenhouse_direct scrape failed: {}", e)
+            senior_stats["greenhouse_direct"] = {"error": str(e)}
+            errors.append(f"Greenhouse direct: {e}")
+
+    if os.environ.get("ENABLE_LEVER_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.lever_direct import scrape_lever_direct
+            lv_jobs = scrape_lever_direct()
+            senior_jobs.extend(lv_jobs)
+            senior_stats["lever_direct"] = {"scraped": len(lv_jobs)}
+            logger.info("lever_direct scraped {} jobs", len(lv_jobs))
+        except Exception as e:
+            logger.warning("lever_direct scrape failed: {}", e)
+            senior_stats["lever_direct"] = {"error": str(e)}
+            errors.append(f"Lever direct: {e}")
+
+    if os.environ.get("ENABLE_ASHBY_DIRECT", "1") == "1":
+        try:
+            from wekruit_matching.scraper.ashby_direct import scrape_ashby_direct
+            ab_jobs = scrape_ashby_direct()
+            senior_jobs.extend(ab_jobs)
+            senior_stats["ashby_direct"] = {"scraped": len(ab_jobs)}
+            logger.info("ashby_direct scraped {} jobs", len(ab_jobs))
+        except Exception as e:
+            logger.warning("ashby_direct scrape failed: {}", e)
+            senior_stats["ashby_direct"] = {"error": str(e)}
+            errors.append(f"Ashby direct: {e}")
+
+    if senior_jobs:
+        try:
+            from wekruit_matching.scraper.dedup import dedup_multi_source
+            from wekruit_matching.scraper.upsert import (
+                mark_stale_jobs as _mark_stale,
+                upsert_jobs as _upsert,
+            )
+
+            deduped = dedup_multi_source(senior_jobs)
+            logger.info(
+                "Stage 1.5 dedup: {} → {} after multi-source collapse",
+                len(senior_jobs), len(deduped),
+            )
+            with get_connection() as conn:
+                # Group by source_repo for upsert + stale-mark scoping.
+                by_repo: dict[str, list] = {}
+                for j in deduped:
+                    by_repo.setdefault(j.source_repo, []).append(j)
+                for repo_slug, group in by_repo.items():
+                    upsert_stats = _upsert(group, conn)
+                    seen_ids = {j.job_id for j in group}
+                    stale_count = _mark_stale(seen_ids, repo_slug, conn)
+                    senior_stats[repo_slug] = {
+                        **(senior_stats.get(repo_slug) or {}),
+                        **upsert_stats,
+                        "stale": stale_count,
+                    }
+        except Exception as e:
+            logger.error("Stage 1.5 upsert crashed: {}", e)
+            errors.append(f"Stage 1.5 upsert: {e}")
+
+    # Merge senior_stats into scrape_stats so downstream email + webhook
+    # token totals see them.
+    for k, v in senior_stats.items():
+        scrape_stats.setdefault(k, v)
+
     # --- Stage 2a: Enrich from JobRight pages (FREE — no LLM) ---
     logger.info("=== Stage 2a: JobRight Page Enrichment (free) ===")
     jobright_stats = {"enriched": 0, "failed": 0, "skills_found": 0}
@@ -76,41 +201,13 @@ def run_daily_pipeline() -> dict:
         logger.error("ATS JD enrichment crashed: {}", e)
         errors.append(f"ATS JD enrichment crash: {e}")
 
-    # --- Stage 2.5: URL Resolution ---
-    # iter34 hotfix 2026-05-05 — Stage 2.5 hangs on Supabase pooler poll().
-    # Adding multiprocess-level timeout so a stuck stage cannot block
-    # Stage 3/4. Honor SKIP_URL_RESOLUTION env to skip entirely.
-    logger.info("=== Stage 2.5: URL Resolution ===")
-    url_stats = {
-        "simplify": {},
-        "slug_registry": {},
-        "serper": {},
-        "total_resolved": 0,
-        "resolution_rate": 0.0,
-    }
-    if os.environ.get("SKIP_URL_RESOLUTION", "").lower() in ("1", "true", "yes"):
-        logger.warning("Stage 2.5 skipped via SKIP_URL_RESOLUTION env")
-    else:
-        import threading
-        result_holder: dict = {}
-        def _runner():
-            try:
-                with get_connection() as conn:
-                    result_holder["stats"] = run_url_resolution(conn=conn, batch_size=500)
-            except Exception as e:
-                result_holder["error"] = e
-        t = threading.Thread(target=_runner, daemon=True)
-        t.start()
-        t.join(timeout=600)  # 10 min hard cap
-        if t.is_alive():
-            logger.error("URL resolution timed out after 10min — proceeding to Stage 3")
-            errors.append("URL resolution timeout (Supabase pooler hang)")
-        elif "error" in result_holder:
-            logger.error("URL resolution crashed: {}", result_holder["error"])
-            errors.append(f"URL resolution crash: {result_holder['error']}")
-        else:
-            url_stats = result_holder.get("stats", url_stats)
-            logger.info("URL resolution stats: {}", url_stats)
+    # --- Stage 2.5 deleted (Phase 66, 2026-05-06) ---
+    # URL resolution migrated to wekruit-pa Cloud Function `paBackfillAtsUrlsBatch`
+    # (hourly schedule). macmini no longer resolves URLs — it just scrapes and
+    # syncs raw Jobright/Wellfound data to Firebase. The CF reads matching-jobs
+    # and writes ats_apply_url back to Firestore. Removes Supabase pooler hang
+    # risk (iter34 hotfix Stage 2.5 → SKIP_URL_RESOLUTION=1 environment toggle
+    # now permanently obsolete).
 
     # --- Stage 2c: LLM fallback for metadata classification ---
     logger.info("=== Stage 2c: LLM Enrichment (metadata classification) ===")
@@ -167,7 +264,6 @@ def run_daily_pipeline() -> dict:
     send_pipeline_complete_email(
         scrape_stats=scrape_stats,
         jd_stats=jd_stats,
-        url_resolution_stats=url_stats,
         enrich_stats=enrich_stats,
         embed_stats=embed_stats,
         duration_seconds=duration,
@@ -188,7 +284,6 @@ def run_daily_pipeline() -> dict:
     return {
         "scrape": scrape_stats,
         "jd_enrichment": jd_stats,
-        "url_resolution": url_stats,
         "enrich": enrich_stats,
         "embed": embed_stats,
         "sync": sync_stats,

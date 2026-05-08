@@ -265,3 +265,135 @@ def test_upsert_clears_enriched_at_on_hash_change():
             assert row_after["enriched_at"] is None, "enriched_at must be cleared when content_hash changes"
         finally:
             _cleanup(conn, job_id)
+
+
+# ---------------------------------------------------------------------------
+# P7-E (2026-05-08) — staleness gate tests
+# Jobs with `enriched_at` stamped but still missing JD or skills must
+# re-enter the queue once enriched_at < NOW() - INTERVAL '7 days'.
+# ---------------------------------------------------------------------------
+
+def test_enrich_pending_query_uses_staleness_window():
+    """SELECT must use the ENRICH_STALE_DAYS interval to allow stuck jobs to retry."""
+    from wekruit_matching.enrichment.worker import ENRICH_STALE_DAYS, enrich_pending
+
+    conn = _FakeConn(rows=[])
+    enrich_pending(conn)
+
+    select_query = conn.executed[0][0]
+    assert "enriched_at IS NULL" in select_query, (
+        "Query must still allow never-enriched jobs (enriched_at IS NULL)"
+    )
+    assert f"INTERVAL '{ENRICH_STALE_DAYS} days'" in select_query, (
+        "Query must use ENRICH_STALE_DAYS interval (P7-E gating fix)"
+    )
+    # The OR makes stuck jobs re-eligible. Critical: the disjunction must be inside
+    # parentheses with the gap-fill predicate, not AND-mixed at the top level —
+    # otherwise we'd reclassify already-fully-enriched stale jobs (which would
+    # waste Qwen calls on rows that already have JD + skills).
+    assert "OR enriched_at < NOW() - INTERVAL" in select_query, (
+        "Query must use OR-form to combine enriched_at IS NULL and staleness check"
+    )
+
+
+def test_enrich_pending_query_keeps_data_gap_predicate():
+    """Even with staleness retry, fully-enriched jobs must be excluded — they have
+    JD + skills, so the data-gap predicate must remain a separate AND clause."""
+    from wekruit_matching.enrichment.worker import enrich_pending
+
+    conn = _FakeConn(rows=[])
+    enrich_pending(conn)
+
+    select_query = conn.executed[0][0]
+    # Must AND the data-gap clause separately so a job with JD+skills is never
+    # re-classified just because it's old.
+    assert "job_description IS NULL" in select_query
+    assert "required_skills = ARRAY[]::text[]" in select_query
+
+
+@skip_no_db
+def test_enrich_pending_requeues_stale_stuck_job():
+    """Job with enriched_at = 8 days ago AND missing JD must be re-classified.
+
+    This is the P7-E gating fix: previously such jobs were stuck because the
+    SELECT only checked enriched_at IS NULL. Now they re-enter after 7 days.
+    """
+    from datetime import timedelta
+    from wekruit_matching.enrichment.worker import enrich_pending
+    from wekruit_matching.enrichment.classifier import EnrichmentResult
+
+    job_id = "9" * 64
+    eight_days_ago = datetime.now(timezone.utc) - timedelta(days=8)
+    get_conn = _connect()
+
+    with get_conn() as conn:
+        # Insert with enriched_at = 8 days ago, no JD (the stuck pattern).
+        # _insert_job's INSERT doesn't set job_description — it stays NULL,
+        # which is exactly the stuck-job shape we want.
+        _insert_job(conn, job_id, enriched_at=eight_days_ago, content_hash="9" * 64)
+        try:
+            mock_result = EnrichmentResult(
+                industry="tech", company_size="midsize",
+                required_skills=["python"], sponsorship=None,
+            )
+            with patch(
+                "wekruit_matching.enrichment.worker.classify_job",
+                return_value=mock_result,
+            ) as mock_classify:
+                # Limit query to 500 rows; our test job is among the oldest by
+                # first_seen_at default, so it should be picked up.
+                result = enrich_pending(conn)
+
+            # The stuck job should have been re-classified at least once.
+            assert any(
+                call.args[0].job_id == job_id for call in mock_classify.call_args_list
+            ), "Stuck job (enriched_at=8d ago, no JD) must be re-classified"
+            assert result["enriched"] >= 1
+            row = conn.execute(
+                "SELECT enriched_at, required_skills FROM jobs WHERE job_id = %(id)s",
+                {"id": job_id},
+            ).fetchone()
+            assert "python" in row["required_skills"]
+            # enriched_at must have been refreshed to ~now (within last minute).
+            assert (
+                datetime.now(timezone.utc) - row["enriched_at"]
+            ).total_seconds() < 120, "enriched_at must be refreshed on re-classification"
+        finally:
+            _cleanup(conn, job_id)
+
+
+@skip_no_db
+def test_enrich_pending_skips_recently_enriched_stuck_job():
+    """Job with enriched_at = 1 day ago and missing JD must NOT be re-classified.
+
+    Inverse of the above test — the staleness window protects against
+    re-burning LLM calls when Stage 2b just hasn't caught up yet.
+    """
+    from datetime import timedelta
+    from wekruit_matching.enrichment.worker import enrich_pending
+    from wekruit_matching.enrichment.classifier import EnrichmentResult
+
+    job_id = "8" * 64
+    one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+    get_conn = _connect()
+
+    with get_conn() as conn:
+        _insert_job(conn, job_id, enriched_at=one_day_ago, content_hash="8" * 64)
+        try:
+            mock_result = EnrichmentResult(
+                industry="tech", company_size="startup",
+                required_skills=[], sponsorship=None,
+            )
+            with patch(
+                "wekruit_matching.enrichment.worker.classify_job",
+                return_value=mock_result,
+            ) as mock_classify:
+                enrich_pending(conn)
+
+            # The 1-day-old job must NOT be among the calls.
+            called_ids = [c.args[0].job_id for c in mock_classify.call_args_list]
+            assert job_id not in called_ids, (
+                "Job enriched 1 day ago must NOT be re-classified (within staleness window)"
+            )
+        finally:
+            _cleanup(conn, job_id)
