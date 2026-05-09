@@ -21,6 +21,8 @@ dependencies = [
     "fastapi>=0.135.2",
     "uvicorn>=0.42.0",
     "slowapi>=0.1.9",
+    # P7-K (2026-05-09) Stage 0 reads Firestore dead-flags into Postgres tombstone
+    "google-cloud-firestore>=2.0",
 ]
 
 [project.optional-dependencies]

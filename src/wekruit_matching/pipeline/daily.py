@@ -61,6 +61,7 @@ from wekruit_matching.notifications.email import (
 )
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+from wekruit_matching.pipeline.dead_backfill import firestore_dead_backfill
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
 
@@ -111,6 +112,7 @@ def _stage_timeout(stage_name: str, seconds: int):
 
 # Stage budgets (seconds). Centralised so tests can monkeypatch.
 STAGE_BUDGETS = {
+    "dead_backfill": 5 * 60,  # P7-K Stage 0 — Firestore dead-flag mirror
     "scrape": 30 * 60,
     "senior_scrapers": 30 * 60,  # combined Stage 1.5 + 1.6
     "jobright": 15 * 60,
@@ -146,12 +148,32 @@ def run_daily_pipeline() -> dict:
     enrich_stats: dict = {"enriched": 0, "failed": 0, "skipped": 0}
     embed_stats: dict = {"embedded": 0, "failed": 0, "skipped": 0}
     sync_stats: dict = {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0}
+    dead_backfill_stats: dict = {"synced": 0, "total_seen": 0, "skipped": ""}
     stage_outcomes: dict[str, str] = {}  # stage_name -> "ok"|"error"|"timeout"
 
     # --- Notify: start ---
     send_pipeline_start_email()
 
     try:
+        # --- Stage 0: Firestore dead-flag backfill (P7-K) ---
+        # Mirror Firestore matching-jobs.dead==true into Postgres jobs.dead
+        # so the scraper UPSERT below can short-circuit on already-dead URLs.
+        # Graceful skip if creds aren't configured — logs warning, continues.
+        logger.info("=== Stage 0: Firestore Dead-Flag Backfill ===")
+        try:
+            with _stage_timeout("dead_backfill", STAGE_BUDGETS["dead_backfill"]):
+                with get_connection() as conn:
+                    dead_backfill_stats = firestore_dead_backfill(conn)
+                logger.info("Dead-backfill stats: {}", dead_backfill_stats)
+                stage_outcomes["dead_backfill"] = "ok"
+        except StageTimeoutError as e:
+            _record_timeout(errors, "dead_backfill", e)
+            stage_outcomes["dead_backfill"] = "timeout"
+        except Exception as e:
+            logger.error("Dead-backfill crashed: {}", e)
+            errors.append(f"Dead-backfill crash: {e}")
+            stage_outcomes["dead_backfill"] = "error"
+
         # --- Stage 1: Scrape ---
         logger.info("=== Stage 1: Scraping ===")
         try:
@@ -461,6 +483,7 @@ def run_daily_pipeline() -> dict:
             logger.warning("Failed to emit stdout stat tokens: {}", e)
 
     return {
+        "dead_backfill": dead_backfill_stats,
         "scrape": scrape_stats,
         "jd_enrichment": jd_stats,
         "enrich": enrich_stats,

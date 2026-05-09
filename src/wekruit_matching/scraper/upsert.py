@@ -7,6 +7,25 @@ produces zero DB writes beyond last_seen_at bookkeeping.
 Stale marking (mark_stale_jobs) sets status='inactive' for jobs that
 disappeared from the README — it never deletes rows, preserving history
 for Phase 3 enrichment context.
+
+P7-K (2026-05-09) — Postgres dead tombstone
+-------------------------------------------
+After 0007 added ``dead`` / ``dead_confirmed_at`` columns, this module is
+the gate that prevents the dead-URL infinite-loop scenario described in
+that migration. On every batch:
+
+1. Pre-pass: SELECT existing dead state for the batch's job_ids
+2. Recovery pass: any row with ``dead=true AND dead_confirmed_at < NOW()
+   - INTERVAL '90 days'`` is reset (dead=false, dead_confirmed_at=NULL)
+   to allow ONE retry. Capped at 100 rows per pipeline run so a flood of
+   stale tombstones can't undo all of them in one pass.
+3. Skip pass: any row still ``dead=true`` (within 30/90d window OR with
+   NULL dead_confirmed_at as legacy backfill) is *removed from the input
+   set*. The normal UPSERT below then sees fewer rows and never resets
+   their status from 'inactive' → 'active'.
+
+Logs ``pa.scraper.skipped_dead_jobs {count: N}`` on every run for
+ops dashboards.
 """
 from collections.abc import Collection
 from datetime import UTC, datetime
@@ -23,6 +42,108 @@ def _utcnow() -> datetime:
 
 _UPSERT_BATCH_SIZE = 500
 
+# P7-K constants
+_DEAD_RETRY_AGE_DAYS = 90        # tombstone older than this => allow one retry
+_DEAD_RETRY_MAX_PER_RUN = 100    # safety cap so we don't undo all tombstones at once
+
+
+def _filter_dead_tombstoned(
+    jobs: list[Job],
+    conn: psycopg.Connection,
+) -> tuple[list[Job], int, int]:
+    """Strip dead-tombstoned jobs from ``jobs`` and recover any past 90d.
+
+    Returns: (filtered_jobs, skipped_count, retried_count)
+
+    Behaviour (matches P9 directive):
+      * dead=true AND dead_confirmed_at < NOW() - 90d : retry path
+        - reset dead=false, dead_confirmed_at=NULL (capped at 100/run)
+        - keep job in the filtered list (normal UPSERT proceeds)
+      * dead=true AND dead_confirmed_at >= NOW() - 90d : skip
+        (covers the 30-day skip-window + the 30-90d hold)
+      * dead=true AND dead_confirmed_at IS NULL (legacy backfill) : skip
+        — we don't know how old the tombstone is, treat as recent
+      * dead=false / NULL : pass through unchanged
+
+    Always uses a single SELECT + (optional) UPDATE; no per-row queries.
+    Empty / never-seen-before batches return immediately.
+    """
+    if not jobs:
+        return jobs, 0, 0
+
+    job_ids = [j.job_id for j in jobs]
+    rows = conn.execute(
+        """
+        SELECT job_id, dead, dead_confirmed_at
+        FROM jobs
+        WHERE job_id = ANY(%(ids)s)
+          AND dead IS TRUE
+        """,
+        {"ids": job_ids},
+    ).fetchall()
+    if not rows:
+        return jobs, 0, 0
+
+    # Partition: which dead rows are eligible for the 90d retry path?
+    retry_ids: list[str] = []
+    skip_ids: set[str] = set()
+    cutoff = _utcnow().replace(tzinfo=UTC)
+    for r in rows:
+        confirmed_at = r["dead_confirmed_at"]
+        if confirmed_at is None:
+            # Legacy / Stage-0 backfill with no timestamp. Treat as recent
+            # to be safe — single 90d retry can fire next time once the
+            # liveness sweep re-confirms.
+            skip_ids.add(r["job_id"])
+            continue
+        # Normalize tz-naive timestamps from psycopg to UTC for comparison
+        if confirmed_at.tzinfo is None:
+            confirmed_at = confirmed_at.replace(tzinfo=UTC)
+        age_days = (cutoff - confirmed_at).total_seconds() / 86400
+        if age_days >= _DEAD_RETRY_AGE_DAYS:
+            retry_ids.append(r["job_id"])
+        else:
+            skip_ids.add(r["job_id"])
+
+    # Cap retries per run (safety: 100 stale tombstones don't all reset together)
+    if len(retry_ids) > _DEAD_RETRY_MAX_PER_RUN:
+        # Excess retries get demoted back into the skip set this run; they'll
+        # be eligible again next pipeline run.
+        skip_ids.update(retry_ids[_DEAD_RETRY_MAX_PER_RUN:])
+        retry_ids = retry_ids[:_DEAD_RETRY_MAX_PER_RUN]
+
+    # Reset the retry-eligible rows so the subsequent UPSERT is allowed to
+    # re-activate them. dead=false + dead_confirmed_at=NULL means "we'll
+    # let the next liveness sweep tell us if this URL is really dead".
+    if retry_ids:
+        conn.execute(
+            """
+            UPDATE jobs
+            SET dead = FALSE,
+                dead_confirmed_at = NULL
+            WHERE job_id = ANY(%(ids)s)
+            """,
+            {"ids": retry_ids},
+        )
+        conn.commit()
+
+    if skip_ids:
+        filtered = [j for j in jobs if j.job_id not in skip_ids]
+        logger.info(
+            "pa.scraper.skipped_dead_jobs count={} retried={}",
+            len(skip_ids),
+            len(retry_ids),
+        )
+    else:
+        filtered = jobs
+        if retry_ids:
+            logger.info(
+                "pa.scraper.skipped_dead_jobs count=0 retried={}",
+                len(retry_ids),
+            )
+
+    return filtered, len(skip_ids), len(retry_ids)
+
 
 def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
     """Batch upsert Job records into the jobs table.
@@ -34,12 +155,37 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
     sources, and job_description on insert (previously dropped silently —
     scrapers set them but they never reached the DB).
 
-    Returns: {"inserted": N, "updated": N, "unchanged": N}
+    P7-K (2026-05-09): pre-filter dead-tombstoned jobs (defense-in-depth
+    against the dead-URL infinite-loop). See ``_filter_dead_tombstoned``.
+
+    Returns: {"inserted": N, "updated": N, "unchanged": N,
+              "skipped_dead": N, "dead_retried": N}
     """
     if not jobs:
-        return {"inserted": 0, "updated": 0, "unchanged": 0}
+        return {
+            "inserted": 0, "updated": 0, "unchanged": 0,
+            "skipped_dead": 0, "dead_retried": 0,
+        }
+
+    # P7-K — strip dead-tombstoned URLs before any UPSERT touches them.
+    # Done once for the whole call rather than per-batch because the
+    # tombstone set is small (typically <1% of inputs) and one SELECT
+    # covering all job_ids is cheaper than N batched ones.
+    jobs, skipped_dead, dead_retried = _filter_dead_tombstoned(jobs, conn)
 
     inserted = updated = unchanged = 0
+
+    if not jobs:
+        # Whole input was tombstoned. Skip the UPSERT loop entirely.
+        logger.info(
+            "Upserted 0 jobs: 0 inserted, 0 updated, 0 unchanged "
+            "(skipped_dead={} dead_retried={})",
+            skipped_dead, dead_retried,
+        )
+        return {
+            "inserted": 0, "updated": 0, "unchanged": 0,
+            "skipped_dead": skipped_dead, "dead_retried": dead_retried,
+        }
 
     for i in range(0, len(jobs), _UPSERT_BATCH_SIZE):
         batch = jobs[i : i + _UPSERT_BATCH_SIZE]
@@ -161,8 +307,10 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                 unchanged += 1
 
     logger.info(
-        "Upserted {} jobs: {} inserted, {} updated, {} unchanged",
+        "Upserted {} jobs: {} inserted, {} updated, {} unchanged "
+        "(skipped_dead={} dead_retried={})",
         len(jobs), inserted, updated, unchanged,
+        skipped_dead, dead_retried,
     )
 
     # Carry forward ats_apply_url from recently-deactivated jobs to new active
@@ -193,7 +341,13 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
         if recovered > 0:
             logger.info("Carried forward {} ats_apply_url from inactive jobs", recovered)
 
-    return {"inserted": inserted, "updated": updated, "unchanged": unchanged}
+    return {
+        "inserted": inserted,
+        "updated": updated,
+        "unchanged": unchanged,
+        "skipped_dead": skipped_dead,
+        "dead_retried": dead_retried,
+    }
 
 
 _STALE_BATCH_SIZE = 5000
