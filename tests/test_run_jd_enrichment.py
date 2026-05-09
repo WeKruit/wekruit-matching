@@ -72,6 +72,7 @@ def test_run_jd_enrichment_writes_successful_greenhouse_results(monkeypatch) -> 
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1
@@ -116,6 +117,7 @@ def test_run_jd_enrichment_dry_run_skips_network_and_db_writes(monkeypatch) -> N
         batch_size=500,
         domain_min_interval=0.0,
         dry_run=True,
+        max_workers=1,
     )
 
     assert stats["dry_run"] is True
@@ -159,6 +161,7 @@ def test_run_jd_enrichment_uses_search_before_fetching_aggregator_urls(monkeypat
         settings=_settings(firecrawl_api_key="fc-test"),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1
@@ -196,6 +199,7 @@ def test_select_query_uses_two_clause_gating_with_staleness_window() -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     select_query = next(q for q, _ in conn.executed if q.lstrip().startswith("SELECT"))
@@ -223,6 +227,7 @@ def test_select_query_keeps_data_gap_predicate() -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     select_query = next(q for q, _ in conn.executed if q.lstrip().startswith("SELECT"))
@@ -267,6 +272,7 @@ def test_404_response_marks_permanent_404_true(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["failed"] == 1
@@ -316,6 +322,7 @@ def test_recoverable_5xx_does_not_mark_permanent_404(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["failed"] == 1
@@ -359,6 +366,7 @@ def test_recoverable_timeout_does_not_mark_permanent_404(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["failed"] == 1
@@ -402,6 +410,7 @@ def test_lookup_error_marks_permanent_404_true(monkeypatch) -> None:
         settings=_settings(firecrawl_api_key="fc-test"),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["failed"] == 1
@@ -445,6 +454,7 @@ def test_successful_fetch_clears_permanent_404_flag(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1
@@ -509,6 +519,7 @@ def test_select_query_includes_ats_apply_url_column_and_predicate() -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     select_query = next(q for q, _ in conn.executed if q.lstrip().startswith("SELECT"))
@@ -568,6 +579,7 @@ def test_jobright_primary_url_falls_back_to_ats_apply_url(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1
@@ -618,6 +630,7 @@ def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1
@@ -653,6 +666,7 @@ def test_no_fetchable_url_skips_without_burning_attempt() -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 0
@@ -694,6 +708,7 @@ def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:
         settings=_settings(),
         batch_size=500,
         domain_min_interval=0.0,
+        max_workers=1,
     )
 
     assert stats["processed"] == 1

@@ -15,6 +15,19 @@ Recoverable failures (Firecrawl down, Workday 5xx, connection timeout) become
 eligible after STAGE2B_STALE_DAYS days, giving upstream services time to
 recover before we re-spend a fetch.
 
+PARALLELISM (P7-M2, 2026-05-09):
+The previous sequential `for row in rows` loop ran ~4.6s/job (Firecrawl HTTP +
+Workday CXS discovery + ATS API). With 5K+ jobs eligible after the P7-L URL
+fix, sequential drain = 14 daily runs. We now fan out fetches across a
+ThreadPoolExecutor (default 10 workers). Each worker grabs its OWN connection
+from the psycopg pool (psycopg connections are NOT thread-safe), runs
+_fetch_for_url + UPDATE in isolation, and commits independently. Wall-time
+target: 10x reduction.
+
+Connection-pool note: get_pool() is configured with max_size=20, so 10 workers
++ the main-thread reader connection stays well under the cap. Mirror of P7-A's
+pattern at Stage 2c (worker.py).
+
 Why a 7-day staleness window: short enough that real outages (Firecrawl was
 down 5+ weeks in early-2026 — a transient like that needs slack to recover)
 don't burn through retry attempts in one day; long enough that we don't burn
@@ -31,8 +44,11 @@ backfill.
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from hashlib import sha256
 from types import SimpleNamespace
 from urllib.parse import urlparse
@@ -56,10 +72,6 @@ from wekruit_matching.pipeline.firecrawl_enricher import (
 from wekruit_matching.pipeline.url_classifier import FetchRoute, classify_job_url, normalize_job_url
 
 # Re-attempt window for *recoverable* Stage 2b failures (P7-F gating fix).
-# Jobs whose previous fetch failed transiently (5xx, connection error,
-# timeout, Firecrawl outage) become eligible after this many days. Permanent
-# failures (404 / Job not found) carry ``permanent_404 = TRUE`` and never
-# re-enter the queue. Mirror of ENRICH_STALE_DAYS at Stage 2c (worker.py).
 STAGE2B_STALE_DAYS = 7
 
 
@@ -78,24 +90,12 @@ def _is_aggregator_url(url: str) -> bool:
 
 
 def _is_permanent_404(exc: BaseException) -> bool:
-    """Return True if ``exc`` indicates a permanently-dead URL.
-
-    Permanent: HTTP 404 from any ATS / Firecrawl / Workday fetcher; also
-    LookupError raised when the page genuinely has no job posting (Workday
-    CXS endpoint not discoverable). Both signal the listing is gone — retry
-    won't help.
-
-    Recoverable (NOT permanent): HTTP 5xx, connection errors, timeouts,
-    parse errors, anything else. These get the staleness retry window.
-    """
-    # httpx.HTTPStatusError carries .response.status_code
+    """Return True if ``exc`` indicates a permanently-dead URL."""
     if isinstance(exc, httpx.HTTPStatusError):
         try:
             return exc.response.status_code == 404
         except AttributeError:
             return False
-    # Workday CXS discovery failure — page exposed no job (employer pulled it
-    # or path wasn't a real job page). Treated as permanent.
     if isinstance(exc, LookupError):
         return True
     return False
@@ -106,9 +106,26 @@ def _throttle_domain(
     domain: str,
     *,
     min_interval_seconds: float,
+    lock: threading.Lock | None = None,
 ) -> None:
-    """Ensure requests to the same domain are spaced out."""
+    """Ensure requests to the same domain are spaced out.
+
+    Thread-safe variant: when `lock` is provided (parallel mode), the read +
+    sleep + write of last_request_at[domain] runs under the lock so two
+    workers can't both observe "no recent request" and both fire instantly.
+    """
     if not domain or min_interval_seconds <= 0:
+        return
+
+    if lock is not None:
+        with lock:
+            now = time.monotonic()
+            previous = last_request_at.get(domain)
+            if previous is not None:
+                remaining = min_interval_seconds - (now - previous)
+                if remaining > 0:
+                    time.sleep(remaining)
+            last_request_at[domain] = time.monotonic()
         return
 
     now = time.monotonic()
@@ -121,7 +138,6 @@ def _throttle_domain(
 
 
 async def _search_url(row: dict, settings) -> str | None:
-    """Use Firecrawl search to find a direct employer URL."""
     if not settings.firecrawl_api_key:
         return None
     return await search_canonical_job_url(
@@ -133,7 +149,6 @@ async def _search_url(row: dict, settings) -> str | None:
 
 
 async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
-    """Fetch one job description using the correct free or paid tier."""
     classification = classify_job_url(url)
     route = classification.route
     if route is FetchRoute.GREENHOUSE:
@@ -143,7 +158,6 @@ async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
     if route is FetchRoute.ASHBY:
         return fetch_ashby_job(url), 0
     if route is FetchRoute.WORKDAY:
-        # Skip CXS discovery (45s timeout, ~95% failure rate) — go straight to Firecrawl
         if not settings.firecrawl_api_key:
             return None, 0
         firecrawl = await fetch_firecrawl_job(
@@ -163,7 +177,6 @@ async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
 
 
 def _write_success(conn, job_id: str, result: AtsJobData) -> None:
-    """Persist a successful JD fetch result."""
     conn.execute(
         """
         UPDATE jobs
@@ -195,12 +208,6 @@ def _write_success(conn, job_id: str, result: AtsJobData) -> None:
 
 
 def _write_failure(conn, job_id: str, *, permanent_404: bool = False) -> None:
-    """Persist a failed JD attempt.
-
-    ``permanent_404`` defaults False (recoverable) so the row re-enters the
-    queue after STAGE2B_STALE_DAYS days. Set True only when ``_is_permanent_404``
-    confirms a 404 / dead URL — those are excluded from the queue forever.
-    """
     conn.execute(
         """
         UPDATE jobs
@@ -218,6 +225,127 @@ def _write_failure(conn, job_id: str, *, permanent_404: bool = False) -> None:
     )
 
 
+def _pick_target_url(row: dict) -> str | None:
+    """Pick the URL most likely to yield a JD.
+
+    Jobright primary_url cannot be fetched (we'd just hit the aggregator).
+    Prefer ats_apply_url whenever primary_url is jobright-style; otherwise
+    use primary_url. Returns None when no fetchable URL exists (caller should
+    treat as skipped).
+    """
+    primary_url_raw = row.get("primary_url") or ""
+    ats_apply_url_raw = row.get("ats_apply_url") or ""
+    primary_is_jobright = primary_url_raw.startswith("https://jobright.ai/")
+    ats_is_real = bool(ats_apply_url_raw) and not ats_apply_url_raw.startswith(
+        "https://jobright.ai/"
+    )
+    if primary_is_jobright and ats_is_real:
+        return ats_apply_url_raw
+    if primary_url_raw and not primary_is_jobright:
+        return primary_url_raw
+    if ats_is_real:
+        return ats_apply_url_raw
+    return None
+
+
+@contextmanager
+def _default_connection_factory():
+    """Default per-worker connection factory: pool-acquired psycopg conn."""
+    with get_connection() as conn:
+        yield conn
+
+
+def _process_one_job(
+    row: dict,
+    *,
+    settings,
+    domain_min_interval: float,
+    last_request_at: dict[str, float],
+    domain_lock: threading.Lock,
+    dry_run: bool,
+    write_conn,
+) -> dict:
+    """Process one job: classify URL, fetch JD, persist.
+
+    Pure worker payload — never raises. Returns a dict with counters the
+    caller aggregates under counter_lock.
+
+    `write_conn` is the psycopg connection to use for UPDATE + commit. In
+    parallel mode this is a per-worker pooled connection; in sequential
+    mode (max_workers=1) it is the caller's conn (no per-job commit so
+    caller can batch).
+    """
+    out = {
+        "processed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "credits_used": 0,
+        "route": None,  # FetchRoute.value or None
+        "failed_route": None,
+    }
+
+    original_url = _pick_target_url(row)
+    if original_url is None:
+        out["skipped"] = 1
+        return out
+
+    target_url = original_url
+    route = classify_job_url(original_url).route
+    if _is_aggregator_url(original_url):
+        try:
+            resolved = asyncio.run(_search_url(row, settings))
+        except Exception as exc:
+            logger.warning("Aggregator URL search failed for {}: {}", row["job_id"], exc)
+            resolved = None
+        if resolved:
+            target_url = resolved
+            route = classify_job_url(target_url).route
+
+    out["route"] = route.value
+    out["processed"] = 1
+
+    if dry_run:
+        return out
+
+    domain = urlparse(normalize_job_url(target_url)).netloc.lower()
+    _throttle_domain(
+        last_request_at,
+        domain,
+        min_interval_seconds=domain_min_interval,
+        lock=domain_lock,
+    )
+
+    try:
+        result, spend = asyncio.run(_fetch_for_url(target_url, settings))
+        out["credits_used"] = spend
+        if result is None:
+            if route is FetchRoute.FIRECRAWL and not settings.firecrawl_api_key:
+                out["processed"] = 0
+                out["skipped"] = 1
+                return out
+            _write_failure(write_conn, row["job_id"], permanent_404=False)
+            out["failed_route"] = route.value
+            out["failed"] = 1
+            return out
+        _write_success(write_conn, row["job_id"], result)
+    except Exception as exc:
+        permanent = _is_permanent_404(exc)
+        logger.warning(
+            "JD enrichment failed for {} (permanent_404={}): {}",
+            row["job_id"],
+            permanent,
+            exc,
+        )
+        try:
+            _write_failure(write_conn, row["job_id"], permanent_404=permanent)
+        except Exception as write_exc:  # defensive — don't crash sibling workers
+            logger.warning("Could not persist failure for {}: {}", row["job_id"], write_exc)
+        out["failed_route"] = route.value
+        out["failed"] = 1
+
+    return out
+
+
 def run_jd_enrichment(
     *,
     conn=None,
@@ -225,8 +353,34 @@ def run_jd_enrichment(
     batch_size: int = 500,
     domain_min_interval: float = 0.5,
     dry_run: bool = False,
+    max_workers: int = 10,
+    connection_factory=None,
 ) -> dict:
-    """Process the JD enrichment queue in batches of at most 500 rows."""
+    """Process the JD enrichment queue in batches of at most 500 rows.
+
+    Concurrency (P7-M2):
+      - max_workers > 1: parallel mode. Each worker acquires its own pooled
+        psycopg connection via `connection_factory` (defaults to get_connection),
+        runs _fetch_for_url + UPDATE, and commits independently. The caller's
+        `conn` is used only for the SELECT query.
+      - max_workers == 1: sequential mode. Writes go through `conn`; caller's
+        commit batches per-page. Preserves legacy semantics for tests.
+
+    Args:
+        conn: psycopg connection used for the SELECT and (in sequential mode)
+            UPDATE. Workers in parallel mode do NOT share this connection.
+        settings: optional override for get_settings().
+        batch_size: max rows per SELECT page (capped at 500).
+        domain_min_interval: minimum seconds between fetches against the same
+            host. Throttle is shared across workers via a lock.
+        dry_run: when True, classify routes and count work but skip network +
+            DB writes.
+        max_workers: ThreadPoolExecutor size. Default 10. Set to 1 for
+            sequential behaviour (tests, debugging).
+        connection_factory: context-manager factory yielding a psycopg
+            connection for worker writes. Defaults to get_connection. Tests
+            inject a fake here.
+    """
     if conn is None:
         with get_connection() as owned_conn:
             return run_jd_enrichment(
@@ -235,6 +389,8 @@ def run_jd_enrichment(
                 batch_size=batch_size,
                 domain_min_interval=domain_min_interval,
                 dry_run=dry_run,
+                max_workers=max_workers,
+                connection_factory=connection_factory,
             )
 
     settings = settings or get_settings()
@@ -245,11 +401,29 @@ def run_jd_enrichment(
             **settings.__dict__,
         )
 
+    if connection_factory is None:
+        connection_factory = _default_connection_factory
+
     source_counts: dict[str, int] = defaultdict(int)
     failed_by_source: dict[str, int] = defaultdict(int)
     processed = failed = skipped = credits_used = 0
     last_request_at: dict[str, float] = {}
+    domain_lock = threading.Lock()
+    counter_lock = threading.Lock()
     effective_batch_size = min(batch_size, 500)
+    sequential = max_workers <= 1
+
+    def _aggregate(out: dict) -> None:
+        nonlocal processed, failed, skipped, credits_used
+        with counter_lock:
+            processed += out["processed"]
+            failed += out["failed"]
+            skipped += out["skipped"]
+            credits_used += out["credits_used"]
+            if out["route"] is not None and out["processed"]:
+                source_counts[out["route"]] += 1
+            if out["failed_route"] is not None:
+                failed_by_source[out["failed_route"]] += 1
 
     while True:
         rows = conn.execute(
@@ -259,11 +433,6 @@ def run_jd_enrichment(
             WHERE status = 'active'
               AND (job_description IS NULL OR job_description = '')
               -- P7-L (2026-05-08): include rows where the only fetchable URL is ats_apply_url.
-              -- Most jobright-sourced rows keep primary_url=https://jobright.ai/... even after
-              -- paBackfillAtsUrlsBatch resolves a real employer URL into ats_apply_url. The
-              -- old WHERE primary_url IS NOT NULL AND primary_url NOT LIKE 'jobright.ai/%%'
-              -- starved Stage 2b of 29,497 active rows. Now: at least one of the two URLs
-              -- must be a real (non-jobright) ATS link.
               AND (
                 (primary_url IS NOT NULL AND primary_url NOT LIKE 'https://jobright.ai/%%')
                 OR (ats_apply_url IS NOT NULL AND ats_apply_url NOT LIKE 'https://jobright.ai/%%')
@@ -284,78 +453,73 @@ def run_jd_enrichment(
         if not rows:
             break
 
-        for row in rows:
-            # P7-L: pick the URL most likely to yield a JD. Jobright primary_url
-            # cannot be fetched (we'd just hit the aggregator). Prefer ats_apply_url
-            # whenever primary_url is jobright-style; otherwise use primary_url.
-            primary_url_raw = row.get("primary_url") or ""
-            ats_apply_url_raw = row.get("ats_apply_url") or ""
-            primary_is_jobright = primary_url_raw.startswith("https://jobright.ai/")
-            ats_is_real = bool(ats_apply_url_raw) and not ats_apply_url_raw.startswith(
-                "https://jobright.ai/"
-            )
-            if primary_is_jobright and ats_is_real:
-                original_url = ats_apply_url_raw
-            elif primary_url_raw and not primary_is_jobright:
-                original_url = primary_url_raw
-            elif ats_is_real:
-                original_url = ats_apply_url_raw
-            else:
-                # No fetchable URL on this row — should not happen given the
-                # SELECT clause but defensive: skip without burning a fetch.
-                skipped += 1
-                continue
-
-            target_url = original_url
-            route = classify_job_url(original_url).route
-            if _is_aggregator_url(original_url):
-                resolved = asyncio.run(_search_url(row, settings))
-                if resolved:
-                    target_url = resolved
-                    route = classify_job_url(target_url).route
-
-            source_counts[route.value] += 1
-            processed += 1
-
-            if dry_run:
-                continue
-
-            domain = urlparse(normalize_job_url(target_url)).netloc.lower()
-            _throttle_domain(
-                last_request_at,
-                domain,
-                min_interval_seconds=domain_min_interval,
-            )
-
-            try:
-                result, spend = asyncio.run(_fetch_for_url(target_url, settings))
-                credits_used += spend
-                if result is None:
-                    if route is FetchRoute.FIRECRAWL and not settings.firecrawl_api_key:
-                        skipped += 1
-                        continue
-                    # ``result is None`` means the fetcher succeeded transport-wise
-                    # but extracted no JD (e.g. Firecrawl extract returned empty).
-                    # That's a recoverable signal — content might surface next run.
-                    _write_failure(conn, row["job_id"], permanent_404=False)
-                    failed_by_source[route.value] += 1
-                    failed += 1
-                    continue
-                _write_success(conn, row["job_id"], result)
-            except Exception as exc:
-                permanent = _is_permanent_404(exc)
-                logger.warning(
-                    "JD enrichment failed for {} (permanent_404={}): {}",
-                    row["job_id"],
-                    permanent,
-                    exc,
+        if sequential:
+            # Legacy synchronous path — writes go to the caller's conn so
+            # existing tests can assert on conn.executed without injecting
+            # a connection factory.
+            for row in rows:
+                out = _process_one_job(
+                    row,
+                    settings=settings,
+                    domain_min_interval=domain_min_interval,
+                    last_request_at=last_request_at,
+                    domain_lock=domain_lock,
+                    dry_run=dry_run,
+                    write_conn=conn,
                 )
-                _write_failure(conn, row["job_id"], permanent_404=permanent)
-                failed_by_source[route.value] += 1
-                failed += 1
+                _aggregate(out)
+            if not dry_run:
+                conn.commit()
+            continue
 
-        if not dry_run:
-            conn.commit()
+        # Parallel path: fan out across max_workers, each with its own conn.
+        def _worker(row):
+            if dry_run:
+                # Dry-run never writes; bypass connection acquisition.
+                return _process_one_job(
+                    row,
+                    settings=settings,
+                    domain_min_interval=domain_min_interval,
+                    last_request_at=last_request_at,
+                    domain_lock=domain_lock,
+                    dry_run=True,
+                    write_conn=None,
+                )
+            try:
+                with connection_factory() as worker_conn:
+                    result = _process_one_job(
+                        row,
+                        settings=settings,
+                        domain_min_interval=domain_min_interval,
+                        last_request_at=last_request_at,
+                        domain_lock=domain_lock,
+                        dry_run=False,
+                        write_conn=worker_conn,
+                    )
+                    worker_conn.commit()
+                    return result
+            except Exception as exc:  # connection-acquisition failure
+                logger.warning("Worker connection error for {}: {}", row.get("job_id"), exc)
+                return {
+                    "processed": 0,
+                    "failed": 1,
+                    "skipped": 0,
+                    "credits_used": 0,
+                    "route": None,
+                    "failed_route": "connection_error",
+                }
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(_worker, row) for row in rows]
+            for fut in as_completed(futures):
+                try:
+                    out = fut.result()
+                except Exception as inner_exc:  # _worker should never raise, defensive
+                    logger.warning("Worker raised unexpectedly: {}", inner_exc)
+                    with counter_lock:
+                        failed += 1
+                    continue
+                _aggregate(out)
 
     return {
         "processed": processed,
