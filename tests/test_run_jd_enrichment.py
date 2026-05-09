@@ -481,3 +481,219 @@ def test_is_permanent_404_helper_classification() -> None:
     assert _is_permanent_404(httpx.ConnectError("dns")) is False
     assert _is_permanent_404(ValueError("parse error")) is False
     assert _is_permanent_404(RuntimeError("anything else")) is False
+
+
+# ---------------------------------------------------------------------------
+# P7-L (2026-05-08) — ats_apply_url fallback tests
+#
+# Why these matter: prior to P7-L, Stage 2b only fetched primary_url. Most
+# jobright-sourced rows kept primary_url=https://jobright.ai/... even after
+# paBackfillAtsUrlsBatch wrote a real employer URL into ats_apply_url. Result:
+# 29,497 active rows starved at any given time. These tests pin the behaviour
+# that prevents that regression.
+# ---------------------------------------------------------------------------
+
+
+def test_select_query_includes_ats_apply_url_column_and_predicate() -> None:
+    """SELECT must return ats_apply_url and treat it as a fallback URL.
+
+    Pin both: the column is in the SELECT list, and the WHERE predicate
+    accepts rows where only ats_apply_url is non-jobright (so we don't
+    starve when primary_url is the jobright aggregator URL).
+    """
+    from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    conn = _FakeConn([[]])
+    run_jd_enrichment(
+        conn=conn,
+        settings=_settings(),
+        batch_size=500,
+        domain_min_interval=0.0,
+    )
+
+    select_query = next(q for q, _ in conn.executed if q.lstrip().startswith("SELECT"))
+    assert "ats_apply_url" in select_query, (
+        "SELECT must return ats_apply_url so the loop can fall back to it"
+    )
+    # Predicate: at least one of (primary_url non-jobright) OR (ats_apply_url non-jobright)
+    assert (
+        "primary_url IS NOT NULL AND primary_url NOT LIKE 'https://jobright.ai/%%'"
+        in select_query
+    ), "primary_url must still be considered when it is a real employer URL"
+    assert (
+        "ats_apply_url IS NOT NULL AND ats_apply_url NOT LIKE 'https://jobright.ai/%%'"
+        in select_query
+    ), (
+        "ats_apply_url must be considered as a fallback — without this, jobright-"
+        "sourced rows with resolved ats_apply_url stay invisible to Stage 2b"
+    )
+
+
+def test_jobright_primary_url_falls_back_to_ats_apply_url(monkeypatch) -> None:
+    """When primary_url is jobright-style, the loop must fetch ats_apply_url.
+
+    This is the core P7-L unblocker: 5,389 rows already have a usable
+    ats_apply_url and were unreachable before this change.
+    """
+    from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    conn = _FakeConn(
+        [[
+            {
+                "job_id": "3" * 64,
+                "company_name": "JobrightSourcedCo",
+                "role_title": "SWE",
+                "primary_url": "https://jobright.ai/jobs/info/abc?utm=Sales",
+                "ats_apply_url": "https://boards.greenhouse.io/jobrightsourcedco/jobs/777",
+            }
+        ], []]
+    )
+
+    fetched_urls: list[str] = []
+
+    def _capture_fetch(url: str):
+        fetched_urls.append(url)
+        return build_ats_job_data(
+            source="greenhouse",
+            description_plain="Resolved via ats_apply_url fallback.",
+        )
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
+        _capture_fetch,
+    )
+
+    stats = run_jd_enrichment(
+        conn=conn,
+        settings=_settings(),
+        batch_size=500,
+        domain_min_interval=0.0,
+    )
+
+    assert stats["processed"] == 1
+    assert stats["failed"] == 0
+    assert fetched_urls == [
+        "https://boards.greenhouse.io/jobrightsourcedco/jobs/777"
+    ], (
+        "When primary_url is jobright-aggregator-style, the loop must use "
+        "ats_apply_url instead — fetching the jobright URL would just hit "
+        "the aggregator and yield no JD."
+    )
+
+
+def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
+    """When primary_url is already a real employer URL, prefer it.
+
+    Some senior-scraper rows write primary_url=<employer URL> directly.
+    ats_apply_url may also be populated (cached). Prefer primary_url so we
+    don't double-resolve.
+    """
+    from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    conn = _FakeConn(
+        [[
+            {
+                "job_id": "4" * 64,
+                "company_name": "DirectScrapedCo",
+                "role_title": "EM",
+                "primary_url": "https://boards.greenhouse.io/directco/jobs/100",
+                "ats_apply_url": "https://other-cached.example.com/x",
+            }
+        ], []]
+    )
+
+    fetched_urls: list[str] = []
+
+    def _capture_fetch(url: str):
+        fetched_urls.append(url)
+        return build_ats_job_data(source="greenhouse", description_plain="ok")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
+        _capture_fetch,
+    )
+
+    stats = run_jd_enrichment(
+        conn=conn,
+        settings=_settings(),
+        batch_size=500,
+        domain_min_interval=0.0,
+    )
+
+    assert stats["processed"] == 1
+    assert fetched_urls == ["https://boards.greenhouse.io/directco/jobs/100"], (
+        "Real primary_url must be preferred over cached ats_apply_url"
+    )
+
+
+def test_no_fetchable_url_skips_without_burning_attempt() -> None:
+    """If both primary_url and ats_apply_url are missing/jobright, skip.
+
+    This is a defensive branch — the SELECT clause should already filter
+    these out, but if a row slips through (e.g. concurrent paBackfill run
+    cleared ats_apply_url between SELECT and loop), skip gracefully rather
+    than crash or burn a bogus fetch attempt.
+    """
+    from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    conn = _FakeConn(
+        [[
+            {
+                "job_id": "5" * 64,
+                "company_name": "BothJobrightCo",
+                "role_title": "x",
+                "primary_url": "https://jobright.ai/jobs/info/p",
+                "ats_apply_url": "https://jobright.ai/jobs/info/p",
+            }
+        ], []]
+    )
+
+    stats = run_jd_enrichment(
+        conn=conn,
+        settings=_settings(),
+        batch_size=500,
+        domain_min_interval=0.0,
+    )
+
+    assert stats["processed"] == 0
+    assert stats["skipped"] == 1
+    assert stats["failed"] == 0
+    # No UPDATE — we did not burn a write attempt
+    update_params = [
+        params for query, params in conn.executed if query.lstrip().startswith("UPDATE")
+    ]
+    assert update_params == []
+
+
+def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:
+    """Real psycopg rows return dict-like objects; test fixtures may omit
+    the column. row.get() handles both. Pin that with a fixture that omits
+    ats_apply_url entirely.
+    """
+    from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    conn = _FakeConn(
+        [[
+            # Note: no "ats_apply_url" key at all
+            {
+                "job_id": "6" * 64,
+                "company_name": "Acme",
+                "role_title": "Backend Engineer",
+                "primary_url": "https://boards.greenhouse.io/acme/jobs/123",
+            }
+        ], []]
+    )
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
+        lambda url: build_ats_job_data(source="greenhouse", description_plain="ok"),
+    )
+
+    stats = run_jd_enrichment(
+        conn=conn,
+        settings=_settings(),
+        batch_size=500,
+        domain_min_interval=0.0,
+    )
+
+    assert stats["processed"] == 1

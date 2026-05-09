@@ -12,7 +12,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 
@@ -206,21 +206,70 @@ def build_ats_job_data(
     )
 
 
+def _resolve_greenhouse_embed(
+    url: str, *, client: httpx.Client
+) -> tuple[str, str]:
+    """Resolve a Greenhouse ``boards.greenhouse.io/embed/job_app?token=N`` URL
+    to ``(board_token, job_id)``.
+
+    Boards in this shape (commonly emitted by Simplify and similar
+    aggregators) carry only the job id in the query string. Greenhouse
+    301-redirects them to ``job-boards.greenhouse.io/embed/job_app?for=<board>&token=<id>``
+    where ``for`` is the board token. Following the redirect once is the
+    cheapest way to recover both pieces — no extra API needed.
+    """
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+    token_values = qs.get("token") or qs.get("for")
+    if not token_values:
+        raise ValueError(f"Unsupported Greenhouse job URL: {url}")
+    job_id = token_values[0]
+
+    # Some inbound URLs already include for=<board>&token=<id>
+    for_values = qs.get("for")
+    if for_values:
+        return for_values[0], job_id
+
+    response = client.get(url)
+    final_url = str(response.url)
+    final_qs = parse_qs(urlparse(final_url).query)
+    for_values = final_qs.get("for")
+    if not for_values:
+        raise ValueError(f"Unsupported Greenhouse job URL: {url}")
+    return for_values[0], (final_qs.get("token") or [job_id])[0]
+
+
 def fetch_greenhouse_job(url: str, *, client: httpx.Client | None = None) -> AtsJobData:
-    """Fetch one Greenhouse job through the public board API."""
+    """Fetch one Greenhouse job through the public board API.
+
+    Supports two URL shapes:
+      1. ``boards.greenhouse.io/<board>/jobs/<id>`` — standard board page.
+      2. ``boards.greenhouse.io/embed/job_app?token=<id>`` — embed widget
+         used by Simplify and other aggregators (P7-L, 2026-05-08). We
+         follow Greenhouse's 301 to ``job-boards.greenhouse.io/embed/job_app?for=<board>&token=<id>``
+         to recover the board slug, then call the public boards-api as
+         usual.
+    """
     normalized = normalize_job_url(url)
     parsed = urlparse(normalized)
     path_parts = [part for part in parsed.path.split("/") if part]
-    if len(path_parts) < 3 or path_parts[1] != "jobs":
-        raise ValueError(f"Unsupported Greenhouse job URL: {url}")
-
-    board_token = path_parts[0]
-    job_id = path_parts[2]
-    api_url = f"https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}?content=true"
 
     owns_client = client is None
     client = client or httpx.Client(timeout=15.0, follow_redirects=True)
     try:
+        if path_parts[:2] == ["embed", "job_app"] or (
+            len(path_parts) >= 1 and path_parts[0] == "embed"
+        ):
+            # ``normalized`` strips query strings; the embed pattern carries
+            # the job id in the query, so pass the raw url to the resolver.
+            board_token, job_id = _resolve_greenhouse_embed(url, client=client)
+        elif len(path_parts) >= 3 and path_parts[1] == "jobs":
+            board_token = path_parts[0]
+            job_id = path_parts[2]
+        else:
+            raise ValueError(f"Unsupported Greenhouse job URL: {url}")
+
+        api_url = f"https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}?content=true"
         response = client.get(api_url)
         response.raise_for_status()
         payload = response.json()
