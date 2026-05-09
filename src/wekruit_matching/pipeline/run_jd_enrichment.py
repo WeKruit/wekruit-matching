@@ -254,12 +254,20 @@ def run_jd_enrichment(
     while True:
         rows = conn.execute(
             f"""
-            SELECT job_id, company_name, role_title, primary_url
+            SELECT job_id, company_name, role_title, primary_url, ats_apply_url
             FROM jobs
             WHERE status = 'active'
               AND (job_description IS NULL OR job_description = '')
-              AND primary_url IS NOT NULL
-              AND primary_url NOT LIKE 'https://jobright.ai/%%'
+              -- P7-L (2026-05-08): include rows where the only fetchable URL is ats_apply_url.
+              -- Most jobright-sourced rows keep primary_url=https://jobright.ai/... even after
+              -- paBackfillAtsUrlsBatch resolves a real employer URL into ats_apply_url. The
+              -- old WHERE primary_url IS NOT NULL AND primary_url NOT LIKE 'jobright.ai/%%'
+              -- starved Stage 2b of 29,497 active rows. Now: at least one of the two URLs
+              -- must be a real (non-jobright) ATS link.
+              AND (
+                (primary_url IS NOT NULL AND primary_url NOT LIKE 'https://jobright.ai/%%')
+                OR (ats_apply_url IS NOT NULL AND ats_apply_url NOT LIKE 'https://jobright.ai/%%')
+              )
               AND (
                 jd_fetch_attempted_at IS NULL
                 OR (
@@ -277,7 +285,27 @@ def run_jd_enrichment(
             break
 
         for row in rows:
-            original_url = row["primary_url"] or ""
+            # P7-L: pick the URL most likely to yield a JD. Jobright primary_url
+            # cannot be fetched (we'd just hit the aggregator). Prefer ats_apply_url
+            # whenever primary_url is jobright-style; otherwise use primary_url.
+            primary_url_raw = row.get("primary_url") or ""
+            ats_apply_url_raw = row.get("ats_apply_url") or ""
+            primary_is_jobright = primary_url_raw.startswith("https://jobright.ai/")
+            ats_is_real = bool(ats_apply_url_raw) and not ats_apply_url_raw.startswith(
+                "https://jobright.ai/"
+            )
+            if primary_is_jobright and ats_is_real:
+                original_url = ats_apply_url_raw
+            elif primary_url_raw and not primary_is_jobright:
+                original_url = primary_url_raw
+            elif ats_is_real:
+                original_url = ats_apply_url_raw
+            else:
+                # No fetchable URL on this row — should not happen given the
+                # SELECT clause but defensive: skip without burning a fetch.
+                skipped += 1
+                continue
+
             target_url = original_url
             route = classify_job_url(original_url).route
             if _is_aggregator_url(original_url):
