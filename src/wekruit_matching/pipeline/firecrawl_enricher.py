@@ -102,7 +102,7 @@ async def discover_workday_cxs_endpoint(
     url: str,
     *,
     client: httpx.AsyncClient,
-    timeout_seconds: float = 45.0,
+    timeout_seconds: float = 90.0,
 ) -> tuple[str, str]:
     """Resolve the Workday tenant/site pair from the hosted job page."""
     response = await run_with_timeout(
@@ -150,7 +150,7 @@ async def fetch_workday_job(
     url: str,
     *,
     client: httpx.AsyncClient | None = None,
-    timeout_seconds: float = 45.0,
+    timeout_seconds: float = 90.0,
 ) -> AtsJobData | None:
     """Fetch one Workday job through the CXS jobs endpoint."""
     normalized = normalize_job_url(url)
@@ -203,7 +203,7 @@ async def fetch_firecrawl_job(
     api_key: str,
     base_url: str = "https://api.firecrawl.dev",
     client: httpx.AsyncClient | None = None,
-    timeout_seconds: float = 45.0,
+    timeout_seconds: float = 90.0,
 ) -> FirecrawlFetchResult | None:
     """Try Firecrawl scrape first and escalate to extract only when necessary."""
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -289,7 +289,7 @@ async def search_canonical_job_url(
     api_key: str,
     base_url: str = "https://api.firecrawl.dev",
     client: httpx.AsyncClient | None = None,
-    timeout_seconds: float = 45.0,
+    timeout_seconds: float = 90.0,
 ) -> str | None:
     """Search for a canonical employer job URL, skipping known aggregators."""
     headers = {"Authorization": f"Bearer {api_key}"}
