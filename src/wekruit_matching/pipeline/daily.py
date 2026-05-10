@@ -112,14 +112,14 @@ def _stage_timeout(stage_name: str, seconds: int):
 
 # Stage budgets (seconds). Centralised so tests can monkeypatch.
 STAGE_BUDGETS = {
-    "dead_backfill": 5 * 60,  # P7-K Stage 0 — Firestore dead-flag mirror
-    "scrape": 30 * 60,
-    "senior_scrapers": 30 * 60,  # combined Stage 1.5 + 1.6
-    "jobright": 15 * 60,
-    "jd_enrich": 30 * 60,
-    "llm_enrich": 90 * 60,
-    "embed": 30 * 60,
-    "sync": 20 * 60,
+    "dead_backfill": 10 * 60,  # P7-K Stage 0 — Firestore dead-flag mirror
+    "scrape": 45 * 60,
+    "senior_scrapers": 45 * 60,  # combined Stage 1.5 + 1.6
+    "jobright": 20 * 60,
+    "jd_enrich": 90 * 60,        # bumped 30→90 — Firecrawl JS pages slow
+    "llm_enrich": 120 * 60,      # bumped 90→120 — gap-fill backlog
+    "embed": 45 * 60,
+    "sync": 30 * 60,
 }
 
 

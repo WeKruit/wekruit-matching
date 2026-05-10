@@ -353,7 +353,7 @@ def run_jd_enrichment(
     batch_size: int = 500,
     domain_min_interval: float = 0.5,
     dry_run: bool = False,
-    max_workers: int = 10,
+    max_workers: int = 1,  # Sequential — parallel signal-timeout broken (loop tick #5 finding)
     connection_factory=None,
 ) -> dict:
     """Process the JD enrichment queue in batches of at most 500 rows.
