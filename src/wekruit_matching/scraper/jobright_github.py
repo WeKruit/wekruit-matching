@@ -147,7 +147,7 @@ def _parse_markdown_table(readme: str, source_repo: str, category: str) -> list[
         work_model = WORK_MODEL_NORM.get(work_model_raw, work_model_raw)
 
         # Generate stable ID
-        job_id = generate_job_id(company, title_raw, apply_url)
+        job_id = generate_job_id(source_repo, company, title_raw)
         if job_id in seen_ids:
             continue
         seen_ids.add(job_id)

@@ -302,7 +302,7 @@ def _to_job(raw: dict, source_repo: str) -> Job | None:
         "No": False,
     }.get(raw.get("h1bSponsored"), None)
 
-    job_id = generate_job_id(company, title, apply_url)
+    job_id = generate_job_id(source_repo, company, title)
 
     content_hash = compute_content_hash(
         company_name=company,

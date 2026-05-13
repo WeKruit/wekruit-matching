@@ -341,7 +341,7 @@ def _to_job(raw: dict) -> Optional[Job]:
     if not company:
         return None
 
-    job_id = generate_job_id(company, title, apply_url)
+    job_id = generate_job_id(SOURCE_REPO_SLUG, company, title)
     content_hash = compute_content_hash(company, title)
     seniority = infer_seniority(title)
 

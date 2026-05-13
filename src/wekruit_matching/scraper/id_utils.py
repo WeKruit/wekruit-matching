@@ -1,12 +1,21 @@
-"""Stable job ID and content hash utilities.
+"""Stable job ID and content hash utilities (v2 — URL-free).
 
-Provides deterministic, emoji-safe ID generation for job listings scraped
-from SimplifyJobs GitHub README tables.
+Provides deterministic, emoji-safe ID generation for job listings.
 
-Key problem this solves: SimplifyJobs frequently adds/removes decorative emoji
-from company names (e.g., "🔥 Google" → "Google"). Without normalization,
-every emoji change generates a new job_id, causing duplicate rows and wasted
-LLM enrichment calls.
+**v2 (2026-05-13) — Adam directive**: drop `primary_url` from the
+`generate_job_id` hash. jobright-ai rotates its redirect-URL hex IDs every
+time it rewrites its public GitHub README (Walgreens "Shift Lead" alone
+landed 13 phantom dupes in Firestore — same contentHash, 13 different
+URLs, 13 different job_ids). Adding `source_repo` to the hash preserves
+cross-source uniqueness without depending on volatile fields.
+
+Migration: see `scripts/dedupe_jobs.py` — collapses pre-v2 dupes in
+Postgres and re-hashes surviving rows to the v2 scheme.
+
+Key normalization problem this still solves: SimplifyJobs frequently
+adds/removes decorative emoji from company names (e.g., "🔥 Google" →
+"Google"). Without normalization, every emoji change generates a new
+job_id, causing duplicate rows and wasted LLM enrichment calls.
 
 Usage:
     from wekruit_matching.scraper.id_utils import (
@@ -39,38 +48,41 @@ def normalize_company_name(raw: str) -> str:
         Normalized lowercase string with emoji, punctuation, and extra
         whitespace removed.
     """
-    # Remove all emoji and other non-text Unicode categories (So, Sm, Sk, Cs, Cn)
     cleaned = "".join(
         ch for ch in raw
         if unicodedata.category(ch) not in ("So", "Sm", "Sk", "Cs", "Cn")
     )
-    # Lowercase, strip punctuation (keep letters, digits, spaces)
     cleaned = re.sub(r"[^\w\s]", " ", cleaned.lower())
-    # Collapse whitespace
     return " ".join(cleaned.split())
 
 
-def generate_job_id(company_name: str, role_title: str, primary_url: str) -> str:
-    """Generate a stable 64-char SHA-256 job ID from normalized fields.
+def generate_job_id(source_repo: str, company_name: str, role_title: str) -> str:
+    """Generate a stable 64-char SHA-256 job ID from URL-free fields.
 
-    Normalization ensures emoji variations ("🔥 Google" vs "Google") produce
-    the same ID. Per SCRP-06.
+    **v2**: URL is no longer part of the hash. Caller must supply
+    `source_repo` (e.g., "jobright-newgrad" or "greenhouse:airbnb") so the
+    same (company, role) tuple at a different ATS provider does not collide.
 
-    The ID is stable across scrape runs as long as company name (after
-    normalization), role title, and primary URL remain unchanged.
+    The ID is stable across scrape runs as long as `source_repo`, the
+    normalized company name, and the role title remain unchanged. Volatile
+    fields (URL with rotating utm/tracking params, location, posted date)
+    are intentionally excluded.
 
     Args:
-        company_name: Raw or normalized company name.
+        source_repo: The pipeline-side source slug (e.g. "jobright-newgrad",
+            "greenhouse:airbnb"). Disambiguates cross-source listings.
+        company_name: Raw or normalized company name. Normalization is
+            applied internally — caller can pass either.
         role_title: Job role title (e.g., "Software Engineer Intern").
-        primary_url: The primary application URL for this listing.
+            Lowercased + stripped before hashing.
 
     Returns:
         64-character lowercase SHA-256 hex string matching r"[0-9a-f]{64}".
     """
     normalized_key = "|".join([
+        source_repo.strip().lower(),
         normalize_company_name(company_name),
         role_title.strip().lower(),
-        primary_url.strip().lower(),
     ])
     return hashlib.sha256(normalized_key.encode("utf-8")).hexdigest()
 
