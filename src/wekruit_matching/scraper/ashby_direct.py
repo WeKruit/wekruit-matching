@@ -230,7 +230,7 @@ def _to_job(
     if not company_norm:
         return None
 
-    job_id = generate_job_id(company_norm, title, apply_url)
+    job_id = generate_job_id(f"{SOURCE_NAME}:{slug}", company_norm, title)
     content_hash = compute_content_hash(company_norm, title)
 
     location_raw = (raw.get("locationName") or raw.get("location") or "").strip()

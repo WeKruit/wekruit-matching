@@ -273,9 +273,9 @@ def parse_readme(content: bytes, source_repo: str) -> list[Job]:
         primary_url = _extract_url(link_cell) if link_cell else None
 
         job_id = generate_job_id(
+            source_repo=source_repo,
             company_name=company_name,
             role_title=role_title,
-            primary_url=primary_url or "",
         )
 
         # Deduplicate within this parse run
