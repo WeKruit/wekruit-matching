@@ -43,8 +43,10 @@ from typing import Any
 
 import psycopg
 
-from wekruit_matching.config import settings
+from wekruit_matching.config import get_settings
+from wekruit_matching.db.connection import _sqlalchemy_url_to_libpq
 from wekruit_matching.scraper.id_utils import generate_job_id
+settings = get_settings()
 
 
 def _v2_id(source_repo: str, company: str, role: str) -> str:
@@ -59,7 +61,7 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None, help="Cap rows scanned (debug).")
     args = ap.parse_args()
 
-    dsn = settings.database_url
+    dsn = _sqlalchemy_url_to_libpq(settings.database_url)
     print(f"[dedupe_jobs] connecting to {dsn.split('@')[-1] if '@' in dsn else dsn}")
     with psycopg.connect(dsn) as conn:
         conn.autocommit = False
@@ -121,50 +123,135 @@ def main() -> int:
                 print("\n[dedupe_jobs] DRY-RUN — no writes. Re-run with --apply to commit.")
                 return 0
 
-            # APPLY MODE
-            print("\n[dedupe_jobs] APPLY: writing changes …")
+            # APPLY MODE (batched — 1000 rows/round-trip)
+            print("\n[dedupe_jobs] APPLY: writing changes (batched) …")
+            # FK envelope: feedback_job_id_fkey blocks both deletes and PK swaps.
+            # Drop now, re-add at end inside same TX so the constraint is validated
+            # against the final state. If anything fails, TX rollback restores FK.
+            cur.execute("ALTER TABLE feedback DROP CONSTRAINT IF EXISTS feedback_job_id_fkey")
+            print("[dedupe_jobs] dropped feedback_job_id_fkey for migration")
             delete_count = 0
             swap_count = 0
             merge_count = 0
+            mapping = {}
+
+            # Phase 1: pre-compute survivor + loser sets and prep batched ops.
+            deletes_batch = []      # list[(old_job_id,)]
+            merges_batch = []       # list[(latest_seen, sources, status, survivor_id)]
+            swaps_batch = []        # list[(new_id, old_id)]
+
             for grp in groups.values():
                 survivor = min(grp, key=lambda r: r["first_seen_at"])
                 losers = [r for r in grp if r["old_job_id"] != survivor["old_job_id"]]
-
                 if losers:
-                    # Merge before delete: take latest last_seen_at + union sources + active>inactive status
                     latest_seen = max(r["last_seen_at"] for r in grp)
                     union_sources = sorted({s for r in grp for s in (r["sources"] or [])})
                     any_active = any(r["status"] == "active" for r in grp)
                     new_status = "active" if any_active else "inactive"
-                    cur.execute(
-                        """
-                        UPDATE jobs
-                        SET last_seen_at = %s, sources = %s, status = %s
-                        WHERE job_id = %s
-                        """,
-                        (latest_seen, union_sources, new_status, survivor["old_job_id"]),
-                    )
+                    merges_batch.append((latest_seen, union_sources, new_status, survivor["old_job_id"]))
                     merge_count += 1
                     for loser in losers:
-                        cur.execute("DELETE FROM jobs WHERE job_id = %s", (loser["old_job_id"],))
+                        deletes_batch.append((loser["old_job_id"],))
                         delete_count += 1
-
-                # PK swap for survivor
+                        mapping[loser["old_job_id"]] = {
+                            "new_id": survivor["new_job_id"], "kept": False,
+                            "winner_old_id": survivor["old_job_id"],
+                        }
                 if survivor["old_job_id"] != survivor["new_job_id"]:
-                    cur.execute(
-                        "UPDATE jobs SET job_id = %s WHERE job_id = %s",
-                        (survivor["new_job_id"], survivor["old_job_id"]),
-                    )
+                    swaps_batch.append((survivor["new_job_id"], survivor["old_job_id"]))
                     swap_count += 1
+                mapping[survivor["old_job_id"]] = {"new_id": survivor["new_job_id"], "kept": True}
+
+            print(f"[dedupe_jobs] prepared batches: deletes={len(deletes_batch)} merges={len(merges_batch)} swaps={len(swaps_batch)}")
+
+            # Phase 2: execute in batches via psycopg's executemany — pipelines on
+            # the same TCP connection, so each batch is effectively 1 RTT.
+            BATCH = 1000
+            def _chunks(lst, n):
+                for i in range(0, len(lst), n):
+                    yield lst[i:i+n]
+
+            # Feedback FK pre-pass: remap feedback.job_id BEFORE touching jobs.
+            # Without this, FK constraint feedback_job_id_fkey blocks all deletes/swaps.
+            cur.execute("SELECT user_id, job_id FROM feedback")
+            fb_rows = cur.fetchall()
+            print(f"[dedupe_jobs] feedback rows: {len(fb_rows)}")
+            fb_updates = []  # (new_id, user_id, old_id)
+            fb_deletes = []  # rows that would collide with UNIQUE(user_id, job_id) after remap
+            seen_target = set()  # (user_id, new_id)
+            for user_id, fb_job_id in fb_rows:
+                info = mapping.get(fb_job_id)
+                if info is None:
+                    # Job was deleted entirely (shouldn't happen — every job_id is in mapping)
+                    continue
+                target_id = info["new_id"]
+                if target_id == fb_job_id:
+                    seen_target.add((user_id, target_id))
+                    continue
+                key = (user_id, target_id)
+                if key in seen_target:
+                    # Collision with existing feedback for the survivor — delete this one.
+                    fb_deletes.append((user_id, fb_job_id))
+                else:
+                    fb_updates.append((target_id, user_id, fb_job_id))
+                    seen_target.add(key)
+            if fb_updates:
+                cur.executemany(
+                    "UPDATE feedback SET job_id=%s WHERE user_id=%s AND job_id=%s",
+                    fb_updates,
+                )
+            if fb_deletes:
+                cur.executemany(
+                    "DELETE FROM feedback WHERE user_id=%s AND job_id=%s",
+                    fb_deletes,
+                )
+            print(f"[dedupe_jobs] feedback remapped:    {len(fb_updates)}  deleted:{len(fb_deletes)}")
+
+            if merges_batch:
+                print(f"[dedupe_jobs] merging {len(merges_batch)} survivors …")
+                for ch in _chunks(merges_batch, BATCH):
+                    cur.executemany(
+                        "UPDATE jobs SET last_seen_at=%s, sources=%s, status=%s WHERE job_id=%s",
+                        ch,
+                    )
+            if deletes_batch:
+                print(f"[dedupe_jobs] deleting {len(deletes_batch)} phantoms …")
+                for ch in _chunks(deletes_batch, BATCH):
+                    cur.executemany("DELETE FROM jobs WHERE job_id=%s", ch)
+            if swaps_batch:
+                print(f"[dedupe_jobs] swapping {len(swaps_batch)} PKs …")
+                for ch in _chunks(swaps_batch, BATCH):
+                    cur.executemany("UPDATE jobs SET job_id=%s WHERE job_id=%s", ch)
 
             print(f"[dedupe_jobs] deleted phantom rows:  {delete_count}")
             print(f"[dedupe_jobs] merged survivors:      {merge_count}")
             print(f"[dedupe_jobs] PK swaps applied:      {swap_count}")
 
-            # Final row count sanity
+            cur.execute(
+                "ALTER TABLE feedback ADD CONSTRAINT feedback_job_id_fkey "
+                "FOREIGN KEY (job_id) REFERENCES jobs(job_id)"
+            )
+            print("[dedupe_jobs] re-added feedback_job_id_fkey")
+
             cur.execute("SELECT COUNT(*) FROM jobs")
             (final,) = cur.fetchone()
             print(f"[dedupe_jobs] final jobs count:      {final}")
+
+            # Write mapping JSON BEFORE commit so we can still roll back if write fails.
+            import json
+            mapping_path = "/tmp/dedupe-mapping.json"
+            with open(mapping_path, "w") as fh:
+                json.dump({
+                    "generatedAt": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+                    "totalScanned": len(rows),
+                    "survivors": len(groups),
+                    "deleted": delete_count,
+                    "pkSwaps": swap_count,
+                    "merges": merge_count,
+                    "mapping": mapping,
+                }, fh)
+            print(f"[dedupe_jobs] mapping written:       {mapping_path} ({len(mapping)} entries)")
+
             conn.commit()
             print("[dedupe_jobs] COMMIT ok")
 

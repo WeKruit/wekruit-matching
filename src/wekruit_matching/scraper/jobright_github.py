@@ -21,6 +21,7 @@ from loguru import logger
 
 from wekruit_matching.config import get_settings
 from wekruit_matching.models.job import Job, JobStatus
+from wekruit_matching.scraper import jobright_git_delta
 from wekruit_matching.scraper.id_utils import (
     compute_content_hash,
     generate_job_id,
@@ -186,14 +187,28 @@ def scrape_jobright_github(
     all_jobs: list[Job] = []
     seen_ids: set[str] = set()
 
+    # C (2026-05-13) — JOBRIGHT_USE_GIT_DELTA=1 swaps HTTP fetch for git clone+pull.
+    # Stable v2 job_id makes the full-vs-delta choice a perf knob, not a
+    # correctness one. We always parse the full README locally (needed for
+    # stale-marking), but when the diff is trustworthy we log the delta row
+    # count for observability + tighter rate-of-change visibility.
+    use_delta = jobright_git_delta.is_enabled()
+    if use_delta:
+        logger.info("JOBRIGHT_USE_GIT_DELTA=1 — git clone + pull (no HTTP fetch)")
+
     def _scrape_repos(repos: list[str], source_repo: str) -> None:
         for repo in repos:
-            # Extract category from repo name
             cat_key = repo.replace("2026-", "").replace("-Internship", "").replace("-New-Grad", "")
             category = REPO_TO_CATEGORY.get(cat_key, "other")
 
             try:
-                readme = _fetch_readme(repo)
+                if use_delta:
+                    snap = jobright_git_delta.fetch_repo(repo)
+                    readme = snap.full_readme
+                    delta_n = len(snap.added_rows) if snap.added_rows is not None else 0
+                else:
+                    readme = _fetch_readme(repo)
+                    delta_n = None
                 jobs = _parse_markdown_table(readme, source_repo, category)
 
                 for job in jobs:
@@ -201,7 +216,13 @@ def scrape_jobright_github(
                         seen_ids.add(job.job_id)
                         all_jobs.append(job)
 
-                logger.info("Parsed {} jobs from {}", len(jobs), repo)
+                if use_delta:
+                    logger.info(
+                        "Parsed {} jobs from {} (git-delta: {} added rows since HEAD~1)",
+                        len(jobs), repo, delta_n,
+                    )
+                else:
+                    logger.info("Parsed {} jobs from {}", len(jobs), repo)
             except Exception as e:
                 logger.warning("Failed to scrape {}: {}", repo, e)
 
