@@ -434,3 +434,37 @@ def mark_stale_jobs(
 
     logger.info("Marked {} stale jobs inactive for repo {}", total_marked, source_repo)
     return total_marked
+
+
+def mark_specific_ids_inactive(
+    stale_ids: set[str],
+    source_repo: str,
+    conn: psycopg.Connection,
+) -> int:
+    """Mark a specific set of job_ids as inactive within source_repo.
+
+    Inverse semantics of ``mark_stale_jobs``:
+      * ``mark_stale_jobs(seen_ids, ...)``  marks everything NOT in seen_ids inactive.
+      * ``mark_specific_ids_inactive(stale_ids, ...)`` marks EXACTLY stale_ids inactive.
+
+    Used by the pure-diff jobright path (``JOBRIGHT_USE_GIT_DELTA=1``): the
+    ``-`` rows in HEAD~1..HEAD give us the canonical removal set; we don't
+    need to scan the full README to deduce it.
+
+    Returns
+    -------
+    Count of rows actually flipped from active -> inactive (no-op if already inactive).
+    """
+    if not stale_ids:
+        return 0
+    result = conn.execute(
+        """
+        UPDATE jobs
+        SET status = 'inactive', last_seen_at = %s
+        WHERE source_repo = %s
+          AND job_id = ANY(%s)
+          AND status = 'active'
+        """,
+        (_utcnow(), source_repo, list(stale_ids)),
+    )
+    return result.rowcount

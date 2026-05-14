@@ -18,7 +18,11 @@ from wekruit_matching.db.connection import get_connection
 from wekruit_matching.scraper.fetcher import REPO_INTERNSHIPS, REPO_NEW_GRAD, fetch_readme
 from wekruit_matching.scraper.jobright_github import scrape_jobright_github
 from wekruit_matching.scraper.parser import parse_readme
-from wekruit_matching.scraper.upsert import mark_stale_jobs, upsert_jobs
+from wekruit_matching.scraper.upsert import (
+    mark_specific_ids_inactive,
+    mark_stale_jobs,
+    upsert_jobs,
+)
 
 
 SIMPLIFY_REPOS = [REPO_INTERNSHIPS, REPO_NEW_GRAD]
@@ -58,20 +62,36 @@ def scrape_all() -> dict[str, dict]:
                 all_stats[repo_slug] = {"error": str(e)}
 
         # --- JobRight.ai (GitHub repos) ---
+        # C/v3 (2026-05-13): when JOBRIGHT_USE_GIT_DELTA=1 the scrape returns the
+        # pure-diff set (added rows -> new Jobs, removed rows -> stale_ids).
+        # We mark only the specifically-removed ids inactive; we do NOT run
+        # full mark_stale_jobs() on the delta set because the delta is a partial
+        # view of "what changed" and the full active set lives in jobs that the
+        # README still references but weren't touched in HEAD~1..HEAD.
         logger.info("Scraping JobRight GitHub repos (intern + newgrad)")
         try:
-            jobright_jobs = scrape_jobright_github()
+            jobright_jobs, stale_ids_by_repo = scrape_jobright_github()
             logger.info("Fetched {} unique jobs from JobRight", len(jobright_jobs))
 
-            # Group by source_repo for upsert + stale marking
+            # Group new jobs by source_repo for upsert.
             by_repo: dict[str, list] = {}
             for job in jobright_jobs:
                 by_repo.setdefault(job.source_repo, []).append(job)
 
-            for repo_slug, jobs in by_repo.items():
-                upsert_stats = upsert_jobs(jobs, conn)
-                seen_ids = {job.job_id for job in jobs}
-                stale_count = mark_stale_jobs(seen_ids, repo_slug, conn)
+            # All known jobright source_repos (covers the case where one repo
+            # had only removals this cycle -> upsert_jobs sees [] but we still
+            # need to flip the removed ids).
+            all_repos = set(by_repo.keys()) | set(stale_ids_by_repo.keys())
+            for repo_slug in all_repos:
+                jobs = by_repo.get(repo_slug, [])
+                stale_ids = stale_ids_by_repo.get(repo_slug, set())
+
+                upsert_stats = upsert_jobs(jobs, conn) if jobs else {"inserted": 0, "updated": 0, "unchanged": 0}
+                if stale_ids:
+                    stale_count = mark_specific_ids_inactive(stale_ids, repo_slug, conn)
+                else:
+                    stale_count = 0
+
                 all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
                 logger.info(
                     "JobRight {}: inserted={} updated={} unchanged={} stale={}",

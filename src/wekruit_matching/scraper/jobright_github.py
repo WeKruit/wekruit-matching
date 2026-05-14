@@ -9,7 +9,7 @@ Format: | **[Company](url)** | **[Title](apply_url)** | Location | Work Model | 
 
 Usage:
     from wekruit_matching.scraper.jobright_github import scrape_jobright_github
-    jobs = scrape_jobright_github()
+    jobs, _stale = scrape_jobright_github()
 """
 from __future__ import annotations
 
@@ -174,27 +174,51 @@ def _parse_markdown_table(readme: str, source_repo: str, category: str) -> list[
 def scrape_jobright_github(
     intern_repos: list[str] | None = None,
     newgrad_repos: list[str] | None = None,
-) -> list[Job]:
+) -> tuple[list[Job], dict[str, set[str]]]:
     """Scrape all JobRight GitHub repos.
 
     Returns:
-        List of Job objects ready for upsert. source_repo is
-        "jobright-intern" or "jobright-newgrad".
+        (all_jobs, stale_ids_by_repo)
+        - all_jobs            : Job[] to upsert
+        - stale_ids_by_repo   : dict[source_repo, set[job_id]] from pure-diff removed
+                                rows. EMPTY when delta mode is off OR repo fell
+                                back to full-README parse on this run.
     """
     i_repos = intern_repos or INTERN_REPOS
     ng_repos = newgrad_repos or NEW_GRAD_REPOS
 
-    all_jobs: list[Job] = []
-    seen_ids: set[str] = set()
-
-    # C (2026-05-13) — JOBRIGHT_USE_GIT_DELTA=1 swaps HTTP fetch for git clone+pull.
-    # Stable v2 job_id makes the full-vs-delta choice a perf knob, not a
-    # correctness one. We always parse the full README locally (needed for
-    # stale-marking), but when the diff is trustworthy we log the delta row
-    # count for observability + tighter rate-of-change visibility.
     use_delta = jobright_git_delta.is_enabled()
     if use_delta:
-        logger.info("JOBRIGHT_USE_GIT_DELTA=1 — git clone + pull (no HTTP fetch)")
+        logger.info("JOBRIGHT_USE_GIT_DELTA=1 — pure-diff jobright scrape (HEAD~1..HEAD)")
+
+    all_jobs: list[Job] = []
+    seen_ids: set[str] = set()
+    stale_ids_by_repo: dict[str, set[str]] = {"jobright-intern": set(), "jobright-newgrad": set()}
+
+    def _row_to_jobs(rows: list[str], source_repo: str, category: str) -> list[Job]:
+        """Parse a list of pre-extracted markdown rows by feeding them as a fake README."""
+        if not rows:
+            return []
+        return _parse_markdown_table("\n".join(rows), source_repo, category)
+
+    def _row_to_ids(rows: list[str], source_repo: str) -> set[str]:
+        """Hash removed rows to v2 stable job_ids without building full Job objects."""
+        ids: set[str] = set()
+        if not rows:
+            return ids
+        row_pattern = re.compile(
+            r"^\|\s*\*\*\[([^\]]+)\]\([^)]*\)\*\*\s*\|\s*\*\*\[([^\]]+)\]\([^)]*\)\*\*\s*\|",
+        )
+        for raw in rows:
+            m = row_pattern.match(raw)
+            if not m:
+                continue
+            company = normalize_company_name(m.group(1).strip())
+            title = m.group(2).strip()
+            if not company or not title:
+                continue
+            ids.add(generate_job_id(source_repo, company, title))
+        return ids
 
     def _scrape_repos(repos: list[str], source_repo: str) -> None:
         for repo in repos:
@@ -204,33 +228,44 @@ def scrape_jobright_github(
             try:
                 if use_delta:
                     snap = jobright_git_delta.fetch_repo(repo)
-                    readme = snap.full_readme
-                    delta_n = len(snap.added_rows) if snap.added_rows is not None else 0
+                    if snap.used_delta:
+                        new_jobs = _row_to_jobs(snap.added_rows, source_repo, category)
+                        stale_ids = _row_to_ids(snap.removed_rows, source_repo)
+                        for job in new_jobs:
+                            if job.job_id not in seen_ids:
+                                seen_ids.add(job.job_id)
+                                all_jobs.append(job)
+                        stale_ids_by_repo[source_repo].update(stale_ids)
+                        logger.info(
+                            "pure-diff {}: +{} new -{} stale (since HEAD~1)",
+                            repo, len(new_jobs), len(stale_ids),
+                        )
+                        continue
+                    # used_delta=False fallback path: full local readme.
+                    readme = snap.full_readme or ""
+                    logger.info("fallback full parse for {} ({}B)", repo, len(readme))
                 else:
                     readme = _fetch_readme(repo)
-                    delta_n = None
-                jobs = _parse_markdown_table(readme, source_repo, category)
 
+                jobs = _parse_markdown_table(readme, source_repo, category)
                 for job in jobs:
                     if job.job_id not in seen_ids:
                         seen_ids.add(job.job_id)
                         all_jobs.append(job)
-
-                if use_delta:
-                    logger.info(
-                        "Parsed {} jobs from {} (git-delta: {} added rows since HEAD~1)",
-                        len(jobs), repo, delta_n,
-                    )
-                else:
-                    logger.info("Parsed {} jobs from {}", len(jobs), repo)
+                logger.info("Parsed {} jobs from {}", len(jobs), repo)
             except Exception as e:
                 logger.warning("Failed to scrape {}: {}", repo, e)
 
     _scrape_repos(i_repos, "jobright-intern")
     _scrape_repos(ng_repos, "jobright-newgrad")
 
-    logger.info("JobRight GitHub scrape complete: {} unique jobs", len(all_jobs))
-    return all_jobs
+    logger.info(
+        "JobRight GitHub scrape complete: {} unique new jobs, stale_to_mark intern={} newgrad={}",
+        len(all_jobs),
+        len(stale_ids_by_repo["jobright-intern"]),
+        len(stale_ids_by_repo["jobright-newgrad"]),
+    )
+    return all_jobs, stale_ids_by_repo
 
 
 if __name__ == "__main__":
