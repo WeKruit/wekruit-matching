@@ -253,6 +253,11 @@ def scrape_jobright_github(
                             if job.job_id not in seen_ids:
                                 seen_ids.add(job.job_id)
                                 all_jobs.append(job)
+                        # v4-fix (2026-05-14): pure-diff jobs must also land in the
+                        # "seen" set so a sibling repo's full_scope fallback does not
+                        # let mark_stale_jobs() flip these jobs to inactive (anything
+                        # not in fallback_seen_by_repo would be considered stale).
+                        fallback_seen_by_repo[source_repo].update(j.job_id for j in new_jobs)
                         # Merge specific-mode stale ids. Once a repo has gone
                         # through full-parse fallback in the same scrape run we leave
                         # it on full_scope; pure-diff stale_ids are a strict subset.
