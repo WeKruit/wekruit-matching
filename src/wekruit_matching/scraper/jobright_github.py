@@ -9,7 +9,7 @@ Format: | **[Company](url)** | **[Title](apply_url)** | Location | Work Model | 
 
 Usage:
     from wekruit_matching.scraper.jobright_github import scrape_jobright_github
-    jobs, _stale = scrape_jobright_github()
+    jobs, _stale_action = scrape_jobright_github()
 """
 from __future__ import annotations
 
@@ -174,7 +174,7 @@ def _parse_markdown_table(readme: str, source_repo: str, category: str) -> list[
 def scrape_jobright_github(
     intern_repos: list[str] | None = None,
     newgrad_repos: list[str] | None = None,
-) -> tuple[list[Job], dict[str, set[str]]]:
+) -> tuple[list[Job], dict[str, tuple[str, set[str]]]]:
     """Scrape all JobRight GitHub repos.
 
     Returns:
@@ -193,7 +193,25 @@ def scrape_jobright_github(
 
     all_jobs: list[Job] = []
     seen_ids: set[str] = set()
-    stale_ids_by_repo: dict[str, set[str]] = {"jobright-intern": set(), "jobright-newgrad": set()}
+    # v4 (2026-05-14) — per-repo stale action: ("specific", removed_ids) when
+    # the pure-diff path saw a real - row set, ("full_scope", seen_ids_in_full_parse)
+    # when the repo fell back to full README parse (bootstrap, force-push, etc).
+    # run.py reads the mode to pick mark_specific_ids_inactive vs mark_stale_jobs.
+    stale_action_by_repo: dict[str, tuple[str, set[str]]] = {
+        "jobright-intern": ("specific", set()),
+        "jobright-newgrad": ("specific", set()),
+    }
+    # Tracks seen_ids per repo across fallback runs so we can run full
+    # mark_stale_jobs() at the end (inverse semantics: drop everything not
+    # in the set).
+    fallback_seen_by_repo: dict[str, set[str]] = {
+        "jobright-intern": set(),
+        "jobright-newgrad": set(),
+    }
+    fallback_used_by_repo: dict[str, bool] = {
+        "jobright-intern": False,
+        "jobright-newgrad": False,
+    }
 
     def _row_to_jobs(rows: list[str], source_repo: str, category: str) -> list[Job]:
         """Parse a list of pre-extracted markdown rows by feeding them as a fake README."""
@@ -235,7 +253,11 @@ def scrape_jobright_github(
                             if job.job_id not in seen_ids:
                                 seen_ids.add(job.job_id)
                                 all_jobs.append(job)
-                        stale_ids_by_repo[source_repo].update(stale_ids)
+                        # Merge specific-mode stale ids. Once a repo has gone
+                        # through full-parse fallback in the same scrape run we leave
+                        # it on full_scope; pure-diff stale_ids are a strict subset.
+                        if stale_action_by_repo[source_repo][0] == "specific":
+                            stale_action_by_repo[source_repo][1].update(stale_ids)
                         logger.info(
                             "pure-diff {}: +{} new -{} stale (since HEAD~1)",
                             repo, len(new_jobs), len(stale_ids),
@@ -248,11 +270,15 @@ def scrape_jobright_github(
                     readme = _fetch_readme(repo)
 
                 jobs = _parse_markdown_table(readme, source_repo, category)
+                # Mark this repo as "full_scope" so run.py uses mark_stale_jobs.
+                fallback_used_by_repo[source_repo] = True
+                fallback_seen_by_repo[source_repo].update(j.job_id for j in jobs)
+                stale_action_by_repo[source_repo] = ("full_scope", fallback_seen_by_repo[source_repo])
                 for job in jobs:
                     if job.job_id not in seen_ids:
                         seen_ids.add(job.job_id)
                         all_jobs.append(job)
-                logger.info("Parsed {} jobs from {}", len(jobs), repo)
+                logger.info("Parsed {} jobs from {} (full-parse fallback)", len(jobs), repo)
             except Exception as e:
                 logger.warning("Failed to scrape {}: {}", repo, e)
 
@@ -260,12 +286,14 @@ def scrape_jobright_github(
     _scrape_repos(ng_repos, "jobright-newgrad")
 
     logger.info(
-        "JobRight GitHub scrape complete: {} unique new jobs, stale_to_mark intern={} newgrad={}",
+        "JobRight GitHub scrape complete: {} unique new jobs; intern={}({}) newgrad={}({})",
         len(all_jobs),
-        len(stale_ids_by_repo["jobright-intern"]),
-        len(stale_ids_by_repo["jobright-newgrad"]),
+        stale_action_by_repo["jobright-intern"][0],
+        len(stale_action_by_repo["jobright-intern"][1]),
+        stale_action_by_repo["jobright-newgrad"][0],
+        len(stale_action_by_repo["jobright-newgrad"][1]),
     )
-    return all_jobs, stale_ids_by_repo
+    return all_jobs, stale_action_by_repo
 
 
 if __name__ == "__main__":

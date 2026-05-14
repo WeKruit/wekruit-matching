@@ -70,7 +70,7 @@ def scrape_all() -> dict[str, dict]:
         # README still references but weren't touched in HEAD~1..HEAD.
         logger.info("Scraping JobRight GitHub repos (intern + newgrad)")
         try:
-            jobright_jobs, stale_ids_by_repo = scrape_jobright_github()
+            jobright_jobs, stale_action_by_repo = scrape_jobright_github()
             logger.info("Fetched {} unique jobs from JobRight", len(jobright_jobs))
 
             # Group new jobs by source_repo for upsert.
@@ -78,25 +78,31 @@ def scrape_all() -> dict[str, dict]:
             for job in jobright_jobs:
                 by_repo.setdefault(job.source_repo, []).append(job)
 
-            # All known jobright source_repos (covers the case where one repo
-            # had only removals this cycle -> upsert_jobs sees [] but we still
-            # need to flip the removed ids).
-            all_repos = set(by_repo.keys()) | set(stale_ids_by_repo.keys())
+            # Iterate union of repos seen in either jobs-to-upsert or stale-action
+            # registries so a repo with only removals (or only fallback parse) still
+            # gets its stale tracking applied.
+            all_repos = set(by_repo.keys()) | set(stale_action_by_repo.keys())
             for repo_slug in all_repos:
                 jobs = by_repo.get(repo_slug, [])
-                stale_ids = stale_ids_by_repo.get(repo_slug, set())
+                mode, ids = stale_action_by_repo.get(repo_slug, ("specific", set()))
 
                 upsert_stats = upsert_jobs(jobs, conn) if jobs else {"inserted": 0, "updated": 0, "unchanged": 0}
-                if stale_ids:
-                    stale_count = mark_specific_ids_inactive(stale_ids, repo_slug, conn)
+
+                # mode == "specific": pure-diff path provided exact removed ids
+                # mode == "full_scope": fallback path provided the full current
+                # active set, so we use inverse semantics to flip anything missing.
+                if mode == "specific":
+                    stale_count = mark_specific_ids_inactive(ids, repo_slug, conn) if ids else 0
+                elif mode == "full_scope":
+                    stale_count = mark_stale_jobs(ids, repo_slug, conn)
                 else:
                     stale_count = 0
 
-                all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
+                all_stats[repo_slug] = {**upsert_stats, "stale": stale_count, "stale_mode": mode}
                 logger.info(
-                    "JobRight {}: inserted={} updated={} unchanged={} stale={}",
+                    "JobRight {}: inserted={} updated={} unchanged={} stale={} ({})",
                     repo_slug, upsert_stats["inserted"], upsert_stats["updated"],
-                    upsert_stats["unchanged"], stale_count,
+                    upsert_stats["unchanged"], stale_count, mode,
                 )
         except Exception as e:
             logger.error("Failed to scrape JobRight: {}", e)
