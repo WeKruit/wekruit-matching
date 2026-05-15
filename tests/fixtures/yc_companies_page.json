@@ -1,0 +1,772 @@
+{
+  "companies": [
+    {
+      "id": 32165,
+      "name": "Rote",
+      "slug": "rote",
+      "website": "https://tryrote.com/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/813e1a8e770c08e788937c21e5a62c42be5e08d9.png",
+      "oneLiner": "AI-native insurance department for auto body shops",
+      "longDescription": "Rote handles the entire negotiation lifecycle between shops and insurance companies to help them recover thousands of dollars in denied claims. Shops today lose millions per year because they lack the resources to negotiate with insurance companies that undervalue repair costs. Rote's agents recover denied revenue by taking shop estimates and referencing technical repair data to autonomously file and defend shop claims.",
+      "teamSize": 0,
+      "url": "https://www.ycombinator.com/companies/rote",
+      "batch": "W27",
+      "tags": [
+        "B2B",
+        "Workflow Automation",
+        "Insurance"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Operations"
+      ],
+      "regions": [],
+      "locations": [],
+      "badges": [
+        "highlightLatinx"
+      ]
+    },
+    {
+      "id": 31574,
+      "name": "HeyClicky",
+      "slug": "heyclicky",
+      "website": "https://heyclicky.com/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/34ed2451ac5368900060488563c63ff6cbf673d7.png",
+      "oneLiner": "An AI buddy that lives on your Mac.",
+      "longDescription": "Clicky sits right next to your cursor and sees everything you see. ask a question out loud and it walks you through whatever you're working on. Or say “Clicky Agent” and it'll spin up an agent to build, research, or do whatever for you in the background.",
+      "teamSize": 0,
+      "url": "https://www.ycombinator.com/companies/heyclicky",
+      "batch": "P26",
+      "tags": [
+        "Education"
+      ],
+      "status": "Active",
+      "industries": [
+        "Consumer"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31564,
+      "name": "Huscarl",
+      "slug": "huscarl",
+      "website": "https://www.huscarl.io/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/f24300b3eb986e7f19356d2f4af0a1aefc7a5841.png",
+      "oneLiner": "Actuarial intelligence for corporate risk managers",
+      "longDescription": "Huscarl is an AI-native actuarial advisory for large companies ($50M+ turnover) to optimize their insurance decisions. Our approach helps them save ~30% premiums for similar coverage, and manage their own risks like an insurance company would.\r\n\r\nOur technology:\r\n- scans through risks and quantifies them\r\n- translates complex B2B insurance policies into actuarial language\r\n- tells if companies are paying the right $ for their coverage\r\n- tells them what to keep, change or kill in their insurance program",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/huscarl",
+      "batch": "P26",
+      "tags": [
+        "Generative AI",
+        "Insurance",
+        "Customization"
+      ],
+      "status": "Active",
+      "industries": [
+        "Fintech",
+        "Insurance"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada",
+        "Remote",
+        "Fully Remote"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31562,
+      "name": "Cohesion",
+      "slug": "cohesion",
+      "website": "https://cohesionplatform.com/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/a85ed9b4f8c87d919e87f4a7838af368b02f0f94.png",
+      "oneLiner": "Your public equities agentic teammate ",
+      "longDescription": "Cohesion is building AI agents for hedge funds. Our agents track earnings and non-traditional datasets like podcasts and X/twitter. Analysts spend hours a week manually tracking these data sources and still miss relevant investing signals. Now, our agents do it for them autonomously. \r\n",
+      "teamSize": 3,
+      "url": "https://www.ycombinator.com/companies/cohesion",
+      "batch": "P26",
+      "tags": [
+        "Fintech",
+        "SaaS",
+        "Investing"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Finance and Accounting"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31561,
+      "name": "Maquoketa Research",
+      "slug": "maquoketa-research",
+      "website": "https://www.maquoketa.net",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/fe62156e10a2b01da6dc840828e94a31921135d9.png",
+      "oneLiner": "Intelligent one-way attack drones",
+      "longDescription": "",
+      "teamSize": 5,
+      "url": "https://www.ycombinator.com/companies/maquoketa-research",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "Hardware",
+        "Drones",
+        "Computer Vision",
+        "Manufacturing"
+      ],
+      "status": "Active",
+      "industries": [
+        "Industrials",
+        "Defense"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "Elk Grove Village, IL 60007, USA"
+      ],
+      "badges": [
+        "highlightLatinx"
+      ]
+    },
+    {
+      "id": 31560,
+      "name": "Intelligence Factory",
+      "slug": "intelligence-factory",
+      "website": "https://intelligence-factory.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/30c1f1fb7356289878fa2341c0a20700f178fbcf.png",
+      "oneLiner": "Human Intelligence for Robots",
+      "longDescription": "Robotics is the new paradigm. With hardware converging, Intelligence is the biggest bottleneck. Our world was built for humans and we're giving robots the ability to reason and act like us. \r\n\r\nThe way we learn any task - by seeing, doing, and feeling - is how we train robots. We're building general intelligence that works on any robot and fits seamlessly within our world.",
+      "teamSize": 5,
+      "url": "https://www.ycombinator.com/companies/intelligence-factory",
+      "batch": "P26",
+      "tags": [
+        "Robotics",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "Industrials",
+        "Manufacturing and Robotics"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": [
+        "isHiring"
+      ]
+    },
+    {
+      "id": 31554,
+      "name": "Clawvisor",
+      "slug": "clawvisor",
+      "website": "https://clawvisor.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/7b7343f0662dc74045154f30ca2872d79b80c650.png",
+      "oneLiner": "The Authorization Layer for AI Agents",
+      "longDescription": "Clawvisor lets AI agents use apps like Gmail, Slack, and Google Drive without going rogue or ever seeing your credentials. You approve tasks once. Clawvisor enforces them on every request.",
+      "teamSize": 1,
+      "url": "https://www.ycombinator.com/companies/clawvisor",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "Security",
+        "Open Source"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Security"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31553,
+      "name": "Framewise Health",
+      "slug": "framewise-health",
+      "website": "https://framewisehealth.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/e7c03ef5bb8c84872c4ee5809b9b3d8f19f80ae0.png",
+      "oneLiner": "AI-native patient engagement",
+      "longDescription": "We turn medical records into personalized videos walking patients through onboarding, adherence, and recovery. The engagement data we collect builds our AI-native patient engagement platform for pharma, hospitals, medical devices, and private clinics, so they can stop chasing the patient and spend more time caring for them.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/framewise-health",
+      "batch": "P26",
+      "tags": [
+        "SaaS",
+        "Health Tech",
+        "B2B"
+      ],
+      "status": "Active",
+      "industries": [
+        "Healthcare"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31552,
+      "name": "Arctic Health",
+      "slug": "arctic-health",
+      "website": "https://arctic.health",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/efe1f3eb6680314e6f5fa5d9fc1161df9fcbaa31.png",
+      "oneLiner": "AI-native credentialing and contracting for healthcare",
+      "longDescription": "Arctic Health is building AI-native credentialing and contracting for healthcare organizations. We automate the full workflow, from establishing payer contracts to enrolling each provider. We collect and validate organization and provider data according to each state and payer’s requirements, and submit on the organization's behalf. We then monitor status and compliance on an ongoing basis.\r\n\r\nTools on the market today either perform small pieces of the workflow or price out small and mid-sized organizations. We handle the process end-to-end regardless of organization type or size. Our browser automations enable AI agents to submit and monitor across hundreds of payer portals, and our system is trained by experienced industry experts who handle every edge case.\r\n\r\nHealthcare organizations get one simple platform. We handle the rest. ",
+      "teamSize": 4,
+      "url": "https://www.ycombinator.com/companies/arctic-health",
+      "batch": "P26",
+      "tags": [
+        "Healthcare",
+        "Healthcare IT",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "Healthcare",
+        "Healthcare Services"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31550,
+      "name": "Playabl.ai",
+      "slug": "playablai",
+      "website": "https://playabl.ai",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/484b887f79a6e0d055be256cbacda5f8badb1317.png",
+      "oneLiner": "Prompt-to-play AI game builder for everyone",
+      "longDescription": "Playabl.ai is an AI game builder that lets anyone create games and interactive experiences by chatting with AI.",
+      "teamSize": 9,
+      "url": "https://www.ycombinator.com/companies/playablai",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "B2B",
+        "Gaming"
+      ],
+      "status": "Active",
+      "industries": [
+        "Consumer",
+        "Gaming"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada",
+        "Remote",
+        "Partly Remote"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31548,
+      "name": "Hyper",
+      "slug": "hyper-4",
+      "website": "https://heyhyper.ai",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/edfe78075967b07a685fa0dfd4fdea085432c035.png",
+      "oneLiner": "The Self-Driving Company Brain",
+      "longDescription": "Hyper is the company brain that \"just works\" for AI-first teams. Hyper silently learns from every update in every tool your team uses -- Notion docs, Claude Code questions, emails, LinkedIn DMs, Cursor sessions, etc. Our agent-driven algorithms update and clean all that information into real-time knowledge that is shared across your entire team. That knowledge is quietly infused into all your existing AI tools on every chat turn, so your whole company gets smarter permanently.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/hyper-4",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "Productivity",
+        "Team Collaboration"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Productivity"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31547,
+      "name": "InsForge",
+      "slug": "insforge",
+      "website": "https://insforge.dev/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/de52713fe1552551dbe8aa2a5e60202c09bfc0d7.png",
+      "oneLiner": "The backend platform for AI-native developers",
+      "longDescription": "InsForge is the backend platform designed for coding agents. Database, auth, storage, compute, hosting, and AI gateway in one place, built for agents to configure and manage end to end.",
+      "teamSize": 6,
+      "url": "https://www.ycombinator.com/companies/insforge",
+      "batch": "P26",
+      "tags": [
+        "Developer Tools",
+        "Open Source",
+        "Infrastructure"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Engineering, Product and Design"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31546,
+      "name": "ReasonBlocks",
+      "slug": "reasonblocks",
+      "website": "https://reasonblocks.com/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/d73e9cbe0885e3d783faf674783100f13336068b.png",
+      "oneLiner": "Infra layer for smarter and cheaper AI agents",
+      "longDescription": "ReasonBlocks makes AI agents more accurate and cheaper by catching failures mid-run and compounding reasoning patterns across every agent you deploy. Plugs into your existing agent stack in minutes and starts improving results from the first call.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/reasonblocks",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "SaaS",
+        "B2B"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31545,
+      "name": "Modern",
+      "slug": "modern",
+      "website": "https://getmodern.ai",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/3d2529e7f9c6b526eaa04259dba132d262fb29fc.png",
+      "oneLiner": "The AI-native OS for IT",
+      "longDescription": "Modern is consolidating the IT function into a single platform powered by secure agents who understand your business. Help desk, access, hardware, on/off-boarding, security, procurement are automated end-to-end inside the channels your team already uses (Slack, Teams, Email, Voice, WhatsApp, Telegram).",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/modern",
+      "batch": "P26",
+      "tags": [
+        "AIOps",
+        "SaaS",
+        "B2B",
+        "Healthcare IT",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Operations"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31540,
+      "name": "KugelAudio",
+      "slug": "kugelaudio",
+      "website": "https://kugelaudio.com/en",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/44c1f17a88c6716d09288318cb5f9de77b9bdbbb.png",
+      "oneLiner": "Kugel is an on-prem enterprise TTS supporting 25+ languages ",
+      "longDescription": "Kugel is an enterprise-ready TTS model, available on-prem, with a focus on 25+ languages and low latency. ",
+      "teamSize": 4,
+      "url": "https://www.ycombinator.com/companies/kugelaudio",
+      "batch": "P26",
+      "tags": [
+        "Generative AI",
+        "API",
+        "Conversational AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Infrastructure"
+      ],
+      "regions": [
+        "Germany",
+        "Europe"
+      ],
+      "locations": [
+        "Berlin, Germany"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31539,
+      "name": "Klaimee",
+      "slug": "klaimee",
+      "website": "https://www.klaimee.ai",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/7b072cf10e5d03192359bbf4a4f1e59c2bed6476.png",
+      "oneLiner": "Liability insurance for AI Agents. You deploy agents, we cover you.",
+      "longDescription": "Klaimee is the first insurance for your AI agents. It covers what traditional E&O and cyber explicitly carve out, so you can deploy agentic AI at scale with real peace of mind.\r\nBuilt for companies deploying agentic AI, self-serve from day one.\r\n\r\nThe problem: AI agents are taking actions autonomously buying, emailing, modifying sensitive data. AB 316 already holds deployers liable. EU AI Act enforces in August. Cyber and E&O insurance are excluding AI claims. Companies shipping agents have zero coverage and no third-party proof their agent is safe. Enterprise legal asks \"who pays if your agent breaks something?\" and there's no good answer.\r\n                                                                                                                                                                                                                                        \r\nWe built the answer. Critical-category risk evaluation, certification, financial guarantee, liability insurance and the documentation enterprise procurement needs to sign off.\r\n\r\nTeam: Ines (ex-General Manager at SafetyWing, grew insurance product from $5M to $60M revenue, 5 years launching insurance products from scratch and structuring a TokioMarine MGA into its own carrier) + Julien (AI software engineer + corporate strategy, enterprise compliance).\r\n\r\nWe understand how insurance works, what enterprises require, and why startups can't wait 6 months for either.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/klaimee",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "Fintech",
+        "Compliance",
+        "Insurance",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "Fintech",
+        "Insurance"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": [
+        "highlightWomen"
+      ]
+    },
+    {
+      "id": 31538,
+      "name": "flowscope",
+      "slug": "flowscope",
+      "website": "https://flowscope.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/8294685f458783c2fab7247c8fd749f25be5691c.png",
+      "oneLiner": "AI-native consulting to map and automate business processes",
+      "longDescription": "flowscope is an AI-native consulting firm that uses agents to learn and document how businesses actually run: who touches what, where it stalls, what's pure repetition. Our agents redesign and automate those processes, shipping AI into production on the company's existing systems. In days, not months.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/flowscope",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "B2B",
+        "Enterprise Software"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": [
+        "highlightLatinx"
+      ]
+    },
+    {
+      "id": 31536,
+      "name": "Gigacatalyst",
+      "slug": "gigacatalyst",
+      "website": "https://gigacatalyst.com/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/f036b6b16ede0b0a7e4c426862254c490d653c42.png",
+      "oneLiner": "Customize your software to every user with AI",
+      "longDescription": "Gigacatalyst allows sales and CS teams to build missing features that customers need, so you stop losing business because of feature gaps. We’ve helped our customers unblock $1M in sales in 6 weeks.\r\n\r\nWe do this with an embedded AI customization layer that learns your APIs. Each customer can now adapt your product to match their workflows perfectly, and share it across their team with our in-built app store.\r\n\r\nThe result is that customers use your SaaS more, retain for longer, and expand quicker, because they get bespoke implementation for their exact usecase, without waiting.\r\n\r\nWe're live with the top Series B companies with 90% repeat usage rate. Our customers tell us that Gigacatalyst is the best way to increase usage, retention, and expansion in 2026.",
+      "teamSize": 4,
+      "url": "https://www.ycombinator.com/companies/gigacatalyst",
+      "batch": "P26",
+      "tags": [
+        "SaaS",
+        "Enterprise",
+        "No-code",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Engineering, Product and Design"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada",
+        "Remote",
+        "Partly Remote"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31534,
+      "name": "Astraea",
+      "slug": "astraea",
+      "website": "https://tryastraea.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/a54f06b55a2ed047cbb87b6611e0a25bcf346a72.png",
+      "oneLiner": "Agents that accelerate clinical trials.",
+      "longDescription": "Astraea is an AI-native biometrics platform for clinical trials. We automate the data management, statistical programming, and clinical data analysis workflows that take Phase II and III studies from raw study inputs to auditable, FDA-ready outputs. Instead of relying on fragmented legacy systems, manual handoffs, and large programming teams, Astraea gives sponsors a single platform to move from source data through standards generation, analysis datasets, tables/listings/figures, and final reporting with human oversight built in.\r\n\r\nOur platform is designed for the parts of clinical development that are still painfully manual today: raw data ingestion, data normalization, CDISC mapping, SDTM generation, ADaM transformation, TFL production, QC cycles, and revision workflows. We unify these steps in one system so teams can track the entire data analysis pipeline from a single interface, with full visibility, version control, auditability, and traceability at every stage.\r\n\r\nIn practice, Astraea helps sponsors and biometrics teams replace months of repetitive expert work with automated, reviewable execution. Highly trained statisticians, programmers, and data managers should not be spending so much time stitching together datasets, formatting outputs, resolving handoff issues, and repeating the same cleanup and QC loops across disconnected tools. Astraea keeps experts in control of the critical decisions while dramatically reducing the operational burden around them.\r\n\r\nWe are starting with the workflows that matter most in trial analysis and reporting: SDTM generation, ADaM generation, statistical programming workflows, TFL generation, and the QC and revision cycles needed to get outputs ready for delivery. Over time, Astraea is building toward a full end-to-end system for modern clinical trial data execution in regulated environments.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/astraea",
+      "batch": "P26",
+      "tags": [
+        "SaaS",
+        "Health Tech",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31531,
+      "name": "Manicule",
+      "slug": "manicule",
+      "website": "https://manicule.dev",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/cd583af5fd7e25beb6cf6bd63167daa1273db6c5.png",
+      "oneLiner": "AI Native Technical Documentation Studio",
+      "longDescription": "Manicule is an AI-native technical documentation agency. We own technical documentation end-to-end for developer tool companies, including information architecture, messaging, writing, design, and QA. Agents handle the mechanical parts like code verification and auditing at a scale and speed no human team can match, while humans refine the thinking and make the docs actually good. We're at $15K MRR and profitable, with clients like Supermemory, Greptile, Reducto, and Rootly. Supermemory's docs drove a 30% improvement in answer success rate and went viral on Twitter, all shipped in 23 days.\r\n\r\nEvery dev tool founder knows their docs are broken but simply don't have the time to fix them. The old solution was hiring a full-time technical writer who understands engineering, marketing, and devrel. That role is really hard and expensive to hire for, so docs stay broken. Naman started freelance writing for developer tools 3 years ago and realized that you can't one-shot docs. They require tight feedback loops with the engineering team, multiple review cycles, and real product understanding. When he worked with Supermemory, they had two products that sounded identical to customers. He got on calls with the CEO, figured out the right positioning for each product, and restructured the entire docs around it. That kind of work requires judgment and context that agents simply don’t have.\r\n\r\nOn the other hand, testing every code snippet against a live API, auditing hundreds of pages for broken links, and drafting from OpenAPI specs is grunt work that agents do in minutes. The insight behind Manicule is that good documentation requires both, and nobody has packaged them together. Shreyans was a founding engineer at Supermemory, saw the impact of good docs firsthand, and joined Naman to productize Manicule. We're now a team of 5, building toward that vision. Thousands of AI startups are launching dev tools every month, and docs are the single biggest asset they're all neglecting.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/manicule",
+      "batch": "P26",
+      "tags": [
+        "Developer Tools",
+        "B2B",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada",
+        "Remote",
+        "Partly Remote"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31529,
+      "name": "Mochatrade",
+      "slug": "mochatrade",
+      "website": "https://www.mochatrade.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/b53aed7c2d61caf968cbcb61a42f6cd0f7f65ef9.png",
+      "oneLiner": "US stock perps for global traders",
+      "longDescription": "Mochatrade lets global traders trade perpetual futures on US stocks with up to 20x leverage. Access 50+ US stocks including TSLA, NVDA, AAPL. Mocha is fully self-custodial and no US brokerage account is needed. Traders on-ramp in local currencies and get professional-grade execution on the world's most liquid equities. Starting with India (140M+ demat account holders), and expanding across other markets.",
+      "teamSize": 3,
+      "url": "https://www.ycombinator.com/companies/mochatrade",
+      "batch": "P26",
+      "tags": [
+        "Fintech",
+        "Crypto / Web3",
+        "Consumer Finance"
+      ],
+      "status": "Active",
+      "industries": [
+        "Fintech",
+        "Consumer Finance"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada",
+        "Remote",
+        "Partly Remote"
+      ],
+      "locations": [
+        "New York, NY, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31528,
+      "name": "Asendia AI",
+      "slug": "asendia-ai",
+      "website": "https://asendia.ai/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/e735fee67a48586d3de061beb544a8ab8d481fc6.png",
+      "oneLiner": "AI Recruiters for Staffing Agencies and Enterprise",
+      "longDescription": "Asendia AI builds AI recruiters for staffing agencies and enterprise companies. It clones their best recruiters into AI agents that match, screen, and submit candidates 10x faster.",
+      "teamSize": 3,
+      "url": "https://www.ycombinator.com/companies/asendia-ai",
+      "batch": "P26",
+      "tags": [
+        "Artificial Intelligence",
+        "Recruiting",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Human Resources"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": [
+        "highlightWomen",
+        "isHiring"
+      ]
+    },
+    {
+      "id": 31527,
+      "name": "Revnu",
+      "slug": "revnu",
+      "website": "https://revnu.com",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/37b7a4d126859b0a7edce4eaee5984ecd6f85757.png",
+      "oneLiner": "Everything but the app itself",
+      "longDescription": "Revnu is a growth team for founders addicted to building. \r\n\r\nPoint us at your product and autonomous agents start running your SEO, ads, cold outreach, A/B tests and more. All sharing a single intelligence layer, so every channel makes the others smarter. \r\n\r\nYou keep shipping. We run the business.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/revnu",
+      "batch": "P26",
+      "tags": [
+        "Developer Tools",
+        "Marketing"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31525,
+      "name": "Arden",
+      "slug": "arden",
+      "website": "https://ardentech.ai/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/66c948c30bb6ef7a235b3bf6ee7bcb0964990077.png",
+      "oneLiner": "AI agents that automate SOX control testing.",
+      "longDescription": "Arden is the AI-native platform for internal audit and SOX teams.\r\n\r\nWe build AI agents that automatically pull evidence from your stack, test controls end-to-end, and produce audit-ready workpapers in minutes instead of weeks.\r\n\r\nInternal audit is a massive but underserved market. Every public company in the US is required to do SOX testing, yet teams still run it through spreadsheets and screenshots. Arden is the engine that does this work.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/arden",
+      "batch": "P26",
+      "tags": [
+        "Finance",
+        "B2B",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Finance and Accounting"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    },
+    {
+      "id": 31524,
+      "name": "AgentPhone",
+      "slug": "agentphone",
+      "website": "https://www.agentphone.ai/",
+      "smallLogoUrl": "https://bookface-images.s3.amazonaws.com/small_logos/3cd0619758d7e852f6674fba763a0d1167fa4a69.png",
+      "oneLiner": "Phone Numbers for AI Agents",
+      "longDescription": "The $2T global telecom industry was built for humans. Agents can't act in the real world today because without a phone number, they have no identity. AgentPhone gives every AI agent its own phone number to reach people and businesses through messages and calls.",
+      "teamSize": 2,
+      "url": "https://www.ycombinator.com/companies/agentphone",
+      "batch": "P26",
+      "tags": [
+        "Developer Tools",
+        "API",
+        "Telecommunications",
+        "AI"
+      ],
+      "status": "Active",
+      "industries": [
+        "B2B",
+        "Infrastructure"
+      ],
+      "regions": [
+        "United States of America",
+        "America / Canada"
+      ],
+      "locations": [
+        "San Francisco, CA, USA"
+      ],
+      "badges": []
+    }
+  ],
+  "nextPage": "https://api.ycombinator.com/v0.1/companies?count=5&page=2",
+  "page": 1,
+  "totalPages": 237
+}

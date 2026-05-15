@@ -23,10 +23,23 @@ from wekruit_matching.scraper.upsert import (
     mark_stale_jobs,
     upsert_jobs,
 )
+from wekruit_matching.scraper.yc import (
+    SOURCE_REPO_BARE as YC_SOURCE_REPO_BARE,
+    fetch_yc_companies,
+    scrape_yc,
+)
 
 
 SIMPLIFY_REPOS = [REPO_INTERNSHIPS, REPO_NEW_GRAD]
 JOBRIGHT_REPOS = ["jobright-intern", "jobright-newgrad"]
+
+# Phase A1 (2026-05-15): YC scraper kill-switch. Default ON; set
+# YC_SCRAPER_ENABLED=0 (or false/no) to skip the YC fetch in emergencies
+# (e.g. YC anti-bot / API outage) without code change.
+def _yc_enabled() -> bool:
+    import os
+    raw = os.environ.get("YC_SCRAPER_ENABLED", "1").strip().lower()
+    return raw not in ("0", "false", "no", "off", "")
 
 
 def scrape_all() -> dict[str, dict]:
@@ -35,6 +48,7 @@ def scrape_all() -> dict[str, dict]:
     Sources:
     1. SimplifyJobs GitHub READMEs (Summer2026-Internships, New-Grad-Positions)
     2. JobRight.ai (intern-list.com, newgrad-jobs.com) — 10 categories each
+    3. Y Combinator (ycombinator.com/jobs + companies API directory)
 
     Returns per-source stats dict.
     """
@@ -107,6 +121,59 @@ def scrape_all() -> dict[str, dict]:
         except Exception as e:
             logger.error("Failed to scrape JobRight: {}", e)
             all_stats["jobright"] = {"error": str(e)}
+
+        # --- Y Combinator (Phase A1) ---
+        # Two phases: (a) scrape active job postings off
+        # ycombinator.com/jobs and upsert by source_repo='yc:<batch>';
+        # (b) cache YC's public companies directory to disk so the PA-
+        # side nightly enricher (paEnrichCompaniesNightly) can lookup
+        # batch + tags without re-hitting YC's API. Both are wrapped
+        # in their own try/except — neither blocks pipeline progress.
+        if not _yc_enabled():
+            logger.info("yc: disabled via YC_SCRAPER_ENABLED env")
+            all_stats["yc"] = {"skipped": True}
+        else:
+            try:
+                logger.info("Scraping Y Combinator job postings")
+                yc_jobs = scrape_yc()
+                logger.info("Fetched {} jobs from YC", len(yc_jobs))
+
+                # YC postings come tagged with per-batch source_repo
+                # ('yc:W25' etc.), so we group by repo for both upsert
+                # and stale-marking — mirrors the jobright pattern.
+                by_repo: dict[str, list] = {}
+                for job in yc_jobs:
+                    by_repo.setdefault(job.source_repo, []).append(job)
+
+                for repo_slug, jobs in by_repo.items():
+                    upsert_stats = upsert_jobs(jobs, conn)
+                    seen_ids = {j.job_id for j in jobs}
+                    stale_count = mark_stale_jobs(seen_ids, repo_slug, conn)
+                    all_stats[repo_slug] = {**upsert_stats, "stale": stale_count}
+                    logger.info(
+                        "YC {}: inserted={} updated={} unchanged={} stale={}",
+                        repo_slug, upsert_stats.get("inserted", 0),
+                        upsert_stats.get("updated", 0),
+                        upsert_stats.get("unchanged", 0), stale_count,
+                    )
+
+                if not yc_jobs:
+                    all_stats[YC_SOURCE_REPO_BARE] = {
+                        "inserted": 0, "updated": 0, "unchanged": 0, "stale": 0,
+                    }
+            except Exception as e:
+                logger.error("Failed to scrape YC jobs: {}", e)
+                all_stats["yc"] = {"error": str(e)}
+
+            # Companies directory cache — non-fatal: if YC API is down
+            # we just keep the previous snapshot. Logs but never raises.
+            try:
+                logger.info("Refreshing YC companies directory cache")
+                companies = fetch_yc_companies()
+                all_stats["yc_companies"] = {"cached": len(companies)}
+            except Exception as e:
+                logger.error("Failed to refresh YC companies cache: {}", e)
+                all_stats["yc_companies"] = {"error": str(e)}
 
     return all_stats
 
