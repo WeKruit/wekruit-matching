@@ -341,3 +341,60 @@ def jobs_stats(_: None = Depends(verify_api_key)) -> dict:
         logger.exception("Unhandled error in GET /jobs/stats: {}", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
     return {"stats": stats}
+
+
+# ---------------------------------------------------------------------------
+# V3.3 — Firecrawl proxy endpoint
+# ---------------------------------------------------------------------------
+# Exposes the macmini-local Firecrawl Docker service (localhost:3002) to
+# WeKruit cloud-functions over the existing cloudflare tunnel
+# (matching.wekruit.com). Inbound auth = X-API-Key (same as /match);
+# outbound auth = Bearer firecrawl_api_key (from .env).
+
+import httpx as _httpx_for_fc
+
+
+class FirecrawlScrapeRequest(BaseModel):
+    url: str = Field(..., min_length=4, max_length=2_000)
+    formats: list[str] = Field(default_factory=lambda: ["markdown"])
+    only_main_content: bool = True
+    timeout_seconds: float = Field(default=30.0, ge=1.0, le=120.0)
+
+
+@app.post("/firecrawl/scrape")
+@limiter.limit("30/minute")
+def firecrawl_scrape(
+    request: Request,
+    body: FirecrawlScrapeRequest,
+    _: None = Depends(verify_api_key),
+) -> dict:
+    settings = get_settings()
+    if not settings.firecrawl_api_key:
+        raise HTTPException(status_code=503, detail="firecrawl_api_key_missing")
+    base = settings.firecrawl_base_url.rstrip("/")
+    if not base.endswith(("/v1", "/v2")):
+        base = base + "/v1"
+    target = f"{base}/scrape"
+    payload: dict = {
+        "url": body.url,
+        "formats": body.formats,
+        "onlyMainContent": body.only_main_content,
+    }
+    headers = {
+        "authorization": f"Bearer {settings.firecrawl_api_key}",
+        "content-type": "application/json",
+    }
+    try:
+        with _httpx_for_fc.Client(timeout=body.timeout_seconds) as client:
+            r = client.post(target, headers=headers, json=payload)
+        if r.status_code >= 500:
+            raise HTTPException(status_code=502, detail=f"firecrawl_upstream_{r.status_code}: {r.text[:200]}")
+        data = r.json()
+        return {"ok": True, "result": data, "status": r.status_code}
+    except _httpx_for_fc.TimeoutException as e:
+        raise HTTPException(status_code=504, detail=f"firecrawl_timeout: {e}") from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("firecrawl proxy error: {}", e)
+        raise HTTPException(status_code=500, detail=f"firecrawl_proxy_error: {e}") from e
