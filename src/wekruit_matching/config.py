@@ -42,7 +42,11 @@ class Settings(BaseSettings):
     # Firebase job sync (Phase 21)
     firebase_sync_url: str = Field("")
     firebase_sync_api_key: str = Field("", repr=False)
-    firebase_sync_batch_size: int = Field(200)
+    # 2026-05-18 — drop from 200 to 50 to keep matching-api Firestore TX
+    # under 10 MiB. Receiver-side cap also lowered (FIRESTORE_BATCH_LIMIT 500 → 25)
+    # in wekruit-core-service. See .planning/GOAL-apply-url-cleanup.md sync
+    # section for the cross-repo lock.
+    firebase_sync_batch_size: int = Field(50)
     firebase_sync_timeout_seconds: float = Field(30.0)
     firebase_sync_collection: str = Field("matching-jobs")
 
