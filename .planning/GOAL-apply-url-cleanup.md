@@ -288,10 +288,59 @@ If Phase 2 + 3 land coverage ≥60%, the `pa-ats-resolve-priority` queue retry l
 
 ---
 
+## SYNC GAP — INCLUDED IN GOAL (added 2026-05-18, Adam directive)
+
+After initial ship Adam asked *"but we have 10k+ documents no?"*. Audit confirmed
+PG had **17,748 active+embedded** jobs but Firestore only held **3,662 active**.
+The ~14k gap was caused by the PG→Firestore sync silently failing for ~3 days.
+
+### Root cause
+
+1. **Receiver-side TX too big** —
+   `wekruit-core-service-cloud-function/src/services/matching/repositories/matchingJobRepository.ts`
+   chunked incoming HTTP batches into Firestore `writeBatch` of up to **500 docs**.
+   Each `matching-jobs` doc carries a 1536-float embedding (~24 KB) + job_description
+   blob (~50–100 KB total). 500-doc commit blew past Firestore's 10 MiB TX cap.
+   `matching-api` returned `500 INVALID_ARGUMENT: Transaction too big`.
+
+2. **Client retry-storm** — macmini `pipeline/job_sync.py:_post_jobs_batch`
+   recursively halves on 500 response (200 → 100+100 → 50+50 → …). 5-minute sync
+   turned into hour-long retry storm. Daily launchd didn't drain successfully for
+   ~3 days. Firestore active stayed stuck at 3,662 while PG kept growing.
+
+### Cross-repo fix (locked)
+
+| Repo | File | Change | Commit |
+|---|---|---|---|
+| wekruit-core-service-cloud-function | `src/services/matching/repositories/matchingJobRepository.ts` | `FIRESTORE_BATCH_LIMIT` 500 → 25 | PR #6 merged to main |
+| wekruit-matching (macmini) | `src/wekruit_matching/config.py` | `firebase_sync_batch_size` default 200 → 50 | `965e884` on origin/main |
+
+The two caps are interlocked: 50 client docs/request × ~100 KB/doc = ~5 MiB request,
+which the receiver splits into 2 internal Firestore TXs of 25 docs ≈ 2.5 MiB each.
+Well under the 10 MiB cap from both directions. Removes the retry-split storm too.
+
+### Sync gap done criteria
+
+| # | Check | Command | Pass condition |
+|---|---|---|---|
+| S1 | Receiver patched + deployed | `gcloud functions describe matching-api --region=us-central1 --project=wekruit-5f89b --gen2` | revision deployed post-2026-05-18T20:00 UTC |
+| S2 | Macmini client patched | `ssh wekruit-mini "grep firebase_sync_batch_size .../config.py"` | shows `Field(50)` |
+| S3 | Full sync runs without TX-too-big | `ssh wekruit-mini "grep -c 'Transaction too big' /tmp/full-sync-*.log"` | 0 in any post-fix log |
+| S4 | Firestore active matches PG active+embedded | `node /tmp/agg-active.mjs` vs PG count | within ±100 docs |
+| S5 | Daily launchd run finishes without retry-split warnings | `grep -c "Firebase sync batch failed at" /tmp/wekruit-manual-run-*.log` | 0 after launchd run starting post-fix |
+
+### Followup (parked for separate goal)
+
+- Emit a daily health metric: Firestore active vs PG active+embedded delta. Alert if > 500.
+- Monitor macmini launchd sync logs for retry-split warnings — should stay zero permanently.
+
+---
+
 ## REFERENCES
 
 - v1.7 backfill phase: see git log around `apps/functions/src/backfill-ats-urls.ts` initial commit (~mid May).
 - Earlier ship doc: `.planning/GOAL-company-tier-yc-match.md` in wekruit-pa (separate milestone).
 - v2 stable job_id work: macmini commits `deb7323..1d1d048`.
+- Cross-repo sync fix: wekruit-core-service-cloud-function PR #6 + wekruit-matching `965e884`.
 
 **START.**
