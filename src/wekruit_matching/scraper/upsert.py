@@ -206,7 +206,7 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
             """
             INSERT INTO jobs (
                 job_id, source_repo, company_name, role_title,
-                primary_url, location_raw, date_posted_raw,
+                primary_url, ats_apply_url, location_raw, date_posted_raw,
                 status, first_seen_at, last_seen_at, content_hash,
                 industry, company_size, required_skills, sponsorship,
                 enriched_at,
@@ -214,7 +214,7 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                 job_description
             ) VALUES (
                 %(job_id)s, %(source_repo)s, %(company_name)s, %(role_title)s,
-                %(primary_url)s, %(location_raw)s, %(date_posted_raw)s,
+                %(primary_url)s, %(ats_apply_url)s, %(location_raw)s, %(date_posted_raw)s,
                 'active', %(now)s, %(now)s, %(content_hash)s,
                 %(industry)s, %(company_size)s, %(required_skills)s, %(sponsorship)s,
                 %(enriched_at)s,
@@ -269,7 +269,12 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     )
                     ELSE jobs.sources
                 END,
-                job_description = COALESCE(EXCLUDED.job_description, jobs.job_description)
+                job_description = COALESCE(EXCLUDED.job_description, jobs.job_description),
+                -- 2026-05-18 v1.8 — scraper-emitted ats_apply_url (non-null
+                -- when primary_url is a real ATS URL, not jobright). Carry
+                -- forward existing non-null over re-scrapes; only fill when
+                -- previously null.
+                ats_apply_url   = COALESCE(jobs.ats_apply_url, EXCLUDED.ats_apply_url)
             """,
             [
                 {
@@ -278,6 +283,7 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     "company_name": job.company_name,
                     "role_title": job.role_title,
                     "primary_url": job.primary_url,
+                    "ats_apply_url": job.ats_apply_url,
                     "location_raw": job.location_raw,
                     "date_posted_raw": job.date_posted_raw,
                     "content_hash": job.content_hash,

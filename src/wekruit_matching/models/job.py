@@ -47,6 +47,7 @@ class Job(BaseModel):
     company_name: str
     role_title: str
     primary_url: str | None = None
+    ats_apply_url: str | None = None
     location_raw: str = Field("", description="Raw location string from README table cell")
     date_posted_raw: str | None = None
 

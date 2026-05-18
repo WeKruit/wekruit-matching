@@ -166,6 +166,7 @@ def _to_job(raw: dict) -> Optional[Job]:
         company_name=company,
         role_title=title,
         primary_url=apply_url or None,
+        ats_apply_url=(apply_url or None) if (apply_url or None) and "jobright" not in (apply_url or None) else None,
         location_raw=str(raw.get("location") or ""),
         date_posted_raw=posted_str,
         status=JobStatus.ACTIVE,

@@ -261,6 +261,7 @@ def _to_job(
         company_name=company_norm,
         role_title=title,
         primary_url=apply_url,
+        ats_apply_url=(apply_url) if (apply_url) and "jobright" not in (apply_url) else None,
         location_raw=location_raw,
         date_posted_raw=posted_str,
         status=JobStatus.ACTIVE,
