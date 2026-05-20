@@ -11,6 +11,7 @@ from loguru import logger
 
 from wekruit_matching.config import get_settings
 from wekruit_matching.db.connection import get_connection
+from wekruit_matching.scraper.id_utils import compute_canonical_signature
 
 
 def _serialize_embedding(value: Any) -> Any:
@@ -43,6 +44,16 @@ def _serialize_job(row: dict[str, Any]) -> dict[str, Any]:
             payload[key] = list(value)
         else:
             payload[key] = value
+    # Track E (matching-quality launch blocker, 2026-05-20): emit the
+    # cross-source canonical signature so wekruit-pa can read it from
+    # Firestore for the `pa-job-canonical-signature/{sig}` dedup index.
+    # company_name + role_title are required scraper fields — if either is
+    # missing, the row would have failed Track D's sync gate upstream, so
+    # we skip the signature rather than emit a wrong/partial one.
+    co = payload.get("company_name")
+    role = payload.get("role_title")
+    if isinstance(co, str) and isinstance(role, str) and co.strip() and role.strip():
+        payload["canonical_signature"] = compute_canonical_signature(co, role)
     return payload
 
 
@@ -195,6 +206,17 @@ def _fetch_active_jobs(
         WHERE status = 'active'
           AND embedding IS NOT NULL
           AND embedded_at IS NOT NULL
+          -- Matching-quality launch blocker (Track D, 2026-05-20):
+          -- belt-and-suspenders with embedding/worker.py's gate. A job
+          -- without a JD body or skills should NEVER land in Firestore
+          -- active even if a stale embedding exists from a prior run that
+          -- pre-dated the worker gate. This pins the contract at the sync
+          -- boundary so an embedding row left behind by older code can't
+          -- ride into the matching pool.
+          AND job_description IS NOT NULL
+          AND length(job_description) >= 200
+          AND required_skills IS NOT NULL
+          AND cardinality(required_skills) > 0
     """
     params: dict[str, Any] = {}
     if since is None:

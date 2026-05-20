@@ -71,8 +71,15 @@ from wekruit_matching.pipeline.firecrawl_enricher import (
 )
 from wekruit_matching.pipeline.url_classifier import FetchRoute, classify_job_url, normalize_job_url
 
-# Re-attempt window for *recoverable* Stage 2b failures (P7-F gating fix).
-STAGE2B_STALE_DAYS = 7
+# Re-attempt window for *recoverable* Stage 2b failures.
+#
+# Lowered 7 → 1 (2026-05-20, matching-quality launch blocker):
+# the 6,888 NULL-JD active-pool backlog at launch eve was bottlenecked by the
+# stale window. With STAGE2B_STALE_DAYS=1, transient Firecrawl/Workday/Lever
+# 5xx outages get one retry per day instead of one per week, draining the
+# backlog far faster. ``permanent_404=TRUE`` rows are still excluded forever,
+# so the lowered window only re-enters recoverable failures.
+STAGE2B_STALE_DAYS = 1
 
 
 _AGGREGATOR_HOSTS = (
@@ -207,6 +214,33 @@ def _write_success(conn, job_id: str, result: AtsJobData) -> None:
     )
 
 
+def _write_skip_no_url(conn, job_id: str) -> None:
+    """Mark a row as 'no fetchable URL' so it leaves the active queue.
+
+    Written when ``_pick_target_url`` returns None — both ``primary_url`` and
+    ``ats_apply_url`` were jobright-only or empty. We set ``jd_fetch_source``
+    to a distinct sentinel ('skip_no_url') so the queue-selection clause
+    excludes it (it only re-admits rows where ``jd_fetch_source = 'failed'``).
+    Tracks C/F can clear this column when a real ATS URL is backfilled, and
+    the row will re-enter on the next run.
+
+    ``permanent_404`` stays FALSE: the row is not permanently dead, just
+    presently unfetchable from this pipeline. The jobright-native enricher
+    (``enrich_from_jobright.py``) is the proper path for these.
+    """
+    conn.execute(
+        """
+        UPDATE jobs
+        SET
+          jd_fetch_source = 'skip_no_url',
+          jd_fetch_attempted_at = NOW(),
+          permanent_404 = FALSE
+        WHERE job_id = %(job_id)s
+        """,
+        {"job_id": job_id},
+    )
+
+
 def _write_failure(conn, job_id: str, *, permanent_404: bool = False) -> None:
     conn.execute(
         """
@@ -286,7 +320,19 @@ def _process_one_job(
 
     original_url = _pick_target_url(row)
     if original_url is None:
+        # No fetchable URL (typically jobright-only). Mark the row so it leaves
+        # the queue — without this the row re-enters every run forever once the
+        # SQL filter no longer excludes jobright-only docs (see SELECT clause).
         out["skipped"] = 1
+        if not dry_run:
+            try:
+                _write_skip_no_url(write_conn, row["job_id"])
+            except Exception as write_exc:
+                logger.warning(
+                    "Could not persist skip_no_url for {}: {}",
+                    row["job_id"],
+                    write_exc,
+                )
         return out
 
     target_url = original_url
@@ -410,7 +456,13 @@ def run_jd_enrichment(
     last_request_at: dict[str, float] = {}
     domain_lock = threading.Lock()
     counter_lock = threading.Lock()
-    effective_batch_size = min(batch_size, 500)
+    # Cap raised 500 → 5000 (2026-05-20, matching-quality launch blocker):
+    # at the 6,888-doc backlog, a 500-row cap forced 14 paginated SELECTs per
+    # run with the same per-row work in sequential mode. 5000 in-memory rows
+    # is cheap; the cost is per-fetch network/Firecrawl latency, not the page.
+    # When parallelism (max_workers > 1) is re-enabled the cap unlocks
+    # 50K-attempt runs (10 workers × 5K page).
+    effective_batch_size = min(batch_size, 5000)
     sequential = max_workers <= 1
 
     def _aggregate(out: dict) -> None:
@@ -432,11 +484,15 @@ def run_jd_enrichment(
             FROM jobs
             WHERE status = 'active'
               AND (job_description IS NULL OR job_description = '')
-              -- P7-L (2026-05-08): include rows where the only fetchable URL is ats_apply_url.
-              AND (
-                (primary_url IS NOT NULL AND primary_url NOT LIKE 'https://jobright.ai/%%')
-                OR (ats_apply_url IS NOT NULL AND ats_apply_url NOT LIKE 'https://jobright.ai/%%')
-              )
+              -- Pre-filter dropped 2026-05-20 (matching-quality launch blocker):
+              -- the prior ``primary_url NOT LIKE jobright OR ats_apply_url NOT
+              -- LIKE jobright`` clause silently hid jobright-only rows from
+              -- every metric so the 6,888 NULL-JD backlog showed up as "no
+              -- pending work". Now every active null-JD row is admitted; the
+              -- _pick_target_url skip-path marks no-fetchable-URL rows with
+              -- ``jd_fetch_source='skip_no_url'`` so they leave the queue
+              -- after one pass (still re-enter when an ATS URL is backfilled
+              -- and the source column is cleared by Track C / F).
               AND (
                 jd_fetch_attempted_at IS NULL
                 OR (

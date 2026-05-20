@@ -87,6 +87,60 @@ def generate_job_id(source_repo: str, company_name: str, role_title: str) -> str
     return hashlib.sha256(normalized_key.encode("utf-8")).hexdigest()
 
 
+def normalize_role_title(raw: str) -> str:
+    """Lowercase + collapse decorative chars in a role title.
+
+    Symmetrical to :func:`normalize_company_name` but tuned for titles —
+    role titles often contain seniority suffixes (Sr/Sr., Senior), comma
+    separators ("Software Engineer, Backend"), and slash variants
+    ("SWE/Software Engineer"). We don't try to canonicalize seniority
+    (that's an LLM job); we just remove emoji + punctuation and collapse
+    whitespace so trivial source-of-truth drift between scrapers ("SWE
+    Intern" vs "swe intern" vs "SWE 🔥 Intern") collapses to the same
+    signature.
+    """
+    cleaned = "".join(
+        ch for ch in raw
+        if unicodedata.category(ch) not in ("So", "Sm", "Sk", "Cs", "Cn")
+    )
+    cleaned = re.sub(r"[^\w\s]", " ", cleaned.lower())
+    return " ".join(cleaned.split())
+
+
+def compute_canonical_signature(company_name: str, role_title: str) -> str:
+    """Cross-source dedup signature: sha256(norm(co) + '::' + norm(role)).
+
+    Track E (matching-quality launch blocker, 2026-05-20): cross-source
+    overlap is small (~107 active rows when first measured) but real.
+    Same role at the same company surfaced through two ATS scrapers
+    (greenhouse:acme + jobright-newgrad mirror, for example) produces two
+    distinct ``job_id``s because ``source_repo`` is part of
+    :func:`generate_job_id`. The canonical signature is the second key:
+    same human-meaning role at same company, regardless of source — used
+    by ``wekruit-pa``'s ``pa-job-canonical-signature/{sig}`` collection to
+    log + skip duplicate writes.
+
+    Differs from :func:`compute_content_hash` deliberately:
+      * content_hash is case-sensitive (so "Senior Engineer" vs "senior
+        engineer" trigger re-enrichment).
+      * canonical_signature is case-insensitive + emoji-stripped (so
+        cosmetic source-of-truth drift between scrapers collapses).
+
+    Args:
+        company_name: Raw company name from source. Normalized internally.
+        role_title: Raw role title from source. Normalized internally.
+
+    Returns:
+        64-character lowercase SHA-256 hex string. Stable as long as the
+        normalized (company, role) pair is unchanged.
+    """
+    sig_key = "::".join([
+        normalize_company_name(company_name),
+        normalize_role_title(role_title),
+    ])
+    return hashlib.sha256(sig_key.encode("utf-8")).hexdigest()
+
+
 def compute_content_hash(company_name: str, role_title: str) -> str:
     """Compute SHA-256 hash of enrichable fields for change detection.
 

@@ -336,13 +336,23 @@ def test_parallel_preserves_result_shape(monkeypatch):
     assert stats["failed"] == 0
 
 
-def test_parallel_default_max_workers_is_ten(monkeypatch):
-    """Default max_workers per task spec D-T1 must be 10."""
+def test_parallel_default_max_workers_is_sequential_pending_signal_fix(monkeypatch):
+    """Default max_workers is currently 1 (sequential).
+
+    Originally 10 per spec D-T1, but the ThreadPoolExecutor path has a
+    known signal-timeout bug (loop tick #5 finding) that crashes workers
+    under load. Until that's fixed, the default is 1 — the parallel code
+    path remains callable by explicit ``max_workers=N``, just not the
+    default.
+
+    When the signal-timeout fix lands, flip this back to 10 and rename.
+    """
     import inspect
 
     sig = inspect.signature(run_jd_enrichment)
-    assert sig.parameters["max_workers"].default == 10, (
-        f"max_workers default must be 10, got {sig.parameters['max_workers'].default}"
+    assert sig.parameters["max_workers"].default == 1, (
+        f"max_workers default must be 1 (sequential) until signal-timeout "
+        f"is fixed, got {sig.parameters['max_workers'].default}"
     )
     assert sig.parameters["max_workers"].kind == inspect.Parameter.KEYWORD_ONLY, (
         "max_workers must be keyword-only"

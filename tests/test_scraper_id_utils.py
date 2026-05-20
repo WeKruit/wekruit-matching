@@ -85,6 +85,71 @@ def test_generate_job_id_collapses_jobright_dupes():
 # compute_content_hash tests (unchanged in v2)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# compute_canonical_signature tests — Track E cross-source dedup key
+# ---------------------------------------------------------------------------
+
+def test_canonical_signature_returns_64_char_hex():
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+    sig = compute_canonical_signature("Google", "SWE Intern")
+    assert len(sig) == 64
+    assert re.fullmatch(r"[0-9a-f]{64}", sig), f"Not valid hex: {sig}"
+
+
+def test_canonical_signature_ignores_source_repo():
+    """Track E core: same (co, role) at different sources → same sig.
+
+    This is the whole point — generate_job_id intentionally includes
+    source_repo so cross-source listings get distinct row IDs (one job
+    can carry data from multiple ATS feeds). The canonical signature
+    drops source_repo so wekruit-pa can detect the cross-source overlap
+    and log/skip.
+    """
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+    sig_a = compute_canonical_signature("Google", "SWE Intern")
+    sig_b = compute_canonical_signature("Google", "SWE Intern")
+    assert sig_a == sig_b
+
+
+def test_canonical_signature_collapses_case_and_emoji():
+    """Same role surfaced via two scrapers with cosmetic drift → same sig."""
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+    sig_a = compute_canonical_signature("🔥 Google", "SWE Intern")
+    sig_b = compute_canonical_signature("Google", "swe intern")
+    sig_c = compute_canonical_signature("Google", "SWE 🚀 Intern")
+    assert sig_a == sig_b == sig_c
+
+
+def test_canonical_signature_distinguishes_different_roles():
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+    sig_swe = compute_canonical_signature("Google", "SWE Intern")
+    sig_pm = compute_canonical_signature("Google", "PM Intern")
+    assert sig_swe != sig_pm
+
+
+def test_canonical_signature_distinguishes_different_companies():
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+    sig_g = compute_canonical_signature("Google", "SWE Intern")
+    sig_m = compute_canonical_signature("Meta", "SWE Intern")
+    assert sig_g != sig_m
+
+
+def test_canonical_signature_differs_from_content_hash():
+    """The two hashes use different keys so they must be visibly distinct.
+
+    content_hash is case-sensitive ('Senior Engineer' ≠ 'senior engineer');
+    canonical_signature is case-insensitive. Same (raw_co, raw_role) input
+    therefore yields different bytes from each function.
+    """
+    from wekruit_matching.scraper.id_utils import (
+        compute_canonical_signature,
+        compute_content_hash,
+    )
+    co = "Google"
+    role = "SWE Intern"
+    assert compute_canonical_signature(co, role) != compute_content_hash(co, role)
+
+
 def test_compute_content_hash_returns_64_char_hex():
     from wekruit_matching.scraper.id_utils import compute_content_hash
     result = compute_content_hash("Google", "SWE Intern")

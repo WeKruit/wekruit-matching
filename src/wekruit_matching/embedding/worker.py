@@ -40,6 +40,16 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
     """
     register_vector(conn)
 
+    # Matching-quality launch blocker (Track D, 2026-05-20):
+    # enriched_at IS NOT NULL only signals "enrichment ran" — it does NOT
+    # signal "enrichment produced usable signal". A job whose JD fetch failed
+    # gracefully (Firecrawl 500 / Workday SPA) and whose skill extraction
+    # therefore yielded [] still gets enriched_at stamped. Without the JD +
+    # skills gate below, we'd compute an embedding from
+    # "{title} at {company}. Skills: " — a near-useless title-only vector
+    # that would then sync to Firestore active and ride into the matching
+    # pool. The result: 6,888 active docs with NULL JD and 2,425 zombie
+    # active docs with both NULL JD and empty skills. Cap that here.
     rows = conn.execute(
         """
         SELECT job_id, source_repo, company_name, role_title, location_raw,
@@ -48,6 +58,10 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
         WHERE embedded_at IS NULL
           AND enriched_at IS NOT NULL
           AND status = 'active'
+          AND job_description IS NOT NULL
+          AND length(job_description) >= 200
+          AND required_skills IS NOT NULL
+          AND cardinality(required_skills) > 0
         ORDER BY first_seen_at ASC
         LIMIT 500
         """
