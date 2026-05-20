@@ -507,9 +507,14 @@ def test_is_permanent_404_helper_classification() -> None:
 def test_select_query_includes_ats_apply_url_column_and_predicate() -> None:
     """SELECT must return ats_apply_url and treat it as a fallback URL.
 
-    Pin both: the column is in the SELECT list, and the WHERE predicate
-    accepts rows where only ats_apply_url is non-jobright (so we don't
-    starve when primary_url is the jobright aggregator URL).
+    Pin: the column is in the SELECT list, AND the SQL no longer pre-filters
+    out jobright-only rows (matching-quality launch blocker, 2026-05-20).
+
+    Old behaviour silently excluded jobright-only docs at the SQL layer, so
+    the active-pool null-JD backlog (6,888 rows) was invisible to enrichment
+    metrics. New behaviour admits everything; the Python skip-path marks
+    no-fetchable-URL rows with ``jd_fetch_source='skip_no_url'`` so they
+    leave the queue cleanly without forever-re-selecting.
     """
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 
@@ -526,17 +531,15 @@ def test_select_query_includes_ats_apply_url_column_and_predicate() -> None:
     assert "ats_apply_url" in select_query, (
         "SELECT must return ats_apply_url so the loop can fall back to it"
     )
-    # Predicate: at least one of (primary_url non-jobright) OR (ats_apply_url non-jobright)
-    assert (
-        "primary_url IS NOT NULL AND primary_url NOT LIKE 'https://jobright.ai/%%'"
-        in select_query
-    ), "primary_url must still be considered when it is a real employer URL"
-    assert (
-        "ats_apply_url IS NOT NULL AND ats_apply_url NOT LIKE 'https://jobright.ai/%%'"
-        in select_query
-    ), (
-        "ats_apply_url must be considered as a fallback — without this, jobright-"
-        "sourced rows with resolved ats_apply_url stay invisible to Stage 2b"
+    # Negative pin: the jobright pre-filter must NOT be present — it hides
+    # 6.8k null-JD rows from the queue and the metrics.
+    assert "NOT LIKE 'https://jobright.ai/%%'" not in select_query, (
+        "SQL must no longer pre-filter jobright rows; the Python skip-path "
+        "handles them with a skip_no_url marker write"
+    )
+    # The recoverable-failure clause must still gate retries by stale window.
+    assert "STAGE2B_STALE_DAYS" in select_query or "INTERVAL '1 days'" in select_query, (
+        "Recoverable-failure retry window must still be present"
     )
 
 
@@ -639,15 +642,31 @@ def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
     )
 
 
-def test_no_fetchable_url_skips_without_burning_attempt() -> None:
-    """If both primary_url and ats_apply_url are missing/jobright, skip.
+def test_no_fetchable_url_writes_skip_marker(monkeypatch) -> None:
+    """When both URLs are jobright-only, write a skip_no_url marker.
 
-    This is a defensive branch — the SELECT clause should already filter
-    these out, but if a row slips through (e.g. concurrent paBackfill run
-    cleared ats_apply_url between SELECT and loop), skip gracefully rather
-    than crash or burn a bogus fetch attempt.
+    Matching-quality launch blocker (2026-05-20): the SQL pre-filter that
+    used to hide these rows was removed so they are visible to metrics. The
+    Python skip-path now writes a ``jd_fetch_source='skip_no_url'`` marker
+    that the SELECT clause excludes on subsequent runs (it only re-admits
+    ``jd_fetch_source = 'failed'`` rows). Tracks C/F can clear the marker
+    when a real ATS URL is backfilled.
+
+    A bogus network fetch must NOT happen — guard with a sentinel.
     """
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
+
+    def _no_fetch_allowed(*_a, **_k):
+        raise AssertionError("skip path must not perform a network fetch")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
+        _no_fetch_allowed,
+    )
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_lever_job",
+        _no_fetch_allowed,
+    )
 
     conn = _FakeConn(
         [[
@@ -672,11 +691,15 @@ def test_no_fetchable_url_skips_without_burning_attempt() -> None:
     assert stats["processed"] == 0
     assert stats["skipped"] == 1
     assert stats["failed"] == 0
-    # No UPDATE — we did not burn a write attempt
-    update_params = [
-        params for query, params in conn.executed if query.lstrip().startswith("UPDATE")
+    update_queries = [
+        (query, params)
+        for query, params in conn.executed
+        if query.lstrip().startswith("UPDATE")
     ]
-    assert update_params == []
+    assert len(update_queries) == 1, "skip path must write exactly one marker"
+    query, params = update_queries[0]
+    assert "jd_fetch_source = 'skip_no_url'" in query
+    assert params == {"job_id": "5" * 64}
 
 
 def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:

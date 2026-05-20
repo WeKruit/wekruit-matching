@@ -217,7 +217,14 @@ async def fetch_firecrawl_job(
             f"{root}/scrape",
             timeout_seconds=timeout_seconds,
             headers=headers,
-            json={"url": url, "formats": ["markdown"], "waitFor": 5000},
+            # waitFor 5000 → 20000 (2026-05-20, matching-quality launch
+            # blocker). 5s was too short for SPA pages on Workday / some
+            # Lever / some Greenhouse — Playwright would load 100KB+ of HTML
+            # at status 200 with no error, but Firecrawl declared the page
+            # "not long enough" because the JD body was still hydrating in
+            # JS DOM that the static markdown extractor cannot reach. 20s
+            # is the upper bound observed for these SPAs to finish painting.
+            json={"url": url, "formats": ["markdown"], "waitFor": 20000},
         )
         scrape_data = _extract_firecrawl_data(scrape_payload)
         markdown = str(scrape_data.get("markdown") or "")

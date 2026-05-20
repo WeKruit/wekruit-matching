@@ -86,7 +86,7 @@ async def test_fetch_firecrawl_job_uses_scrape_before_extract() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         calls.append(str(request.url))
-        if str(request.url).endswith("/v2/scrape"):
+        if str(request.url).endswith("/v1/scrape"):
             return httpx.Response(
                 200,
                 json={
@@ -97,7 +97,7 @@ async def test_fetch_firecrawl_job_uses_scrape_before_extract() -> None:
                     },
                 },
             )
-        if str(request.url).endswith("/v2/extract"):
+        if str(request.url).endswith("/v1/extract"):
             return httpx.Response(500, json={"error": "extract should not be called"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
@@ -119,12 +119,12 @@ async def test_fetch_firecrawl_job_escalates_to_extract_when_scrape_is_insuffici
     """Thin scrape markdown should escalate to extract exactly once."""
 
     async def handler(request: httpx.Request) -> httpx.Response:
-        if str(request.url).endswith("/v2/scrape"):
+        if str(request.url).endswith("/v1/scrape"):
             return httpx.Response(
                 200,
                 json={"success": True, "data": {"markdown": "Apply now"}},
             )
-        if str(request.url).endswith("/v2/extract"):
+        if str(request.url).endswith("/v1/extract"):
             return httpx.Response(
                 200,
                 json={

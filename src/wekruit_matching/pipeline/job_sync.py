@@ -195,6 +195,17 @@ def _fetch_active_jobs(
         WHERE status = 'active'
           AND embedding IS NOT NULL
           AND embedded_at IS NOT NULL
+          -- Matching-quality launch blocker (Track D, 2026-05-20):
+          -- belt-and-suspenders with embedding/worker.py's gate. A job
+          -- without a JD body or skills should NEVER land in Firestore
+          -- active even if a stale embedding exists from a prior run that
+          -- pre-dated the worker gate. This pins the contract at the sync
+          -- boundary so an embedding row left behind by older code can't
+          -- ride into the matching pool.
+          AND job_description IS NOT NULL
+          AND length(job_description) >= 200
+          AND required_skills IS NOT NULL
+          AND cardinality(required_skills) > 0
     """
     params: dict[str, Any] = {}
     if since is None:
