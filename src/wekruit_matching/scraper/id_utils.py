@@ -107,8 +107,56 @@ def normalize_role_title(raw: str) -> str:
     return " ".join(cleaned.split())
 
 
-def compute_canonical_signature(company_name: str, role_title: str) -> str:
-    """Cross-source dedup signature: sha256(norm(co) + '::' + norm(role)).
+_LOCATION_REMOTE_MARKERS: frozenset[str] = frozenset({
+    "remote",
+    "anywhere",
+    "us remote",
+    "remote us",
+    "work from home",
+    "wfh",
+    "fully remote",
+    "remote anywhere",
+})
+
+
+def normalize_location(raw: str | None) -> str:
+    """Normalize a location string for canonical-signature use.
+
+    Takes the head of multi-location strings ("San Francisco, CA · Remote" →
+    "san francisco"), strips decorative chars, collapses remote markers to
+    ``__remote__``, and falls back to ``__no_loc__`` when empty.
+
+    Idempotent: ``normalize_location(normalize_location(x))`` == ``normalize_location(x)``.
+
+    Args:
+        raw: Raw location string (or None).
+
+    Returns:
+        Normalized lowercase token. Special tokens: ``__no_loc__`` for empty
+        input, ``__remote__`` for explicit remote markers.
+    """
+    if not raw or not raw.strip():
+        return "__no_loc__"
+    head = re.split(r"[·,;|/]", raw)[0]
+    cleaned = "".join(
+        ch for ch in head
+        if unicodedata.category(ch) not in ("So", "Sm", "Sk", "Cs", "Cn")
+    )
+    cleaned = re.sub(r"[^\w\s]", " ", cleaned.lower())
+    cleaned = " ".join(cleaned.split())
+    if not cleaned:
+        return "__no_loc__"
+    if cleaned in _LOCATION_REMOTE_MARKERS:
+        return "__remote__"
+    return cleaned
+
+
+def compute_canonical_signature(
+    company_name: str,
+    role_title: str,
+    location_raw: str | None = None,
+) -> str:
+    """Cross-source dedup signature: sha256(v2::norm(co)::norm(role)::norm(loc)).
 
     Track E (matching-quality launch blocker, 2026-05-20): cross-source
     overlap is small (~107 active rows when first measured) but real.
@@ -120,23 +168,43 @@ def compute_canonical_signature(company_name: str, role_title: str) -> str:
     by ``wekruit-pa``'s ``pa-job-canonical-signature/{sig}`` collection to
     log + skip duplicate writes.
 
+    **v2 (2026-05-20)**: location added to disambiguate multi-posting same
+    role at same company. Google "Software Engineer" at SF / NYC / Remote
+    are different positions and used to collide on the v1 signature
+    (norm(co)::norm(role)). The signature now includes ``normalize_location``
+    so the three Google SWE postings produce three distinct signatures.
+
+    The ``v2::`` prefix is hashed in (not just prepended) so the resulting
+    sha256 is grep-distinct from v1: v1 entries on PA's
+    ``pa-job-canonical-signature/{sig}`` collection won't collide with v2
+    writes, and a one-time PA backfill can migrate v1 → v2 without a
+    coordinated cutover.
+
     Differs from :func:`compute_content_hash` deliberately:
       * content_hash is case-sensitive (so "Senior Engineer" vs "senior
         engineer" trigger re-enrichment).
       * canonical_signature is case-insensitive + emoji-stripped (so
         cosmetic source-of-truth drift between scrapers collapses).
 
+    Idempotency: pure function. Same inputs → same output, forever.
+
     Args:
         company_name: Raw company name from source. Normalized internally.
         role_title: Raw role title from source. Normalized internally.
+        location_raw: Raw location string (or None). When None / empty the
+            location component collapses to ``__no_loc__`` — backward
+            compatible with callers that don't pass location, but those
+            calls give up multi-location disambiguation.
 
     Returns:
         64-character lowercase SHA-256 hex string. Stable as long as the
-        normalized (company, role) pair is unchanged.
+        normalized (company, role, location) triple is unchanged.
     """
     sig_key = "::".join([
+        "v2",
         normalize_company_name(company_name),
         normalize_role_title(role_title),
+        normalize_location(location_raw),
     ])
     return hashlib.sha256(sig_key.encode("utf-8")).hexdigest()
 

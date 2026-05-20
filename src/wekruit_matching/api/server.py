@@ -17,7 +17,7 @@ import hmac
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -310,6 +310,109 @@ def analyze_url(request: Request, body: AnalyzeUrlRequest, _: None = Depends(ver
         "companySize": enrichment.company_size,
         "sponsorship": enrichment.sponsorship,
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /jobs/hygiene-flip — PA hygiene write-back endpoint
+# ---------------------------------------------------------------------------
+#
+# Matching-quality launch blocker (2026-05-20): closes the hygiene-sync race
+# described in alembic 0008. PA's ``paJobPoolHygiene`` Cloud Function calls
+# this endpoint whenever it flips a Firestore matching-jobs doc to inactive.
+# Setting ``hygiene_flipped=TRUE`` makes ``scraper/upsert.py``'s ON CONFLICT
+# clause preserve the row's status across re-scrapes — without this, every
+# hygiene flip is undone within 24h by the next daily pipeline run.
+#
+# Idempotency contract:
+#   * UPDATE uses COALESCE on ``hygiene_flipped_at`` + ``hygiene_flip_reason``
+#     so duplicate calls preserve the first-flip audit trail.
+#   * WHERE clause filters to only rows whose state would change, so the
+#     ``flipped`` rowcount reflects real changes — re-running the same body
+#     returns ``flipped=0`` once the state is in place.
+#   * Unknown job_ids are silently no-op (no error) so PA can retry batches
+#     without surfacing partial-success errors.
+
+
+class HygieneFlipRequest(BaseModel):
+    """PA hygiene-flip request payload.
+
+    The endpoint is intentionally simple: a list of job_ids that PA's
+    hygiene predicate matched, the target status, and the reason string.
+    PA's per-predicate logic (yc_synthetic_title / jd_zombie / etc.) lives
+    in wekruit-pa and reduces to one of a small set of reason strings
+    enumerated there.
+    """
+
+    job_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=10_000,
+        description="job_id values (64-char SHA-256) to flip.",
+    )
+    reason: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Hygiene predicate that matched (e.g. 'yc_synthetic_title', 'apply_url_not_job_page').",
+    )
+    target_status: str = Field(
+        default="inactive",
+        description="Status to write — defaults to 'inactive'. Only 'active' / 'inactive' accepted.",
+    )
+
+    @field_validator("target_status")
+    @classmethod
+    def _validate_status(cls, v: str) -> str:
+        if v not in {"active", "inactive"}:
+            raise ValueError(f"target_status must be 'active' or 'inactive', got {v!r}")
+        return v
+
+
+@app.post("/jobs/hygiene-flip")
+@limiter.limit("60/minute")
+def hygiene_flip(
+    request: Request,
+    body: HygieneFlipRequest,
+    _: None = Depends(verify_api_key),
+) -> dict:
+    """Flip jobs to hygiene-controlled status. Idempotent.
+
+    Sets ``hygiene_flipped=TRUE`` so the scraper upsert's ON CONFLICT
+    clause preserves ``status`` on next scrape. The first-call timestamp
+    and reason are preserved across duplicate calls via COALESCE.
+
+    Response keys:
+      * ``flipped`` — number of rows whose state changed in this call.
+      * ``received`` — number of job_ids in the request body.
+    """
+    try:
+        with get_connection() as conn:
+            result = conn.execute(
+                """
+                UPDATE jobs
+                SET
+                    status = %(target_status)s,
+                    hygiene_flipped = TRUE,
+                    hygiene_flipped_at = COALESCE(hygiene_flipped_at, NOW()),
+                    hygiene_flip_reason = COALESCE(hygiene_flip_reason, %(reason)s)
+                WHERE job_id = ANY(%(job_ids)s)
+                  AND (
+                    COALESCE(hygiene_flipped, FALSE) IS DISTINCT FROM TRUE
+                    OR status IS DISTINCT FROM %(target_status)s
+                  )
+                """,
+                {
+                    "target_status": body.target_status,
+                    "reason": body.reason,
+                    "job_ids": body.job_ids,
+                },
+            )
+            conn.commit()
+            flipped = result.rowcount
+    except Exception as e:
+        logger.exception("Unhandled error in POST /jobs/hygiene-flip: {}", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+    return {"flipped": flipped, "received": len(body.job_ids)}
 
 
 @app.get("/jobs/stats")

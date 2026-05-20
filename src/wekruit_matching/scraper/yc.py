@@ -349,6 +349,41 @@ def _resolve_primary_url(raw: dict) -> Optional[str]:
     return None
 
 
+_JD_KEYS_IN_INERTIA = (
+    "description",
+    "jobDescription",
+    "role",
+    "summary",
+    "roleDescription",
+    "responsibilities",
+    "details",
+)
+
+
+def _extract_jd_from_inertia(raw: dict) -> Optional[str]:
+    """Pull a job-description body from the Inertia jobPostings dict, if present.
+
+    YC's Inertia payload sometimes carries the full role description inline
+    (long-form HTML/markdown) and sometimes only carries title + company —
+    the SPA fetches the body via a follow-up GraphQL request that static
+    Firecrawl scraping cannot replay. When the inline body is present, we
+    pull it here so the Track D sync gate (>=200 chars JD) accepts the row
+    without needing Firecrawl to land hydrated DOM. When absent we return
+    None and the row falls through to the normal Stage 2b enrichment path.
+
+    Strategy: probe a small list of plausible keys in priority order. Each
+    value must be a non-empty string ≥200 chars to count — shorter strings
+    are likely teaser snippets, not the full body.
+
+    Idempotent: pure function on the input dict. Same payload → same output.
+    """
+    for key in _JD_KEYS_IN_INERTIA:
+        value = raw.get(key)
+        if isinstance(value, str) and len(value.strip()) >= 200:
+            return value.strip()
+    return None
+
+
 def _to_job(raw: dict) -> Optional[Job]:
     """Convert a single Inertia ``jobPostings`` entry to a Job model."""
     title = (raw.get("title") or "").strip()
@@ -372,6 +407,12 @@ def _to_job(raw: dict) -> Optional[Job]:
     posted = raw.get("createdAt") or raw.get("lastActive")
     posted_str = str(posted) if posted else None
 
+    # 2026-05-20 (matching-quality launch blocker): pull inline JD from the
+    # Inertia payload when available so the YC source contributes more than
+    # title-only docs. Falls back to None when YC's payload doesn't include
+    # the body — Stage 2b Firecrawl pass remains the secondary path.
+    job_description = _extract_jd_from_inertia(raw)
+
     return Job(
         job_id=job_id,
         source_repo=source_repo,
@@ -383,6 +424,7 @@ def _to_job(raw: dict) -> Optional[Job]:
         date_posted_raw=posted_str,
         status=JobStatus.ACTIVE,
         content_hash=content_hash,
+        job_description=job_description,
         seniority_level=infer_seniority(title),
         role_function=infer_role_function(title),
         first_seen_at=datetime.now(UTC),

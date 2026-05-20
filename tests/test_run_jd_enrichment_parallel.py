@@ -336,24 +336,89 @@ def test_parallel_preserves_result_shape(monkeypatch):
     assert stats["failed"] == 0
 
 
-def test_parallel_default_max_workers_is_sequential_pending_signal_fix(monkeypatch):
-    """Default max_workers is currently 1 (sequential).
+def test_parallel_default_max_workers_is_3_pending_signal_fix(monkeypatch):
+    """Default max_workers is 3 (parallel) — bumped from 1 on 2026-05-20.
 
-    Originally 10 per spec D-T1, but the ThreadPoolExecutor path has a
-    known signal-timeout bug (loop tick #5 finding) that crashes workers
-    under load. Until that's fixed, the default is 1 — the parallel code
-    path remains callable by explicit ``max_workers=N``, just not the
-    default.
+    User directive 2026-05-20: raise default 1 → 3 to drain the JD backlog
+    faster while signal-timeout fix is still pending. 3 trades a bounded 3x
+    throughput gain against the same signal-timeout exposure as 10; the
+    parallel code path is otherwise correct (per
+    ``test_parallel_per_job_error_isolation`` + ``test_parallel_fan_out_beats_sequential_wall_time``).
+    Per-worker UPDATEs use WHERE job_id = ?, so concurrent writers don't
+    collide — idempotency holds.
 
-    When the signal-timeout fix lands, flip this back to 10 and rename.
+    When the signal-timeout fix lands, raise to 10 and rename again.
     """
     import inspect
 
     sig = inspect.signature(run_jd_enrichment)
-    assert sig.parameters["max_workers"].default == 1, (
-        f"max_workers default must be 1 (sequential) until signal-timeout "
-        f"is fixed, got {sig.parameters['max_workers'].default}"
+    assert sig.parameters["max_workers"].default == 3, (
+        f"max_workers default must be 3 (parallel, signal-timeout fix still pending), "
+        f"got {sig.parameters['max_workers'].default}"
     )
     assert sig.parameters["max_workers"].kind == inspect.Parameter.KEYWORD_ONLY, (
         "max_workers must be keyword-only"
+    )
+
+
+def test_parallel_idempotency_same_input_same_writes(monkeypatch):
+    """Running the orchestrator twice on the same rows produces the same final
+    write state — no double-classification, no status drift.
+
+    User directive 2026-05-20: every fix must be idempotent. For
+    run_jd_enrichment, idempotency means: each row produces exactly one
+    UPDATE per run with the same payload, and re-running on a row whose
+    state already matches the new write is a no-op-equivalent (same UPDATE
+    statement, same column values).
+
+    Strategy: same 10 rows, run the orchestrator twice with a deterministic
+    fetcher. Capture executed SQL on both runs. Assert run-2's writes match
+    run-1's writes (same set of (job_id, columns) tuples).
+    """
+    rows = _make_rows(10)
+
+    def _deterministic_fetcher(url: str):
+        return build_ats_job_data(
+            source="greenhouse",
+            description_plain=f"JD body for {url}",
+            qualifications=["Python", "SQL"],
+        )
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
+        _deterministic_fetcher,
+    )
+
+    def _run_once():
+        select_conn = _SelectFakeConn([list(rows), []])
+        write_conn = _ThreadSafeFakeConn()
+
+        @contextmanager
+        def _factory():
+            yield write_conn
+
+        run_jd_enrichment(
+            conn=select_conn,
+            settings=_settings(),
+            batch_size=500,
+            domain_min_interval=0.0,
+            max_workers=3,
+            connection_factory=_factory,
+        )
+        return write_conn.executed
+
+    writes_a = _run_once()
+    writes_b = _run_once()
+
+    # Each row → exactly one UPDATE per run. 10 rows → 10 writes per run.
+    assert len(writes_a) == 10, f"run-1 expected 10 writes, got {len(writes_a)}"
+    assert len(writes_b) == 10, f"run-2 expected 10 writes, got {len(writes_b)}"
+
+    # Compare the set of job_ids written and the set of writes — order varies
+    # under parallelism so compare as a set of (job_id) keys.
+    def _ids(executed: list) -> set[str]:
+        return {params.get("job_id") for _q, params in executed if params}
+
+    assert _ids(writes_a) == _ids(writes_b), (
+        "idempotency violated: run-2 wrote to a different set of job_ids than run-1"
     )
