@@ -82,6 +82,51 @@ def test_embed_pending_select_gates_on_jd_and_skills(monkeypatch) -> None:
     )
 
 
+def test_serialize_job_emits_canonical_signature_track_e(monkeypatch) -> None:
+    """Track E (2026-05-20): _serialize_job stamps canonical_signature on every
+    row payload sent to Firestore.
+
+    The signature is sha256(norm(company_name) + "::" + norm(role_title)) —
+    wekruit-pa's `pa-job-canonical-signature/{sig}` collection uses it to
+    detect cross-source duplicates (same role at same company surfaced via
+    two ATS scrapers). Pinning at the serializer means every Firestore
+    upsert carries the field; macmini-side rows that lack co/role just
+    skip the field (no wrong-signature pollution).
+    """
+    from wekruit_matching.pipeline.job_sync import _serialize_job
+    from wekruit_matching.scraper.id_utils import compute_canonical_signature
+
+    row = {
+        "job_id": "x" * 64,
+        "company_name": "Google",
+        "role_title": "SWE Intern",
+        "primary_url": "https://boards.greenhouse.io/google/jobs/1",
+    }
+    payload = _serialize_job(row)
+    expected = compute_canonical_signature("Google", "SWE Intern")
+    assert payload.get("canonical_signature") == expected
+    # Round-trip the original keys untouched.
+    assert payload["company_name"] == "Google"
+    assert payload["role_title"] == "SWE Intern"
+
+
+def test_serialize_job_skips_canonical_signature_when_co_or_role_missing() -> None:
+    """A row missing company_name or role_title would yield a misleading
+    signature (collisions across all blank docs). Skip rather than emit."""
+    from wekruit_matching.pipeline.job_sync import _serialize_job
+
+    no_co = _serialize_job({"job_id": "x" * 64, "role_title": "SWE"})
+    assert "canonical_signature" not in no_co
+
+    no_role = _serialize_job({"job_id": "x" * 64, "company_name": "X"})
+    assert "canonical_signature" not in no_role
+
+    empty_co = _serialize_job(
+        {"job_id": "x" * 64, "company_name": "   ", "role_title": "SWE"}
+    )
+    assert "canonical_signature" not in empty_co
+
+
 def test_sync_active_select_gates_on_jd_and_skills(monkeypatch) -> None:
     """The Firestore sync must not copy rows missing JD or skills.
 
