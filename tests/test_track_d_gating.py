@@ -63,7 +63,13 @@ def test_embed_pending_select_gates_on_jd_and_skills(monkeypatch) -> None:
     conn = _FakeConn()
     embed_pending(conn)
 
-    select = next(q for q in conn.executed if q.lstrip().startswith("SELECT"))
+    # embed_pending now runs two SELECTs: the embedding-model-consistency
+    # assert first, then the gap-fill SELECT. Find the gap-fill SELECT by
+    # the unique "WHERE embedded_at IS NULL" clause.
+    select = next(
+        q for q in conn.executed
+        if q.lstrip().startswith("SELECT") and "embedded_at IS NULL" in q
+    )
     assert "job_description IS NOT NULL" in select, (
         "embed_pending must skip rows with NULL job_description — without "
         "this, jobright-only docs whose JD enrichment failed silently still "
@@ -101,9 +107,14 @@ def test_serialize_job_emits_canonical_signature_track_e(monkeypatch) -> None:
         "company_name": "Google",
         "role_title": "SWE Intern",
         "primary_url": "https://boards.greenhouse.io/google/jobs/1",
+        # location_raw omitted → normalize_location collapses to __no_loc__
+        # so the serializer and the direct call agree.
     }
     payload = _serialize_job(row)
-    expected = compute_canonical_signature("Google", "SWE Intern")
+    # v2 (2026-05-20): canonical_signature now takes location_raw. Missing
+    # location collapses to __no_loc__ — calling the function the same way
+    # here keeps the assertion meaningful without coupling to internals.
+    expected = compute_canonical_signature("Google", "SWE Intern", None)
     assert payload.get("canonical_signature") == expected
     # Round-trip the original keys untouched.
     assert payload["company_name"] == "Google"

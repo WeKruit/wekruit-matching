@@ -31,6 +31,7 @@ workers + the main-thread reader connection stays well under the cap.
 """
 from __future__ import annotations
 
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
@@ -48,6 +49,66 @@ from wekruit_matching.models.job import Job
 # don't burn LLM credits weekly on permanently empty jobs (e.g. 1-line listings
 # whose careers page never loads). Tunable; revisit with telemetry.
 ENRICH_STALE_DAYS = 7
+
+# 2026-05-20 — empty-skills alert threshold.
+#
+# User directive: rows with NULL/empty required_skills are observability
+# problems, not auto-fix targets. We don't skip classify_job for NULL-JD
+# rows (the LLM may still produce a reasonable hint from company + role),
+# we don't auto-flip status, we don't gate sync further. We DO emit a
+# WARNING when the count of active rows with empty required_skills crosses
+# the threshold so ops sees it in the daily logs.
+#
+# Override via ``ALERT_EMPTY_SKILLS_THRESHOLD`` env var (int). Default 100
+# is conservative — well under the typical post-enrichment empty-skills
+# tail and well over the noise floor.
+ALERT_EMPTY_SKILLS_THRESHOLD = int(os.environ.get("ALERT_EMPTY_SKILLS_THRESHOLD", "100"))
+
+
+def count_active_empty_skills(conn: psycopg.Connection) -> int:
+    """Return the count of active rows whose required_skills is NULL or empty.
+
+    Idempotent read-only query. Used by both the in-pipeline alert hook
+    and the standalone ``scripts/alert-empty-skills.py`` cron script.
+    """
+    row = conn.execute(
+        """
+        SELECT COUNT(*)::int AS n
+        FROM jobs
+        WHERE status = 'active'
+          AND (
+            required_skills IS NULL
+            OR cardinality(required_skills) = 0
+          )
+        """
+    ).fetchone()
+    if row is None:
+        return 0
+    # psycopg returns dict-like rows; tolerate both shapes for safety.
+    return int(row["n"]) if isinstance(row, dict) else int(row[0])
+
+
+def alert_if_empty_skills_exceeds_threshold(
+    conn: psycopg.Connection,
+    *,
+    threshold: int = ALERT_EMPTY_SKILLS_THRESHOLD,
+) -> int:
+    """Log a WARNING when active rows missing required_skills exceed threshold.
+
+    Returns the count (regardless of whether the alert fired) so callers can
+    aggregate the value into a pipeline summary. Idempotent — safe to call
+    many times per run, the threshold check is pure.
+    """
+    count = count_active_empty_skills(conn)
+    if count >= threshold:
+        logger.warning(
+            "alert.empty_skills.active count={} threshold={} — investigate enrichment quality",
+            count,
+            threshold,
+        )
+    else:
+        logger.info("alert.empty_skills.active count={} threshold={} (ok)", count, threshold)
+    return count
 
 
 def _utcnow() -> datetime:
@@ -218,4 +279,22 @@ def enrich_pending(
                 logger.warning("Failed to enrich job {}: {}", short_id, exc)
 
     logger.info("Enrichment complete: enriched={} failed={}", enriched, failed)
-    return {"enriched": enriched, "failed": failed, "skipped": 0}
+
+    # 2026-05-20 — empty-skills alert. Counts BOTH the pre-existing tail
+    # (rows the enrichment queue didn't get to this run) and the new
+    # rows that completed enrichment with empty skills (LLM had no JD to
+    # extract from, or extracted nothing matching the schema). The log
+    # line is picked up by macmini launchd stderr; ops dashboards filter
+    # on "alert.empty_skills.active".
+    try:
+        empty_skills_count = alert_if_empty_skills_exceeds_threshold(conn)
+    except Exception as exc:  # defensive — alerting must never crash the pipeline
+        logger.warning("empty-skills alert query failed: {}", exc)
+        empty_skills_count = -1
+
+    return {
+        "enriched": enriched,
+        "failed": failed,
+        "skipped": 0,
+        "empty_skills_active": empty_skills_count,
+    }

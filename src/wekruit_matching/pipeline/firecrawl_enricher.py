@@ -29,6 +29,71 @@ _JD_KEYWORDS = (
     "about the role",
 )
 
+# Closed-page markers (2026-05-20, matching-quality launch blocker).
+#
+# ATS hosts frequently return HTTP 200 with a stub page like "this position
+# is no longer available" after the listing closes. The page still contains
+# enough JD-shaped boilerplate (role title, company description) to pass
+# ``_has_jd_content`` — we'd happily ingest it and the user would click a
+# dead link from matching results. Matching against the rendered markdown
+# (case-insensitive) is a cheap, deterministic check.
+#
+# Curated list (no regex; substring match) — every entry was observed
+# verbatim on a real ATS closed page. Keep additions in priority order:
+# generic phrases first, host-specific phrases at the end.
+_CLOSED_AT_SOURCE_MARKERS = (
+    "no longer accepting applications",
+    "this position is no longer available",
+    "this position has been filled",
+    "this role is no longer open",
+    "this role has been filled",
+    "this job is no longer available",
+    "this job has been filled",
+    "this listing is no longer available",
+    "this listing has been closed",
+    "applications are closed",
+    "applications for this role are closed",
+    "we are no longer accepting applications",
+    "we're no longer accepting applications",
+    "the job you are looking for is no longer",
+    "the role you are looking for is no longer",
+    "position has been closed",
+    "this opportunity is no longer available",
+)
+
+
+class ClosedAtSourceError(Exception):
+    """Raised when an ATS page returns 200 but the body indicates the listing is closed.
+
+    Caller (``run_jd_enrichment._process_one_job``) translates this into a
+    ``permanent_404=TRUE`` write + ``jd_fetch_source='closed_at_source'``
+    so the row is tombstoned and never re-fetched.
+
+    Idempotent semantics: the same closed page hit on retry will raise the
+    same exception → same tombstone state. Safe across reruns.
+    """
+
+    def __init__(self, url: str, matched_marker: str) -> None:
+        super().__init__(f"ATS page closed-at-source for {url}: matched marker {matched_marker!r}")
+        self.url = url
+        self.matched_marker = matched_marker
+
+
+def _detect_closed_at_source(markdown: str | None) -> str | None:
+    """Return the matched closed-marker substring, or None if not closed.
+
+    Returning the matched marker (rather than a bool) lets callers log
+    exactly which phrase triggered the tombstone — invaluable when curating
+    the marker list as ATS hosts change their closed-page wording.
+    """
+    if not markdown:
+        return None
+    lowered = markdown.lower()
+    for marker in _CLOSED_AT_SOURCE_MARKERS:
+        if marker in lowered:
+            return marker
+    return None
+
 
 @dataclass(frozen=True, slots=True)
 class FirecrawlFetchResult:
@@ -243,6 +308,13 @@ async def fetch_firecrawl_job(
         )
         scrape_data = _extract_firecrawl_data(scrape_payload)
         markdown = str(scrape_data.get("markdown") or "")
+        # Closed-page check runs BEFORE _has_jd_content because closed pages
+        # often retain enough JD boilerplate (role title, company blurb) to
+        # pass the keyword heuristic. The closed-marker substring is a
+        # stronger signal — if it fires, tombstone the row.
+        closed_marker = _detect_closed_at_source(markdown)
+        if closed_marker is not None:
+            raise ClosedAtSourceError(url, closed_marker)
         if _has_jd_content(markdown):
             return FirecrawlFetchResult(
                 job_data=build_ats_job_data(

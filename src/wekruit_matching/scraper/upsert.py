@@ -225,7 +225,17 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                 location_raw    = EXCLUDED.location_raw,
                 date_posted_raw = EXCLUDED.date_posted_raw,
                 last_seen_at    = EXCLUDED.last_seen_at,
-                status          = 'active',
+                -- Matching-quality launch blocker (2026-05-20): preserve
+                -- ``status`` when a PA hygiene flip has set hygiene_flipped=TRUE.
+                -- Without this, every scrape rerun resets hygiene-flipped docs
+                -- (yc_synthetic_title / jd_zombie / apply_url_not_job_page) back
+                -- to 'active' and the next sync writes them to Firestore — the
+                -- hygiene work is undone within 24h. See alembic 0008.
+                status          = CASE
+                    WHEN COALESCE(jobs.hygiene_flipped, FALSE) IS TRUE
+                    THEN jobs.status
+                    ELSE 'active'
+                END,
                 content_hash    = CASE
                     WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
                     THEN EXCLUDED.content_hash

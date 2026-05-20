@@ -25,6 +25,49 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class EmbeddingModelMismatchError(RuntimeError):
+    """Raised when DB-stored embeddings use a different model than the running config.
+
+    Mixing vectors from different OpenAI embedding models in the same column is
+    silently wrong: cosine distances become incomparable, matching scores drift,
+    and there is no in-band signal to the matching engine that the data is bad.
+    The right behaviour is fail-fast at the next embed call — operators get an
+    explicit "you changed EMBEDDING_MODEL but haven't migrated the column"
+    error instead of subtly-broken match results.
+    """
+
+
+def assert_embedding_model_consistency(conn: psycopg.Connection) -> None:
+    """Fail loudly if DB-stored embeddings use a different model than the running config.
+
+    Runs a single SELECT DISTINCT against ``embedding_model`` for rows with a
+    non-NULL embedding. NULL ``embedding_model`` rows are tolerated (they
+    pre-date the column or were written before the model was stamped) — only
+    explicit-string mismatches raise.
+
+    Idempotent: read-only check. Safe to call on every embed_pending invocation
+    without side effects.
+    """
+    rows = conn.execute(
+        """
+        SELECT DISTINCT embedding_model
+        FROM jobs
+        WHERE embedding IS NOT NULL
+          AND embedding_model IS NOT NULL
+          AND embedding_model <> ''
+        """
+    ).fetchall()
+    if not rows:
+        return
+    stored = {row["embedding_model"] for row in rows}
+    if stored == {EMBEDDING_MODEL}:
+        return
+    raise EmbeddingModelMismatchError(
+        f"DB embedding_model={sorted(stored)} but running config EMBEDDING_MODEL={EMBEDDING_MODEL}. "
+        "Mixing embedding models produces incomparable vectors. Migrate the column or revert config."
+    )
+
+
 def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
     """Embed all enriched-but-unembedded active jobs and write vectors to the DB.
 
@@ -39,6 +82,9 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
     Returns {"embedded": N, "failed": M, "skipped": 0}
     """
     register_vector(conn)
+    # Matching-quality launch blocker (2026-05-20): fail fast on model drift
+    # before computing any new vectors against a contaminated column.
+    assert_embedding_model_consistency(conn)
 
     # Matching-quality launch blocker (Track D, 2026-05-20):
     # enriched_at IS NOT NULL only signals "enrichment ran" — it does NOT

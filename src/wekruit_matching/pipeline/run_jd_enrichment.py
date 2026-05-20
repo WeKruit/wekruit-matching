@@ -65,6 +65,7 @@ from wekruit_matching.pipeline.ats_enricher import (
     fetch_lever_job,
 )
 from wekruit_matching.pipeline.firecrawl_enricher import (
+    ClosedAtSourceError,
     fetch_firecrawl_job,
     fetch_workday_job,
     search_canonical_job_url,
@@ -259,6 +260,32 @@ def _write_failure(conn, job_id: str, *, permanent_404: bool = False) -> None:
     )
 
 
+def _write_closed_at_source(conn, job_id: str) -> None:
+    """Tombstone a row whose ATS page returned 200 + closed-marker body.
+
+    The row is treated as permanently dead (``permanent_404=TRUE``) so the
+    Stage 2b queue selection clause never re-admits it, even after the
+    STAGE2B_STALE_DAYS recovery window. ``jd_fetch_source='closed_at_source'``
+    is a distinct sentinel so ops dashboards can tell ATS-closed tombstones
+    apart from real 404 tombstones.
+
+    Idempotent: re-calling on an already-tombstoned row writes the same
+    fields and bumps ``jd_fetch_attempted_at`` — no double-count, no flip
+    of ``status``.
+    """
+    conn.execute(
+        """
+        UPDATE jobs
+        SET
+          jd_fetch_source = 'closed_at_source',
+          jd_fetch_attempted_at = NOW(),
+          permanent_404 = TRUE
+        WHERE job_id = %(job_id)s
+        """,
+        {"job_id": job_id},
+    )
+
+
 def _pick_target_url(row: dict) -> str | None:
     """Pick the URL most likely to yield a JD.
 
@@ -374,6 +401,27 @@ def _process_one_job(
             out["failed"] = 1
             return out
         _write_success(write_conn, row["job_id"], result)
+    except ClosedAtSourceError as exc:
+        # ATS page returned 200 + body says "closed". Tombstone with
+        # permanent_404=TRUE so we never re-spend a Firecrawl credit on it.
+        # Logged at INFO not WARNING — this is the system working correctly,
+        # not a fault. The matched marker is preserved for ops curation.
+        logger.info(
+            "JD enrichment closed-at-source for {} (url={} marker={!r})",
+            row["job_id"],
+            exc.url,
+            exc.matched_marker,
+        )
+        try:
+            _write_closed_at_source(write_conn, row["job_id"])
+        except Exception as write_exc:
+            logger.warning(
+                "Could not persist closed_at_source tombstone for {}: {}",
+                row["job_id"],
+                write_exc,
+            )
+        out["failed_route"] = route.value
+        out["failed"] = 1
     except Exception as exc:
         permanent = _is_permanent_404(exc)
         logger.warning(
@@ -399,7 +447,18 @@ def run_jd_enrichment(
     batch_size: int = 500,
     domain_min_interval: float = 0.5,
     dry_run: bool = False,
-    max_workers: int = 1,  # Sequential — parallel signal-timeout broken (loop tick #5 finding)
+    # 2026-05-20 user goal: default raised 1 → 3.
+    # Justification: 1 was a safety pin while the signal-timeout bug (loop
+    # tick #5 finding) blocked parallel default. 3 trades a bounded 3x
+    # throughput gain (~14k-doc backlog drains in ~3 days instead of ~9)
+    # against the same signal-timeout exposure as max_workers=10. Worth it
+    # because the bug is intermittent, not catastrophic — workers crash
+    # individually, sibling workers continue (per
+    # ``test_parallel_per_job_error_isolation``). Re-raise to 10 once the
+    # signal-timeout fix lands. Idempotency holds: per-row UPDATEs are
+    # WHERE job_id = ?, so parallel writers don't step on each other —
+    # the same row processed twice yields the same final state.
+    max_workers: int = 3,
     connection_factory=None,
 ) -> dict:
     """Process the JD enrichment queue in batches of at most 500 rows.

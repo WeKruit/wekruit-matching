@@ -50,10 +50,17 @@ def _serialize_job(row: dict[str, Any]) -> dict[str, Any]:
     # company_name + role_title are required scraper fields — if either is
     # missing, the row would have failed Track D's sync gate upstream, so
     # we skip the signature rather than emit a wrong/partial one.
+    #
+    # v2 (2026-05-20): signature now includes location_raw to disambiguate
+    # multi-posting same role at same company (e.g. Google SWE SF vs NYC).
+    # location_raw may be empty — normalize_location collapses empty to
+    # `__no_loc__`, preserving the v1 behaviour for rows that lack location.
     co = payload.get("company_name")
     role = payload.get("role_title")
+    loc = payload.get("location_raw")
     if isinstance(co, str) and isinstance(role, str) and co.strip() and role.strip():
-        payload["canonical_signature"] = compute_canonical_signature(co, role)
+        loc_arg = loc if isinstance(loc, str) else None
+        payload["canonical_signature"] = compute_canonical_signature(co, role, loc_arg)
     return payload
 
 

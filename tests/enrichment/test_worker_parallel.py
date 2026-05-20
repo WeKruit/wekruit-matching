@@ -147,7 +147,12 @@ def test_parallel_completes_faster_than_sequential():
         f"speedup={sequential_total / elapsed:.2f}x"
     )
 
-    assert result == {"enriched": n_jobs, "failed": 0, "skipped": 0}
+    # 2026-05-20: result dict grew an `empty_skills_active` key for the alert
+    # hook. Subset-match the legacy keys so the new field can be present (or
+    # set to -1 when the fake conn doesn't implement fetchone).
+    assert result["enriched"] == n_jobs
+    assert result["failed"] == 0
+    assert result["skipped"] == 0
     assert elapsed < parallel_threshold, (
         f"Parallel run took {elapsed:.2f}s but must be under {parallel_threshold:.2f}s "
         f"(=sequential/5). Workers may not be running concurrently."
@@ -192,7 +197,12 @@ def test_sequential_baseline_for_comparison():
         f"actual={elapsed:.2f}s (max_workers=1)"
     )
 
-    assert result == {"enriched": n_jobs, "failed": 0, "skipped": 0}
+    # 2026-05-20: result dict grew an `empty_skills_active` key for the alert
+    # hook. Subset-match the legacy keys so the new field can be present (or
+    # set to -1 when the fake conn doesn't implement fetchone).
+    assert result["enriched"] == n_jobs
+    assert result["failed"] == 0
+    assert result["skipped"] == 0
     # Must be at least close to the sequential bound — proves the
     # comparison test isn't "fast because of test infra"
     assert elapsed >= n_jobs * per_job_latency * 0.8, (
@@ -232,11 +242,9 @@ def test_per_job_failure_does_not_halt_batch():
         result = worker_module.enrich_pending(read_conn, max_workers=10)
 
     expected_enriched = n_jobs - len(fail_indices)
-    assert result == {
-        "enriched": expected_enriched,
-        "failed": len(fail_indices),
-        "skipped": 0,
-    }
+    assert result["enriched"] == expected_enriched
+    assert result["failed"] == len(fail_indices)
+    assert result["skipped"] == 0
     # Only the successful jobs wrote rows
     assert len(_FakeWorkerConn.all_writes) == expected_enriched
 
@@ -261,11 +269,18 @@ def test_signature_accepts_max_workers_keyword():
 
 
 def test_returns_correct_shape_when_no_jobs():
-    """No-rows path still returns the {enriched, failed, skipped} shape."""
+    """No-rows path still returns the legacy {enriched, failed, skipped} keys.
+
+    2026-05-20: dict may also carry `empty_skills_active` from the alert hook.
+    Subset-match so the test pins the legacy contract without coupling to
+    the new observability key.
+    """
     from wekruit_matching.enrichment.worker import enrich_pending
 
     read_conn = _FakeReadConn(rows=[])
     result = enrich_pending(read_conn, max_workers=10)
+    # When no rows match the SELECT, enrich_pending returns early without the
+    # alert hook firing — preserve legacy exact shape on this fast-exit path.
     assert result == {"enriched": 0, "failed": 0, "skipped": 0}
 
 
