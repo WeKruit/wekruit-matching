@@ -224,7 +224,22 @@ async def fetch_firecrawl_job(
             # "not long enough" because the JD body was still hydrating in
             # JS DOM that the static markdown extractor cannot reach. 20s
             # is the upper bound observed for these SPAs to finish painting.
-            json={"url": url, "formats": ["markdown"], "waitFor": 20000},
+            #
+            # timeout 60000 (2026-05-20 follow-up): Firecrawl /v1/scrape
+            # enforces ``waitFor <= timeout / 2``. Default scrape timeout is
+            # 30s so an unset timeout caps waitFor at 15s; our 20s value
+            # therefore returned BAD_REQUEST and the whole batch failed
+            # (81/93 fails in the first post-deploy run). timeout=60000
+            # gives waitFor=20000 a 2x budget while bounding worst-case
+            # Firecrawl latency at 60s — well under the httpx 90s wrapper
+            # timeout on _request_json so the Python client never gives up
+            # before Firecrawl returns a definitive success/failure.
+            json={
+                "url": url,
+                "formats": ["markdown"],
+                "waitFor": 20000,
+                "timeout": 60000,
+            },
         )
         scrape_data = _extract_firecrawl_data(scrape_payload)
         markdown = str(scrape_data.get("markdown") or "")

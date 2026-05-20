@@ -139,7 +139,17 @@ def run_daily_pipeline() -> dict:
     """
     run_started_at = datetime.now(UTC)
     start = time.monotonic()
+    # Pipeline-level errors — only catastrophic stage crashes/timeouts go
+    # here. Per-source dependency failures (a single Firecrawl/Serper/source
+    # 5xx, one Postgres statement timeout on an auxiliary scraper) go to
+    # `dependency_errors` and never gate pipeline_status. Treating external
+    # dependencies as always-working would mean ignoring them; what we
+    # actually want is treating them as best-effort: log + move on, never
+    # propagate to "partial" status. The status is only "partial" when a
+    # CORE stage itself crashed or timed out, not when a sub-component of
+    # a stage had a transient hiccup.
     errors: list[str] = []
+    dependency_errors: list[str] = []
 
     # Default empty stats so finalizer always has something to email.
     scrape_stats: dict = {}
@@ -182,7 +192,14 @@ def run_daily_pipeline() -> dict:
                 logger.info("Scrape stats: {}", scrape_stats)
                 for source, stats in scrape_stats.items():
                     if "error" in stats:
-                        errors.append(f"Scrape {source}: {stats['error']}")
+                        # Per-source scrape failures (jobright statement
+                        # timeout, yc transaction abort, etc) are best-effort:
+                        # we log + record under dependency_errors but do NOT
+                        # flip the run to "partial". Only an outright Stage 1
+                        # crash/timeout fails the stage.
+                        msg = f"Scrape {source}: {stats['error']}"
+                        logger.warning("dependency-degraded: {}", msg)
+                        dependency_errors.append(msg)
                 stage_outcomes["scrape"] = "ok"
         except StageTimeoutError as e:
             _record_timeout(errors, "scrape", e)
@@ -215,7 +232,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("wellfound scrape failed: {}", e)
                         senior_stats["wellfound"] = {"error": str(e)}
-                        errors.append(f"Wellfound scrape: {e}")
+                        dependency_errors.append(f"Wellfound scrape: {e}")
 
                 if os.environ.get("ENABLE_LINKEDIN_SCRAPE", "0") == "1":
                     try:
@@ -227,7 +244,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("linkedin scrape failed: {}", e)
                         senior_stats["linkedin"] = {"error": str(e)}
-                        errors.append(f"LinkedIn scrape: {e}")
+                        dependency_errors.append(f"LinkedIn scrape: {e}")
 
                 if os.environ.get("ENABLE_OTTA_SCRAPE", "0") == "1":
                     try:
@@ -239,7 +256,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("otta scrape failed: {}", e)
                         senior_stats["otta"] = {"error": str(e)}
-                        errors.append(f"Otta scrape: {e}")
+                        dependency_errors.append(f"Otta scrape: {e}")
 
                 # Stage 1.6 — Phase 73 career-ops port: direct public-API scrapers
                 if os.environ.get("ENABLE_GREENHOUSE_DIRECT", "1") == "1":
@@ -254,7 +271,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("greenhouse_direct scrape failed: {}", e)
                         senior_stats["greenhouse_direct"] = {"error": str(e)}
-                        errors.append(f"Greenhouse direct: {e}")
+                        dependency_errors.append(f"Greenhouse direct: {e}")
 
                 if os.environ.get("ENABLE_LEVER_DIRECT", "1") == "1":
                     try:
@@ -266,7 +283,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("lever_direct scrape failed: {}", e)
                         senior_stats["lever_direct"] = {"error": str(e)}
-                        errors.append(f"Lever direct: {e}")
+                        dependency_errors.append(f"Lever direct: {e}")
 
                 if os.environ.get("ENABLE_ASHBY_DIRECT", "1") == "1":
                     try:
@@ -278,7 +295,7 @@ def run_daily_pipeline() -> dict:
                     except Exception as e:
                         logger.warning("ashby_direct scrape failed: {}", e)
                         senior_stats["ashby_direct"] = {"error": str(e)}
-                        errors.append(f"Ashby direct: {e}")
+                        dependency_errors.append(f"Ashby direct: {e}")
 
                 if senior_jobs:
                     try:
@@ -490,6 +507,12 @@ def run_daily_pipeline() -> dict:
         "embed": embed_stats,
         "sync": sync_stats,
         "errors": errors,
+        # `dependency_errors` are best-effort failures from external services
+        # (per-source scrape 5xx, Firecrawl/Serper hiccups, transient Postgres
+        # statement timeouts on auxiliary scrapers). They are logged at WARN
+        # but do NOT gate pipeline_status — surfaced here purely for
+        # diagnostic purposes.
+        "dependency_errors": dependency_errors,
         "duration_seconds": duration,
         "pipeline_status": pipeline_status,
         "stage_outcomes": stage_outcomes,
@@ -507,6 +530,13 @@ if __name__ == "__main__":
         result["duration_seconds"] / 60,
         result.get("pipeline_status", "unknown"),
     )
+    dep_errs = result.get("dependency_errors") or []
+    if dep_errs:
+        logger.info(
+            "Dependency degradations (non-blocking, {} entries): {}",
+            len(dep_errs),
+            dep_errs,
+        )
     if result["errors"]:
         logger.warning("Errors: {}", result["errors"])
         # Exit non-zero on partial OR failed so launchd surfaces it; the
