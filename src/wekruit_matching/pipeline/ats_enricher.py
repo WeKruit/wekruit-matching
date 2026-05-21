@@ -396,6 +396,76 @@ def fetch_ashby_job(url: str, *, client: httpx.Client | None = None) -> AtsJobDa
     raise LookupError(f"Could not find matching Ashby posting for {url}")
 
 
+_JOBRIGHT_NAV_NOISE_RE = re.compile(
+    r"\b(SIGN IN|JOIN NOW|APPLY NOW|Apply on Employer Site|Overview|Company|"
+    r"Jobright\.ai|jobs in United States|United States|"
+    r"Save this job|Edit your search|Show more|Show less)\b",
+    re.IGNORECASE,
+)
+
+
+def fetch_jobright_job(url: str, *, client: httpx.Client | None = None) -> AtsJobData:
+    """Fetch one jobright.ai job page directly via HTTP.
+
+    2026-05-21 matching-quality launch blocker: jobright.ai serves the
+    full JD body inline in server-rendered HTML on ``/jobs/info/<hex>``
+    URLs. ~290KB of HTML → ~3,800 chars of plain text including role
+    title, company, location, salary, summary, Responsibilities, and
+    Requirements. Curl-verified.
+
+    Previously every jobright-only doc was marked ``skip_no_url`` because
+    ``_pick_target_url`` treated the redirect-looking URL as unfetchable.
+    Net effect: 2,308 active jobright-newgrad docs had 5.6% JD coverage.
+
+    This fetcher:
+      1. HTTP GET with a real-browser UA (jobright blocks default httpx).
+      2. Strips <script>/<style>/all tags → plain text.
+      3. Removes obvious nav-chrome noise (SIGN IN, APPLY NOW, etc).
+      4. Returns AtsJobData with source='jobright'.
+
+    Failure modes:
+      * 4xx/5xx → ``httpx.HTTPStatusError`` (let the worker treat as recoverable).
+      * Body too short or missing JD keywords → return None-equivalent
+        empty description so the caller treats as fetch-miss rather than
+        success.
+
+    Idempotent: pure function on the URL. Same page → same output.
+    """
+    normalized = normalize_job_url(url)
+    owns_client = client is None
+    client = client or httpx.Client(
+        timeout=20.0,
+        follow_redirects=True,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml",
+        },
+    )
+    try:
+        response = client.get(normalized)
+        response.raise_for_status()
+        html_text = response.text
+    finally:
+        if owns_client:
+            client.close()
+
+    text = re.sub(r"<script[^>]*>[\s\S]*?</script>", " ", html_text, flags=re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
+    text = _BLOCK_TAG_RE.sub(" ", text)
+    text = _TAG_RE.sub(" ", text)
+    text = _JOBRIGHT_NAV_NOISE_RE.sub(" ", text)
+    text = normalize_text(text)
+
+    return build_ats_job_data(
+        source=FetchRoute.JOBRIGHT.value,
+        description_plain=text,
+    )
+
+
 def fetch_free_ats_job(url: str, *, client: httpx.Client | None = None) -> AtsJobData:
     """Dispatch to the correct free ATS parser based on the Phase 14 router."""
     route = classify_job_url(url).route
