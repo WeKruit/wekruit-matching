@@ -7,6 +7,7 @@ All tests are pure unit tests — no real LLM or network calls.
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -34,7 +35,11 @@ _VALID_LLM_RESPONSE = json.dumps({
 
 
 def test_classify_job_includes_jd_text_in_prompt_when_available(monkeypatch) -> None:
-    """ENRICH-02: classify_job must inject job_description into the LLM prompt."""
+    """ENRICH-02: classify_job must inject job_description into the LLM prompt.
+
+    JD must be at least MIN_JD_CHARS_FOR_SKILLS chars to clear the anti-
+    hallucination guard, so the fixture uses a 200+ char description.
+    """
     from wekruit_matching.enrichment.classifier import classify_job
 
     captured: list[str] = []
@@ -43,9 +48,11 @@ def test_classify_job_includes_jd_text_in_prompt_when_available(monkeypatch) -> 
         captured.append(prompt)
         return _VALID_LLM_RESPONSE
 
+    monkeypatch.setattr("wekruit_matching.enrichment.classifier._get_client", lambda: MagicMock())
     monkeypatch.setattr("wekruit_matching.enrichment.classifier._call_llm", fake_call_llm)
 
-    job = _make_job(job_description="Build APIs for new grads.")
+    long_jd = "Build APIs for new grads. " + ("Responsibilities include backend development. " * 20)
+    job = _make_job(job_description=long_jd)
     classify_job(job)
 
     assert len(captured) == 1, "LLM must be called exactly once"
@@ -53,8 +60,10 @@ def test_classify_job_includes_jd_text_in_prompt_when_available(monkeypatch) -> 
     assert "Build APIs for new grads." in captured[0]
 
 
-def test_classify_job_omits_jd_text_when_field_is_empty(monkeypatch) -> None:
-    """ENRICH-02: classify_job must omit Job Description section when job_description is None."""
+def test_classify_job_returns_none_and_skips_llm_when_jd_is_empty(monkeypatch) -> None:
+    """2026-05-21 anti-hallucination: classify_job must NOT call the LLM
+    when job_description is missing — skill extraction without a JD
+    fabricates plausible-looking skills from title+company alone."""
     from wekruit_matching.enrichment.classifier import classify_job
 
     captured: list[str] = []
@@ -66,10 +75,10 @@ def test_classify_job_omits_jd_text_when_field_is_empty(monkeypatch) -> None:
     monkeypatch.setattr("wekruit_matching.enrichment.classifier._call_llm", fake_call_llm)
 
     job = _make_job(job_description=None)
-    classify_job(job)
+    result = classify_job(job)
 
-    assert len(captured) == 1, "LLM must be called exactly once"
-    assert "Job Description:" not in captured[0]
+    assert result is None, "classify_job must return None for missing JD"
+    assert len(captured) == 0, "LLM must NOT be called when JD is missing"
 
 
 def test_classify_job_truncates_jd_at_4000_chars(monkeypatch) -> None:
@@ -82,6 +91,7 @@ def test_classify_job_truncates_jd_at_4000_chars(monkeypatch) -> None:
         captured.append(prompt)
         return _VALID_LLM_RESPONSE
 
+    monkeypatch.setattr("wekruit_matching.enrichment.classifier._get_client", lambda: MagicMock())
     monkeypatch.setattr("wekruit_matching.enrichment.classifier._call_llm", fake_call_llm)
 
     long_description = "x" * 5000
@@ -91,8 +101,8 @@ def test_classify_job_truncates_jd_at_4000_chars(monkeypatch) -> None:
     assert len(captured) == 1
     prompt = captured[0]
     assert "Job Description:" in prompt
-    # The portion after "Job Description:\n" should be at most 4000 chars
+    # The portion after "Job Description:" should be at most 4000 chars
     jd_section = prompt.split("Job Description:")[-1]
     assert len(jd_section) <= 4010, (
-        f"JD section length {len(jd_section)} exceeds 4010 chars (4000 + newline margin)"
+        f"JD section length {len(jd_section)} exceeds 4010 chars (4000 + margin)"
     )

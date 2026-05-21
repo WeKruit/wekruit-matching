@@ -76,6 +76,15 @@ from wekruit_matching.models.job import Job
 
 COMPANY_SIZE_VOCAB: frozenset[str] = frozenset({"startup", "midsize", "large", "unknown"})
 
+# 2026-05-21 — no-hallucination guard. Skill extraction without a real JD
+# produced fabricated skills from title+company alone (e.g. "Software
+# Engineer @ Acme" → ["python", "javascript", "communication"] with no
+# grounding). The classifier now refuses to extract skills when the JD
+# is missing or shorter than this threshold. Worker handles the None
+# return by skipping the UPDATE — row stays eligible for next run when
+# Stage 2b may have landed a real JD.
+MIN_JD_CHARS_FOR_SKILLS = 200
+
 
 # ---------------------------------------------------------------------------
 # Output model
@@ -213,7 +222,7 @@ def _call_llm(client: OpenAI, prompt: str) -> str:
     return response.choices[0].message.content or ""
 
 
-def classify_job(job: Job) -> EnrichmentResult:
+def classify_job(job: Job) -> EnrichmentResult | None:
     """Classify a single job listing — INFORMATIONAL hints only.
 
     The result populates Postgres `jobs.industry`, `jobs.company_size`,
@@ -222,17 +231,34 @@ def classify_job(job: Job) -> EnrichmentResult:
     `paMatchingJobsAutoEnrich` Firestore trigger overwrites with canonical
     `industrySector[]`, `requiredSkills: Skill[]`, `roleFunction[]`, etc.
 
-    Returns an EnrichmentResult. On any API or parse failure, returns
-    `_safe_default()` — never raises. The caller (enrichment worker) decides
-    whether to retry the entire job or accept the safe default.
+    Returns:
+      * ``EnrichmentResult`` on success.
+      * ``None`` when the job lacks a real JD (length < ``MIN_JD_CHARS_FOR_SKILLS``).
+        The caller MUST treat this as "do not write" — leaving ``enriched_at``
+        NULL so the row stays eligible for the next pipeline run once Stage 2b
+        has landed a JD.
+      * ``_safe_default()`` on API/parse failure (never raises). Worker may
+        write the safe default; the staleness window will rotate the row back
+        into the queue after ``ENRICH_STALE_DAYS``.
     """
+    jd_clean = (job.job_description or "").strip()
+    if len(jd_clean) < MIN_JD_CHARS_FOR_SKILLS:
+        logger.info(
+            "skip_no_jd company={} role={} jd_len={} (min={}) — "
+            "skill extraction without JD hallucinates, leaving row eligible for next run",
+            job.company_name,
+            job.role_title,
+            len(jd_clean),
+            MIN_JD_CHARS_FOR_SKILLS,
+        )
+        return None
+
     prompt = (
         f"Company: {job.company_name}\n"
         f"Role: {job.role_title}\n"
-        f"Location: {job.location_raw or 'unknown'}"
+        f"Location: {job.location_raw or 'unknown'}\n"
+        f"Job Description: {jd_clean[:4000]}"
     )
-    if job.job_description:
-        prompt += f"\nJob Description: {job.job_description[:4000]}"
     client = _get_client()
     try:
         raw = _call_llm(client, prompt)

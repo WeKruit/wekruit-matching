@@ -25,6 +25,16 @@ def _make_job(**kwargs) -> Job:
         company_name="Acme Corp",
         role_title="Software Engineer Intern",
         location_raw="San Francisco, CA",
+        # 2026-05-21: classify_job now requires a non-trivial JD or it
+        # short-circuits with None (anti-hallucination guard). Tests that
+        # don't care about JD content still need a JD long enough to clear
+        # MIN_JD_CHARS_FOR_SKILLS (200). Use a generic placeholder.
+        job_description=(
+            "Generic engineering job description used for classifier tests. "
+            "Responsibilities include backend development, API design, and "
+            "shipping reliable services. Requirements: strong CS fundamentals, "
+            "production engineering experience, comfortable with on-call rotation."
+        ),
     )
     defaults.update(kwargs)
     return Job(**defaults)
@@ -252,6 +262,10 @@ class TestClassifyJob:
             patch("wekruit_matching.enrichment.classifier._get_client", return_value=MagicMock()),
             patch("wekruit_matching.enrichment.classifier._call_llm", side_effect=fake_call),
         ):
-            classify_job(_make_job(job_description="Full JD text for ranking pipelines."))
+            # 2026-05-21 guard: JD must be >= MIN_JD_CHARS_FOR_SKILLS chars
+            # to reach the LLM. Pad to clear the threshold while preserving
+            # the original assertion target substring.
+            long_jd = "Full JD text for ranking pipelines. " + ("x " * 100)
+            classify_job(_make_job(job_description=long_jd))
 
         assert "Job Description: Full JD text for ranking pipelines." in prompt_capture["prompt"]
