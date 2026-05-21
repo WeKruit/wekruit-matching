@@ -22,6 +22,11 @@ _TAG_RE = re.compile(r"<[^>]+>")
 _BLOCK_TAG_RE = re.compile(r"</?(?:p|div|section|article|li|ul|ol|br|h[1-6])[^>]*>", re.IGNORECASE)
 _WHITESPACE_RE = re.compile(r"\s+")
 _ZERO_WIDTH_RE = re.compile(r"[\u200b\u200c\u200d\ufeff]")
+# Postgres TEXT/VARCHAR columns reject NUL (0x00) bytes outright with
+# "PostgreSQL text fields cannot contain NUL (0x00) bytes". Some pages
+# (jobright redirects in particular) contain stray NULs in JS-embedded
+# strings that survive tag-strip. Strip them before any DB write.
+_NULL_BYTE_RE = re.compile(r"\x00")
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,8 +48,12 @@ class AtsJobData:
 
 
 def normalize_text(text: str | None) -> str:
-    """Normalize ATS text to plain, whitespace-clean UTF-8-safe text."""
+    """Normalize ATS text to plain, whitespace-clean UTF-8-safe text.
+
+    Also strips NUL (0x00) bytes — Postgres rejects them on TEXT writes.
+    """
     value = unicodedata.normalize("NFKC", html.unescape(text or ""))
+    value = _NULL_BYTE_RE.sub("", value)
     value = _ZERO_WIDTH_RE.sub("", value)
     value = _BLOCK_TAG_RE.sub(" ", value)
     value = _TAG_RE.sub(" ", value)

@@ -99,10 +99,30 @@ def _is_aggregator_url(url: str) -> bool:
 
 
 def _is_permanent_404(exc: BaseException) -> bool:
-    """Return True if ``exc`` indicates a permanently-dead URL."""
+    """Return True if ``exc`` indicates a permanently-dead URL.
+
+    Treated as permanent:
+      * HTTP 404 (resource gone)
+      * HTTP 403 from aggregator hosts that systematically block bots
+        (ziprecruiter, indeed, glassdoor). Retrying these wastes
+        Firecrawl/HTTP budget and never succeeds — the user-facing apply
+        URL is the source-of-truth from PA's perspective anyway, so we
+        tombstone the JD fetch as "won't ever work".
+      * LookupError (URL parse / Workday CXS discovery gave up)
+    """
     if isinstance(exc, httpx.HTTPStatusError):
         try:
-            return exc.response.status_code == 404
+            status = exc.response.status_code
+            if status == 404:
+                return True
+            if status == 403:
+                # Aggregator hosts known to block bots — treat as permanent.
+                host = exc.response.request.url.host.lower() if exc.response.request else ""
+                if any(
+                    blocker in host
+                    for blocker in ("ziprecruiter.com", "indeed.com", "glassdoor.com", "simplyhired.com")
+                ):
+                    return True
         except AttributeError:
             return False
     if isinstance(exc, LookupError):
