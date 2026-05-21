@@ -52,12 +52,13 @@ ENRICH_STALE_DAYS = 7
 
 # 2026-05-20 — empty-skills alert threshold.
 #
-# User directive: rows with NULL/empty required_skills are observability
-# problems, not auto-fix targets. We don't skip classify_job for NULL-JD
-# rows (the LLM may still produce a reasonable hint from company + role),
-# we don't auto-flip status, we don't gate sync further. We DO emit a
-# WARNING when the count of active rows with empty required_skills crosses
-# the threshold so ops sees it in the daily logs.
+# Active rows with NULL/empty required_skills are an observability metric.
+# 2026-05-21 follow-up: classify_job now returns None when JD is missing
+# (anti-hallucination guard) — the worker treats that as "do not write"
+# so ``enriched_at`` stays NULL and the row stays eligible for next run.
+# Result: empty-skills rows in the active set are now only those where
+# Stage 2b still hasn't landed a JD. We DO emit a WARNING when the
+# threshold is crossed so ops sees it in the daily logs.
 #
 # Override via ``ALERT_EMPTY_SKILLS_THRESHOLD`` env var (int). Default 100
 # is conservative — well under the typical post-enrichment empty-skills
@@ -127,22 +128,35 @@ def _row_to_job(row: dict) -> Job:
     )
 
 
-def _process_one_job(row: dict) -> tuple[bool, str, Exception | None]:
+def _process_one_job(row: dict) -> tuple[str, str, Exception | None]:
     """Worker-thread payload: classify one job and write the result.
 
     Each worker acquires its own pooled connection — psycopg Connection
     objects are NOT thread-safe, so we cannot share the caller's conn.
 
-    Returns (success, job_id_short, exc_if_any). Never raises — every
-    exception is captured and reported back so the main thread can keep
-    counting failures without losing siblings.
+    Returns ``(outcome, job_id_short, exc_if_any)`` where ``outcome`` is:
+      * ``"enriched"`` — classify_job returned a result, UPDATE committed
+      * ``"skipped_no_jd"`` — JD too short / missing, classify_job returned
+        None, no UPDATE issued. ``enriched_at`` stays NULL so the row
+        re-enters the queue next pipeline run (when Stage 2b may have
+        landed a JD).
+      * ``"failed"`` — classify_job raised, or the UPDATE write failed.
+
+    Never raises — every exception is captured and reported back so the
+    main thread can keep counting failures without losing siblings.
     """
     job = _row_to_job(row)
     short_id = job.job_id[:8]
     try:
         result = classify_job(job)
     except Exception as exc:
-        return False, short_id, exc
+        return "failed", short_id, exc
+
+    if result is None:
+        # Anti-hallucination guard fired — JD missing/too-short.
+        # Skip UPDATE so ``enriched_at`` stays NULL and the row stays in
+        # the queue for the next run.
+        return "skipped_no_jd", short_id, None
 
     try:
         with get_connection() as conn:
@@ -167,7 +181,7 @@ def _process_one_job(row: dict) -> tuple[bool, str, Exception | None]:
             )
             conn.commit()
     except Exception as exc:
-        return False, short_id, exc
+        return "failed", short_id, exc
 
     logger.debug(
         "Enriched {}: industry={} company_size={} sponsorship={}",
@@ -176,7 +190,7 @@ def _process_one_job(row: dict) -> tuple[bool, str, Exception | None]:
         result.company_size,
         result.sponsorship,
     )
-    return True, short_id, None
+    return "enriched", short_id, None
 
 
 def enrich_pending(
@@ -256,29 +270,35 @@ def enrich_pending(
         len(rows),
         max_workers,
     )
-    enriched = failed = 0
+    enriched = failed = skipped_no_jd = 0
     counter_lock = threading.Lock()  # guards loguru ordering of progress logs
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = [pool.submit(_process_one_job, row) for row in rows]
         for fut in as_completed(futures):
             try:
-                success, short_id, exc = fut.result()
+                outcome, short_id, exc = fut.result()
             except Exception as inner_exc:  # _process_one_job should never raise, defensive
                 with counter_lock:
                     failed += 1
                 logger.warning("Worker raised unexpectedly: {}", inner_exc)
                 continue
 
-            if success:
+            if outcome == "enriched":
                 with counter_lock:
                     enriched += 1
+            elif outcome == "skipped_no_jd":
+                with counter_lock:
+                    skipped_no_jd += 1
             else:
                 with counter_lock:
                     failed += 1
                 logger.warning("Failed to enrich job {}: {}", short_id, exc)
 
-    logger.info("Enrichment complete: enriched={} failed={}", enriched, failed)
+    logger.info(
+        "Enrichment complete: enriched={} skipped_no_jd={} failed={}",
+        enriched, skipped_no_jd, failed,
+    )
 
     # 2026-05-20 — empty-skills alert. Counts BOTH the pre-existing tail
     # (rows the enrichment queue didn't get to this run) and the new
@@ -295,6 +315,7 @@ def enrich_pending(
     return {
         "enriched": enriched,
         "failed": failed,
-        "skipped": 0,
+        "skipped": skipped_no_jd,
+        "skipped_no_jd": skipped_no_jd,
         "empty_skills_active": empty_skills_count,
     }

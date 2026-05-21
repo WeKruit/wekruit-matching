@@ -397,3 +397,46 @@ def test_enrich_pending_skips_recently_enriched_stuck_job():
             )
         finally:
             _cleanup(conn, job_id)
+
+
+@skip_no_db
+def test_enrich_pending_skips_update_when_classify_returns_none():
+    """Anti-hallucination guard — 2026-05-21.
+
+    When classify_job returns None (JD missing/too-short), the worker MUST
+    skip the UPDATE entirely so ``enriched_at`` stays NULL and the row is
+    re-eligible for the next pipeline run (when Stage 2b may have landed
+    a real JD).
+
+    Without this contract: ``enriched_at`` would be stamped, the staleness
+    window would lock the row out for 7 days, and fabricated empty-skill
+    classifications would persist downstream.
+    """
+    from wekruit_matching.enrichment.worker import enrich_pending
+
+    job_id = "9" * 64
+    get_conn = _connect()
+
+    with get_conn() as conn:
+        _insert_job(conn, job_id, enriched_at=None)
+        try:
+            with patch(
+                "wekruit_matching.enrichment.worker.classify_job",
+                return_value=None,
+            ):
+                result = enrich_pending(conn)
+
+            row = conn.execute(
+                "SELECT enriched_at, required_skills FROM jobs WHERE job_id = %(id)s",
+                {"id": job_id},
+            ).fetchone()
+            assert row["enriched_at"] is None, (
+                "enriched_at must stay NULL when classify_job returns None — "
+                "otherwise the row gets locked out of the queue for 7 days "
+                "and Stage 2b can't rescue it"
+            )
+            assert result["skipped_no_jd"] >= 1
+            assert result["enriched"] == 0
+            assert result["failed"] == 0
+        finally:
+            _cleanup(conn, job_id)

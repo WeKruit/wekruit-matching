@@ -265,6 +265,9 @@ def analyze_url(request: Request, body: AnalyzeUrlRequest, _: None = Depends(ver
     company = site_match.group(1).strip() if site_match else ""
 
     # Step 4: Classify using existing enrichment pipeline (Claude Haiku — cheap)
+    # Pass the scraped page text as job_description so the classifier has
+    # real content to extract skills from. Without this the anti-hallucination
+    # guard returns None and the endpoint cannot match.
     fake_job = Job(
         job_id=f"analyze-{hash(body.url) % 10**8}",
         source_repo="on-demand",
@@ -272,8 +275,15 @@ def analyze_url(request: Request, body: AnalyzeUrlRequest, _: None = Depends(ver
         role_title=job_title or "Unknown Role",
         primary_url=body.url,
         location_raw="",
+        job_description=text,
     )
     enrichment = classify_job(fake_job)
+    if enrichment is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Scraped page text was too short for reliable classification — "
+                   "try a direct ATS URL with the full job description.",
+        )
 
     # Step 5: Match user skills against required skills using the SAME scorer as /match
     from wekruit_matching.matching.scorer import score_skills_overlap, WEIGHTS
