@@ -62,6 +62,7 @@ from wekruit_matching.pipeline.ats_enricher import (
     AtsJobData,
     fetch_ashby_job,
     fetch_greenhouse_job,
+    fetch_jobright_job,
     fetch_lever_job,
 )
 from wekruit_matching.pipeline.firecrawl_enricher import (
@@ -165,6 +166,12 @@ async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
         return fetch_lever_job(url), 0
     if route is FetchRoute.ASHBY:
         return fetch_ashby_job(url), 0
+    if route is FetchRoute.JOBRIGHT:
+        # 2026-05-21: jobright.ai /jobs/info/<id> pages are server-rendered
+        # with the full JD inline — no Firecrawl needed. Direct HTTP fetch
+        # + text-strip is ~10x cheaper than Firecrawl credits and avoids
+        # the SPA-wait-for-render dance entirely.
+        return fetch_jobright_job(url), 0
     if route is FetchRoute.WORKDAY:
         if not settings.firecrawl_api_key:
             return None, 0
@@ -289,10 +296,18 @@ def _write_closed_at_source(conn, job_id: str) -> None:
 def _pick_target_url(row: dict) -> str | None:
     """Pick the URL most likely to yield a JD.
 
-    Jobright primary_url cannot be fetched (we'd just hit the aggregator).
-    Prefer ats_apply_url whenever primary_url is jobright-style; otherwise
-    use primary_url. Returns None when no fetchable URL exists (caller should
-    treat as skipped).
+    Priority:
+      1. ``ats_apply_url`` when present and non-jobright (real ATS = best JD source)
+      2. ``primary_url`` when non-jobright (direct ATS already)
+      3. ``primary_url`` when jobright (2026-05-21: jobright /jobs/info/<id>
+         pages are server-rendered with full JD inline — see
+         ``fetch_jobright_job`` for the dedicated parser).
+      4. ``ats_apply_url`` as a last resort even if it is jobright-shaped.
+
+    Returns None only when both URLs are missing — in that case the row
+    truly has nothing to fetch from. The previous implementation returned
+    None when primary was jobright and ats was absent, which masked the
+    JD in 2,308 jobright-newgrad active docs (5.6% JD coverage).
     """
     primary_url_raw = row.get("primary_url") or ""
     ats_apply_url_raw = row.get("ats_apply_url") or ""
@@ -300,11 +315,13 @@ def _pick_target_url(row: dict) -> str | None:
     ats_is_real = bool(ats_apply_url_raw) and not ats_apply_url_raw.startswith(
         "https://jobright.ai/"
     )
-    if primary_is_jobright and ats_is_real:
+    if ats_is_real:
         return ats_apply_url_raw
     if primary_url_raw and not primary_is_jobright:
         return primary_url_raw
-    if ats_is_real:
+    if primary_is_jobright:
+        return primary_url_raw
+    if ats_apply_url_raw:
         return ats_apply_url_raw
     return None
 

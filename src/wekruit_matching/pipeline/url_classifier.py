@@ -21,6 +21,7 @@ class FetchRoute(StrEnum):
     LEVER = "lever"
     ASHBY = "ashby"
     WORKDAY = "workday"
+    JOBRIGHT = "jobright"
     FIRECRAWL = "firecrawl"
 
 
@@ -86,5 +87,15 @@ def classify_job_url(url: str) -> UrlClassification:
 
     if "/wday/" in path or "/job/" in path and "workday" in hostname:
         return UrlClassification(FetchRoute.WORKDAY, normalized, hostname)
+
+    # 2026-05-21 matching-quality launch blocker: jobright.ai pages are
+    # server-rendered HTML with the full JD body inline (curl verified:
+    # ~3,800 chars of plain text including Responsibilities + role
+    # description on a ~290KB page). Previous code marked these as
+    # `skip_no_url` because the URL is a jobright "redirect" — but the
+    # redirect target is for the APPLY action, not for the JD page.
+    # The /jobs/info/<id> page itself carries the JD.
+    if "jobright.ai" in hostname:
+        return UrlClassification(FetchRoute.JOBRIGHT, normalized, hostname)
 
     return UrlClassification(FetchRoute.FIRECRAWL, normalized, hostname)
