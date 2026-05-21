@@ -26,6 +26,10 @@ from wekruit_matching.scraper.id_utils import (
     generate_job_id,
     normalize_company_name,
 )
+from wekruit_matching.scraper.title_inference import (
+    infer_role_function,
+    infer_seniority,
+)
 
 BASE_URL = "https://jobright.ai/minisites-jobs"
 
@@ -309,6 +313,15 @@ def _to_job(raw: dict, source_repo: str) -> Job | None:
         role_title=title,
     )
 
+    # 2026-05-21 fill role_function + seniority from title — same pattern
+    # as ashby_direct / greenhouse_direct / lever_direct. Without this,
+    # jobright rows landed with empty role_function (HARD filter at match
+    # time) and 89% of jobright became invisible to function-filtered
+    # queries. infer_role_function / infer_seniority are pure title-based
+    # so no extra I/O.
+    role_function = infer_role_function(title)
+    seniority_level = infer_seniority(title)
+
     return Job(
         job_id=job_id,
         source_repo=source_repo,
@@ -324,6 +337,9 @@ def _to_job(raw: dict, source_repo: str) -> Job | None:
         company_size=company_size,
         required_skills=skills,
         sponsorship=sponsorship,
+        # Title-derived enrichment (added 2026-05-21)
+        role_function=role_function,
+        seniority_level=seniority_level,
     )
 
 
