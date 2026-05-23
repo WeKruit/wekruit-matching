@@ -5,12 +5,13 @@ Import from here rather than sub-modules:
 """
 from .feedback import Feedback, ReactionType
 from .job import Job, JobStatus
-from .user_profile import CompanySizePreference, JobType, UserProfile
+from .user_profile import CompanySizePreference, DerivedExperience, JobType, UserProfile
 
 __all__ = [
     "Job",
     "JobStatus",
     "UserProfile",
+    "DerivedExperience",
     "JobType",
     "CompanySizePreference",
     "Feedback",

@@ -92,14 +92,19 @@ class FeedbackRequest(BaseModel):
 
 @app.post("/match")
 @limiter.limit("60/minute")
-def match(request: Request, profile: UserProfile, _: None = Depends(verify_api_key)) -> dict:
+def match(
+    request: Request,
+    profile: UserProfile,
+    include_explanations: bool = False,
+    _: None = Depends(verify_api_key),
+) -> dict:
     """Return a ranked list of job matches for the given user profile.
 
     Body: UserProfile JSON (user_id required; all other fields optional).
     Response: {"matches": [<job dicts with score and signals>, ...]}
     """
     try:
-        matches = get_matches(profile)
+        matches = get_matches(profile, include_explanations=include_explanations)
     except Exception as e:
         logger.exception("Unhandled error in POST /match: {}", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e

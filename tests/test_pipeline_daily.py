@@ -55,6 +55,19 @@ def _patch_all_stages(monkeypatch):
     """
     call_order: list[str] = []
 
+    for env_key in (
+        "ENABLE_WELLFOUND_SCRAPE",
+        "ENABLE_LINKEDIN_SCRAPE",
+        "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT",
+        "ENABLE_LEVER_DIRECT",
+        "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(env_key, "0")
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_dead_backfill",
+        lambda conn: {"synced": 0, "total_seen": 0, "skipped": "test"},
+    )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.scrape_all",
         lambda: _SCRAPE_STATS,

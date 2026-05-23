@@ -596,12 +596,11 @@ def test_jobright_primary_url_falls_back_to_ats_apply_url(monkeypatch) -> None:
     )
 
 
-def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
-    """When primary_url is already a real employer URL, prefer it.
+def test_real_ats_apply_url_preferred_over_primary_url(monkeypatch) -> None:
+    """When ats_apply_url is a real ATS URL, prefer it.
 
-    Some senior-scraper rows write primary_url=<employer URL> directly.
-    ats_apply_url may also be populated (cached). Prefer primary_url so we
-    don't double-resolve.
+    Track C/F backfills may write a fresher canonical apply URL to
+    ats_apply_url. Stage 2b should use that URL first when it is non-jobright.
     """
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 
@@ -609,12 +608,12 @@ def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
         [[
             {
                 "job_id": "4" * 64,
-                "company_name": "DirectScrapedCo",
-                "role_title": "EM",
-                "primary_url": "https://boards.greenhouse.io/directco/jobs/100",
-                "ats_apply_url": "https://other-cached.example.com/x",
-            }
-        ], []]
+                    "company_name": "DirectScrapedCo",
+                    "role_title": "EM",
+                    "primary_url": "https://boards.greenhouse.io/directco/jobs/100",
+                    "ats_apply_url": "https://boards.greenhouse.io/canonicalco/jobs/200",
+                }
+            ], []]
     )
 
     fetched_urls: list[str] = []
@@ -637,22 +636,16 @@ def test_real_primary_url_preferred_over_ats_apply_url(monkeypatch) -> None:
     )
 
     assert stats["processed"] == 1
-    assert fetched_urls == ["https://boards.greenhouse.io/directco/jobs/100"], (
-        "Real primary_url must be preferred over cached ats_apply_url"
+    assert fetched_urls == ["https://boards.greenhouse.io/canonicalco/jobs/200"], (
+        "Real ats_apply_url must be preferred over primary_url"
     )
 
 
-def test_no_fetchable_url_writes_skip_marker(monkeypatch) -> None:
-    """When both URLs are jobright-only, write a skip_no_url marker.
+def test_jobright_only_url_fetches_jobright_page(monkeypatch) -> None:
+    """When both URLs are jobright-only, fetch the jobright page directly.
 
-    Matching-quality launch blocker (2026-05-20): the SQL pre-filter that
-    used to hide these rows was removed so they are visible to metrics. The
-    Python skip-path now writes a ``jd_fetch_source='skip_no_url'`` marker
-    that the SELECT clause excludes on subsequent runs (it only re-admits
-    ``jd_fetch_source = 'failed'`` rows). Tracks C/F can clear the marker
-    when a real ATS URL is backfilled.
-
-    A bogus network fetch must NOT happen — guard with a sentinel.
+    PR #13 made jobright /jobs/info pages a first-class direct fetch route.
+    A bogus ATS fetch must NOT happen — guard greenhouse/lever with sentinels.
     """
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 
@@ -666,6 +659,17 @@ def test_no_fetchable_url_writes_skip_marker(monkeypatch) -> None:
     monkeypatch.setattr(
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_lever_job",
         _no_fetch_allowed,
+    )
+
+    fetched_urls: list[str] = []
+
+    def _capture_jobright(url: str):
+        fetched_urls.append(url)
+        return build_ats_job_data(source="jobright", description_plain="Jobright inline JD")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.run_jd_enrichment.fetch_jobright_job",
+        _capture_jobright,
     )
 
     conn = _FakeConn(
@@ -688,18 +692,20 @@ def test_no_fetchable_url_writes_skip_marker(monkeypatch) -> None:
         max_workers=1,
     )
 
-    assert stats["processed"] == 0
-    assert stats["skipped"] == 1
+    assert stats["processed"] == 1
+    assert stats["skipped"] == 0
     assert stats["failed"] == 0
+    assert fetched_urls == ["https://jobright.ai/jobs/info/p"]
     update_queries = [
         (query, params)
         for query, params in conn.executed
         if query.lstrip().startswith("UPDATE")
     ]
-    assert len(update_queries) == 1, "skip path must write exactly one marker"
+    assert len(update_queries) == 1, "jobright path must write exactly one success"
     query, params = update_queries[0]
-    assert "jd_fetch_source = 'skip_no_url'" in query
-    assert params == {"job_id": "5" * 64}
+    assert "job_description = %(job_description)s" in query
+    assert params["job_id"] == "5" * 64
+    assert params["jd_fetch_source"] == "jobright"
 
 
 def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:

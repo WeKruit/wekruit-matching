@@ -8,17 +8,23 @@ Public API:
 """
 from __future__ import annotations
 
-import psycopg
+import os
+
 import openai
+import psycopg
 from loguru import logger
 from pgvector.psycopg import register_vector
 
+from wekruit_matching.config import get_settings
 from wekruit_matching.db.connection import get_connection
-from wekruit_matching.embedding.embedder import embed_text, EMBEDDING_MODEL
+from wekruit_matching.embedding.embedder import embed_text
 from wekruit_matching.matching.filters import apply_hard_filters
+from wekruit_matching.matching.profile_source import (
+    fetch_pa_user_profile_patch,
+    merge_pa_user_profile_patch,
+)
 from wekruit_matching.matching.scorer import score_job
-from wekruit_matching.models.user_profile import UserProfile, JobType
-
+from wekruit_matching.models.user_profile import JobType, UserProfile
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -33,6 +39,15 @@ def _compose_query_text(profile: UserProfile) -> str:
     if profile.skills:
         return ", ".join(profile.skills)
     return "software engineer"
+
+
+def _use_derived_experience_flag() -> bool:
+    """Read MATCHING_USE_DERIVED_EXPERIENCE without making unit tests require .env."""
+    try:
+        return get_settings().matching_use_derived_experience
+    except Exception:
+        raw = os.getenv("MATCHING_USE_DERIVED_EXPERIENCE", "")
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _fetch_ann_candidates(
@@ -66,7 +81,7 @@ def _fetch_ann_candidates(
             SELECT
                 job_id, source_repo, company_name, role_title, primary_url,
                 location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
-                industry, company_size, required_skills, sponsorship,
+                industry, company_size, required_skills, sponsorship, seniority_level,
                 embedding, embedding_model
             FROM jobs
             WHERE status = 'active'
@@ -83,7 +98,7 @@ def _fetch_ann_candidates(
             SELECT
                 job_id, source_repo, company_name, role_title, primary_url,
                 location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
-                industry, company_size, required_skills, sponsorship,
+                industry, company_size, required_skills, sponsorship, seniority_level,
                 embedding, embedding_model
             FROM jobs
             WHERE status = 'active'
@@ -133,7 +148,7 @@ def _fetch_recent_candidates(
             SELECT
                 job_id, source_repo, company_name, role_title, primary_url,
                 location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
-                industry, company_size, required_skills, sponsorship,
+                industry, company_size, required_skills, sponsorship, seniority_level,
                 embedding, embedding_model
             FROM jobs
             WHERE status = 'active' AND source_repo = %s
@@ -148,7 +163,7 @@ def _fetch_recent_candidates(
             SELECT
                 job_id, source_repo, company_name, role_title, primary_url,
                 location_raw, date_posted_raw, status, first_seen_at, last_seen_at,
-                industry, company_size, required_skills, sponsorship,
+                industry, company_size, required_skills, sponsorship, seniority_level,
                 embedding, embedding_model
             FROM jobs
             WHERE status = 'active'
@@ -170,6 +185,7 @@ def get_matches(
     conn: psycopg.Connection | None = None,
     top_n: int = 30,
     openai_client: openai.OpenAI | None = None,
+    include_explanations: bool = False,
 ) -> list[dict]:
     """Return the top-N ranked job matches for a user profile.
 
@@ -195,6 +211,13 @@ def get_matches(
           - "signals": dict[str, float] with 7 signal values
         Sorted descending by "score". Length <= top_n.
     """
+    use_derived_experience = _use_derived_experience_flag()
+    if use_derived_experience:
+        profile = merge_pa_user_profile_patch(
+            profile,
+            fetch_pa_user_profile_patch(profile.user_id),
+        )
+
     # ------------------------------------------------------------------
     # Step 1: Determine query embedding (fallback to None if unavailable)
     # ------------------------------------------------------------------
@@ -216,7 +239,12 @@ def get_matches(
     # Pre-compute source_repo filter for ANN query so results aren't
     # dominated by the wrong job type (35K newgrad vs 2K intern)
     from wekruit_matching.matching.filters import _SOURCE_REPO_SET
-    ann_source_repos = _SOURCE_REPO_SET.get(profile.preferred_job_type) if profile.preferred_job_type is not JobType.ANY else None
+
+    ann_source_repos = (
+        _SOURCE_REPO_SET.get(profile.preferred_job_type)
+        if profile.preferred_job_type is not JobType.ANY
+        else None
+    )
 
     def _run(active_conn: psycopg.Connection) -> list[dict]:
         if query_embedding is not None:
@@ -253,7 +281,13 @@ def get_matches(
         # ------------------------------------------------------------------
         scored: list[dict] = []
         for job in filtered:
-            score_result = score_job(job, profile, query_embedding or [])
+            score_result = score_job(
+                job,
+                profile,
+                query_embedding or [],
+                use_derived_experience=use_derived_experience,
+                include_explanation=include_explanations,
+            )
             # Merge job fields + score/signals into one dict
             scored.append({**job, **score_result})
 
