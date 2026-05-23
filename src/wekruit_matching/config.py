@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     firebase_sync_timeout_seconds: float = Field(30.0)
     firebase_sync_collection: str = Field("matching-jobs")
 
+    # PR-D: optional PA derivedExperience read path for ranker signals.
+    matching_use_derived_experience: bool = Field(False)
+    firestore_project_id: str = Field("")
+    firebase_service_account_json: str = Field("", repr=False)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

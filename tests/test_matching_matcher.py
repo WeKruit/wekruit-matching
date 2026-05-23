@@ -6,6 +6,7 @@ Tests verify ANN retrieval -> hard filters -> scoring pipeline.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -67,10 +68,17 @@ def _make_job(job_id: str = "job1", **kwargs: Any) -> dict:
 
 def _build_mock_conn(jobs: list[dict]) -> MagicMock:
     """Build a mock psycopg3 connection whose cursor.fetchall() returns the given rows."""
-    cursor = MagicMock()
-    cursor.fetchall.return_value = jobs
     conn = MagicMock()
-    conn.execute.return_value = cursor
+
+    def execute(sql: str, params: Any = None) -> MagicMock:
+        cursor = MagicMock()
+        if "FROM feedback" in sql:
+            cursor.fetchall.return_value = []
+        else:
+            cursor.fetchall.return_value = jobs
+        return cursor
+
+    conn.execute.side_effect = execute
     return conn
 
 
@@ -267,7 +275,86 @@ class TestGetMatchesANNLimit:
 
         # The second positional arg in execute call is the params tuple/list
         # Params should be (embedding, limit=40)
-        call_args = conn.execute.call_args
+        call_args = next(
+            call
+            for call in conn.execute.call_args_list
+            if "ORDER BY embedding <=>" in call.args[0]
+        )
         params = call_args[0][1]  # second positional arg
         # limit is the second param in the query
         assert params[1] == 40, f"Expected limit=40 (10*4), got {params[1]}"
+
+
+class TestDerivedExperienceFlag:
+    """get_matches reads pa-users derivedExperience only behind the flag."""
+
+    def test_flag_off_does_not_fetch_pa_user_profile_patch(self) -> None:
+        from wekruit_matching.matching.matcher import get_matches
+
+        profile = _make_profile(skills=["python"])
+        conn = _build_mock_conn([_make_job("j1", required_skills=["python"])])
+
+        with patch(
+            "wekruit_matching.matching.matcher.embed_text",
+            return_value=_FAKE_EMBEDDING,
+        ), patch("wekruit_matching.matching.matcher.register_vector"), patch(
+            "wekruit_matching.matching.matcher.get_settings",
+            return_value=SimpleNamespace(matching_use_derived_experience=False),
+        ), patch(
+            "wekruit_matching.matching.matcher.fetch_pa_user_profile_patch",
+            return_value={},
+        ) as fetch_patch:
+            result = get_matches(profile, conn=conn, top_n=1)
+
+        fetch_patch.assert_not_called()
+        assert "skill_depth_bonus" not in result[0]["signals"]
+
+    def test_flag_on_fetches_pa_user_derived_experience_once_per_request(self) -> None:
+        from wekruit_matching.matching.matcher import get_matches
+
+        profile = _make_profile(user_id="pa-user-1", skills=["python", "react"])
+        conn = _build_mock_conn([
+            _make_job(
+                "j1",
+                required_skills=["python", "react"],
+                seniority_level="entry_level",
+            )
+        ])
+        patch_doc = {
+            "derivedExperience": {
+                "version": "v1",
+                "yearsTotal": 5,
+                "yearsPerSkill": {"python": 5, "react": 2},
+                "skillRecency": {"python": "present", "react": "2025-08-01"},
+                "titleTrajectory": ["Software Engineer Intern", "Software Engineer"],
+                "seniorityCurrent": "entry_level",
+                "responsibilityCurrent": "individual_contributor",
+                "industryHistory": {},
+                "unverifiedSkills": [],
+                "computedAt": "2026-05-22T12:00:00Z",
+            },
+            "derivedExperienceVersion": "v1",
+            "totalYearsExperience": 5,
+        }
+
+        with patch(
+            "wekruit_matching.matching.matcher.embed_text",
+            return_value=_FAKE_EMBEDDING,
+        ), patch("wekruit_matching.matching.matcher.register_vector"), patch(
+            "wekruit_matching.matching.matcher.get_settings",
+            return_value=SimpleNamespace(matching_use_derived_experience=True),
+        ), patch(
+            "wekruit_matching.matching.matcher.fetch_pa_user_profile_patch",
+            return_value=patch_doc,
+        ) as fetch_patch:
+            result = get_matches(
+                profile,
+                conn=conn,
+                top_n=1,
+                include_explanations=True,
+            )
+
+        fetch_patch.assert_called_once_with("pa-user-1")
+        assert result[0]["signals"]["skill_depth_bonus"] == 0.7
+        assert result[0]["signals"]["seniority_alignment"] == 1.0
+        assert result[0]["explanation"].startswith("matched on python (5y, recent)")

@@ -1,7 +1,15 @@
 """Tests for Pydantic v2 data models (FOUND-05)."""
 import pytest
 from pydantic import ValidationError
-from wekruit_matching.models import Job, JobStatus, UserProfile, JobType, Feedback, ReactionType
+from wekruit_matching.models import (
+    DerivedExperience,
+    Feedback,
+    Job,
+    JobStatus,
+    JobType,
+    ReactionType,
+    UserProfile,
+)
 
 
 def test_job_valid():
@@ -61,6 +69,35 @@ def test_user_profile_with_skills():
     )
     assert len(profile.skills) == 2
     assert profile.preferred_job_type == JobType.INTERN
+
+
+def test_user_profile_accepts_derived_experience_wire_contract():
+    """UserProfile keeps PA's derivedExperience fields optional and typed."""
+    profile = UserProfile(
+        user_id="user-123",
+        skills=["Python", "React"],
+        totalYearsExperience=5,
+        derivedExperience={
+            "version": "v1",
+            "yearsTotal": 5,
+            "yearsPerSkill": {"python": 5, "react": 2},
+            "skillRecency": {"python": "present", "react": "2025-08-01"},
+            "titleTrajectory": ["Software Engineer Intern", "Software Engineer"],
+            "seniorityCurrent": "entry_level",
+            "responsibilityCurrent": "individual_contributor",
+            "industryHistory": {"fintech": 3, "saas": 2},
+            "unverifiedSkills": ["kubernetes"],
+            "computedAt": "2026-05-22T12:00:00Z",
+        },
+        derivedExperienceVersion="v1",
+        derivedExperienceContentHash="abc123",
+    )
+
+    assert isinstance(profile.derived_experience, DerivedExperience)
+    assert profile.derived_experience.years_per_skill["python"] == 5
+    assert profile.derived_experience.skill_recency["python"] == "present"
+    assert profile.derived_experience.seniority_current == "entry_level"
+    assert profile.total_years_experience == 5
 
 
 def test_feedback_valid_reaction():

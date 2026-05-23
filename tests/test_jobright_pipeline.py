@@ -31,6 +31,23 @@ def _make_stubs(monkeypatch, *, enrich_jobright_side_effect=None, enrich_jobrigh
     """
     monkeypatch.setattr("wekruit_matching.pipeline.daily.scrape_all", lambda: {})
     monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_dead_backfill",
+        lambda conn: {"synced": 0, "total_seen": 0, "skipped": "test"},
+    )
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
+        lambda *, since, full_sync: {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0},
+    )
+    for env_key in (
+        "ENABLE_WELLFOUND_SCRAPE",
+        "ENABLE_LINKEDIN_SCRAPE",
+        "ENABLE_OTTA_SCRAPE",
+        "ENABLE_GREENHOUSE_DIRECT",
+        "ENABLE_LEVER_DIRECT",
+        "ENABLE_ASHBY_DIRECT",
+    ):
+        monkeypatch.setenv(env_key, "0")
+    monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.run_jd_enrichment",
         lambda conn: {"processed": 0, "failed": 0, "skipped": 0, "credits_used": 0},
     )

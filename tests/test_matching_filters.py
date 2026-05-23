@@ -304,8 +304,9 @@ class TestApplyHardFilters:
             [intern_sf_sponsor, intern_ny_sponsor, intern_sf_no_sponsor, newgrad_sf_sponsor],
             profile,
         )
-        # Only intern_sf_sponsor should survive all three filters
-        assert result == [intern_sf_sponsor]
+        # Location is a scoring signal, not a hard filter; both sponsored
+        # internship rows survive the chained hard filters.
+        assert result == [intern_sf_sponsor, intern_ny_sponsor]
 
     def test_profile_with_no_constraints_passes_all(self):
         """Profile with ANY job type, no sponsorship requirement, no location preference passes all jobs."""
@@ -340,11 +341,11 @@ class TestApplyHardFilters:
         assert job_none not in result
         assert job_true in result
 
-    def test_location_filter_excludes_non_matching(self):
-        """Chained: jobs with non-matching locations are excluded."""
+    def test_location_preference_is_not_a_chained_hard_filter(self):
+        """Chained filters keep non-matching locations for scoring."""
         sf_job = _job(location_raw="San Francisco, CA")
         ny_job = _job(location_raw="New York, NY")
         profile = _profile(preferred_locations=["SF"])
         result = apply_hard_filters([sf_job, ny_job], profile)
         assert sf_job in result
-        assert ny_job not in result
+        assert ny_job in result

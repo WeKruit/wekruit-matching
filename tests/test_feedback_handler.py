@@ -46,6 +46,11 @@ def _cursor_returning(row: Any) -> MagicMock:
     return cursor
 
 
+def _successful_profile_insert() -> MagicMock:
+    """Cursor placeholder for lazy user_profiles creation."""
+    return MagicMock()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -59,6 +64,7 @@ class TestLikeInsertsFeedbackRow:
         # Simulate: SELECT jobs returns a valid row; SELECT affinity returns None
         job_row = {"company_name": "ACME", "embedding": [0.1] * 1536}
         side_effects = [
+            _successful_profile_insert(),      # INSERT INTO user_profiles
             _cursor_returning(None),          # INSERT INTO feedback
             _cursor_returning(job_row),       # SELECT company_name, embedding FROM jobs
             MagicMock(),                       # UPDATE liked_companies
@@ -70,9 +76,9 @@ class TestLikeInsertsFeedbackRow:
         with patch("wekruit_matching.feedback.handler.register_vector"):
             record_feedback("u1", "job1", "like", conn=conn)
 
-        # First execute call must contain INSERT INTO feedback
-        first_call_sql = conn.execute.call_args_list[0][0][0]
-        assert "INSERT INTO feedback" in first_call_sql
+        sqls = [call[0][0] for call in conn.execute.call_args_list]
+        assert any("INSERT INTO user_profiles" in sql for sql in sqls)
+        assert any("INSERT INTO feedback" in sql for sql in sqls)
 
 
 class TestLikeAppendsToLikedCompanies:
@@ -83,6 +89,7 @@ class TestLikeAppendsToLikedCompanies:
 
         job_row = {"company_name": "ACME", "embedding": [0.1] * 1536}
         side_effects = [
+            _successful_profile_insert(),      # INSERT INTO user_profiles
             _cursor_returning(None),          # INSERT INTO feedback
             _cursor_returning(job_row),       # SELECT company_name, embedding FROM jobs
             MagicMock(),                       # UPDATE liked_companies
@@ -97,7 +104,7 @@ class TestLikeAppendsToLikedCompanies:
         # Find the UPDATE liked_companies call
         all_calls = conn.execute.call_args_list
         liked_call = next(
-            (c for c in all_calls if "liked_companies" in c[0][0]),
+            (c for c in all_calls if "UPDATE user_profiles" in c[0][0] and "liked_companies" in c[0][0]),
             None,
         )
         assert liked_call is not None, "No SQL call contained 'liked_companies'"
@@ -114,6 +121,7 @@ class TestDislikeAppendsToDislikedCompanies:
 
         job_row = {"company_name": "ACME", "embedding": [0.1] * 1536}
         side_effects = [
+            _successful_profile_insert(),      # INSERT INTO user_profiles
             _cursor_returning(None),          # INSERT INTO feedback
             _cursor_returning(job_row),       # SELECT company_name, embedding FROM jobs
             MagicMock(),                       # UPDATE disliked_companies
@@ -125,7 +133,7 @@ class TestDislikeAppendsToDislikedCompanies:
 
         all_calls = conn.execute.call_args_list
         disliked_call = next(
-            (c for c in all_calls if "disliked_companies" in c[0][0]),
+            (c for c in all_calls if "UPDATE user_profiles" in c[0][0] and "disliked_companies" in c[0][0]),
             None,
         )
         assert disliked_call is not None, "No SQL call contained 'disliked_companies'"
@@ -142,6 +150,7 @@ class TestFirstLikeSetsAffinityEmbedding:
         job_embedding = [0.5] * 1536
         job_row = {"company_name": "ACME", "embedding": job_embedding}
         side_effects = [
+            _successful_profile_insert(),       # INSERT INTO user_profiles
             _cursor_returning(None),           # INSERT INTO feedback
             _cursor_returning(job_row),        # SELECT company_name, embedding FROM jobs
             MagicMock(),                        # UPDATE liked_companies
@@ -177,6 +186,7 @@ class TestSubsequentLikeBlendsAffinity:
         existing_affinity = [0.0] * 1536
         job_row = {"company_name": "B", "embedding": job_embedding}
         side_effects = [
+            _successful_profile_insert(),       # INSERT INTO user_profiles
             _cursor_returning(None),           # INSERT INTO feedback
             _cursor_returning(job_row),        # SELECT company_name, embedding FROM jobs
             MagicMock(),                        # UPDATE liked_companies
@@ -214,6 +224,7 @@ class TestAppliedNoProfileUpdate:
 
         job_row = {"company_name": "ACME", "embedding": [0.1] * 1536}
         side_effects = [
+            _successful_profile_insert(),       # INSERT INTO user_profiles
             _cursor_returning(None),           # INSERT INTO feedback
             _cursor_returning(job_row),        # SELECT company_name, embedding FROM jobs
             # No more calls — applied should stop here
@@ -227,8 +238,8 @@ class TestAppliedNoProfileUpdate:
         sqls = [c[0][0] for c in all_calls]
 
         assert any("INSERT INTO feedback" in s for s in sqls), "INSERT INTO feedback not called"
-        assert not any("liked_companies" in s for s in sqls), "liked_companies must NOT be updated"
-        assert not any("disliked_companies" in s for s in sqls), "disliked_companies must NOT be updated"
+        assert not any("UPDATE user_profiles" in s and "liked_companies" in s for s in sqls), "liked_companies must NOT be updated"
+        assert not any("UPDATE user_profiles" in s and "disliked_companies" in s for s in sqls), "disliked_companies must NOT be updated"
         assert not any("affinity_embedding" in s for s in sqls), "affinity_embedding must NOT be updated"
 
 
@@ -241,6 +252,7 @@ class TestConnNoneUsesGetConnection:
         job_row = {"company_name": "ACME", "embedding": [0.1] * 1536}
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = [
+            _successful_profile_insert(),       # INSERT INTO user_profiles
             _cursor_returning(None),           # INSERT INTO feedback
             _cursor_returning(job_row),        # SELECT company_name, embedding FROM jobs
             MagicMock(),                        # UPDATE liked_companies
@@ -259,8 +271,9 @@ class TestConnNoneUsesGetConnection:
             record_feedback("u1", "job1", "like")
 
         mock_get_conn.assert_called_once()
-        first_call_sql = mock_conn.execute.call_args_list[0][0][0]
-        assert "INSERT INTO feedback" in first_call_sql
+        sqls = [call[0][0] for call in mock_conn.execute.call_args_list]
+        assert any("INSERT INTO user_profiles" in sql for sql in sqls)
+        assert any("INSERT INTO feedback" in sql for sql in sqls)
 
 
 class TestNoEmbeddingLikeSkipsAffinityUpdate:
@@ -271,6 +284,7 @@ class TestNoEmbeddingLikeSkipsAffinityUpdate:
 
         job_row = {"company_name": "C", "embedding": None}
         side_effects = [
+            _successful_profile_insert(),       # INSERT INTO user_profiles
             _cursor_returning(None),           # INSERT INTO feedback
             _cursor_returning(job_row),        # SELECT company_name, embedding FROM jobs
             MagicMock(),                        # UPDATE liked_companies
