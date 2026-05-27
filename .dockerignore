@@ -1,0 +1,54 @@
+# Keep the build context small — exclude things the image doesn't need.
+# A 2GB context kills `docker build` performance and bloats every CI step.
+
+# Local virtualenv — the container builds its own via `uv sync --frozen`
+.venv/
+venv/
+env/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+*.egg-info/
+dist/
+build/
+
+# Local config that must NEVER ship in the image
+.env
+.env.*
+!.env.docker.example
+creds/
+*.pem
+*.key
+
+# IDE noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs / scratch
+*.log
+logs/
+tmp/
+test-results/
+
+# Git metadata isn't useful at runtime
+.git/
+.gitignore
+.github/
+
+# Project planning docs — too big and not runtime
+.planning/
+docs/
+
+# Tests (kept out of prod image to shrink size; CI builds without this rule)
+tests/
