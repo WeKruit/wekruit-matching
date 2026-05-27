@@ -39,18 +39,18 @@ Scope guardrails
 """
 from __future__ import annotations
 
-import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Iterable
 
 import httpx
+from loguru import logger
 
 from wekruit_matching.models.job import Job
 from wekruit_matching.scraper.id_utils import generate_job_id
 
-logger = logging.getLogger(__name__)
+# Loguru placeholders are `{}`, not `{}` / `{}`. See `pipeline/daily.py`.
 
 # ---------------------------------------------------------------------------
 # Tunables (single place — keep in sync with `.planning/INITIATIVE-vc-
@@ -318,7 +318,7 @@ def parse_markdown_jobs(
 
     if not out:
         logger.warning(
-            "vc_board.parse: 0 jobs from %s (%d headings, %d chars) — "
+            "vc_board.parse: 0 jobs from {} ({} headings, {} chars) — "
             "board layout may have changed",
             board.slug,
             len(headings),
@@ -363,15 +363,15 @@ class FirecrawlClient:
             timeout=self.timeout_s,
         )
         if resp.status_code != 200:
-            logger.warning("firecrawl /v1/scrape non-200: %d %s", resp.status_code, resp.text[:200])
+            logger.warning("firecrawl /v1/scrape non-200: {} {}", resp.status_code, resp.text[:200])
             return ""
         try:
             payload = resp.json()
         except ValueError:
-            logger.warning("firecrawl returned non-JSON: %s", resp.text[:200])
+            logger.warning("firecrawl returned non-JSON: {}", resp.text[:200])
             return ""
         if not payload.get("success"):
-            logger.warning("firecrawl returned success=false: %s", str(payload)[:200])
+            logger.warning("firecrawl returned success=false: {}", str(payload)[:200])
             return ""
         return payload.get("data", {}).get("markdown", "") or ""
 
@@ -386,12 +386,12 @@ def scrape_board(client: FirecrawlClient, board: VCBoardConfig) -> list[Job]:
     try:
         markdown = client.scrape_markdown(board.url, wait_ms=board.wait_ms)
     except (httpx.RequestError, httpx.TimeoutException) as e:
-        logger.error("firecrawl fetch failed for %s: %s", board.slug, e)
+        logger.error("firecrawl fetch failed for {}: {}", board.slug, e)
         return []
     if not markdown:
         return []
     jobs = parse_markdown_jobs(markdown, board)
-    logger.info("vc_board.scrape: %s → %d jobs", board.slug, len(jobs))
+    logger.info("vc_board.scrape: {} → {} jobs", board.slug, len(jobs))
     return jobs
 
 
