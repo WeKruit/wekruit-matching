@@ -64,6 +64,12 @@ from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 from wekruit_matching.pipeline.dead_backfill import firestore_dead_backfill
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
+# Stage 1.7 — VC portfolio job boards via self-hosted Firecrawl.
+# See `.planning/INITIATIVE-vc-portfolio-job-boards.md` for the 17-board roster.
+from wekruit_matching.scraper.vc_board import (
+    FirecrawlClient as VCFirecrawlClient,
+    scrape_all_boards as scrape_all_vc_boards,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +121,11 @@ STAGE_BUDGETS = {
     "dead_backfill": 10 * 60,  # P7-K Stage 0 — Firestore dead-flag mirror
     "scrape": 45 * 60,
     "senior_scrapers": 45 * 60,  # combined Stage 1.5 + 1.6
+    # 2026-05-27 — Stage 1.7: 16 VC portfolio boards via Firecrawl render.
+    # Each board is one POST /v1/scrape (5-8s render). 16 boards × ~10s
+    # serial = ~3min normal. 20-min budget covers Firecrawl pool warmups
+    # plus a stuck render or two without bleeding into Stage 2.
+    "vc_boards": 20 * 60,
     "jobright": 20 * 60,
     "jd_enrich": 90 * 60,        # bumped 30→90 — Firecrawl JS pages slow
     "llm_enrich": 120 * 60,      # bumped 90→120 — gap-fill backlog
@@ -334,6 +345,71 @@ def run_daily_pipeline() -> dict:
         # Merge senior_stats into scrape_stats so downstream email + webhook
         # token totals see them.
         for k, v in senior_stats.items():
+            scrape_stats.setdefault(k, v)
+
+        # --- Stage 1.7: VC portfolio job boards via self-hosted Firecrawl ---
+        # 2026-05-27 — Adam ask: scrape 17 VC boards (a16z, Sequoia, Accel,
+        # Khosla, KP, Greylock, NEA, Lightspeed, Bessemer, Battery, GC, Index,
+        # Contrary, Pear, Antler, BITKRAFT) via render+regex, not by
+        # reverse-engineering Consider/Getro/Ashby SaaS APIs. One adapter,
+        # 16 config rows. See `scraper/vc_board.py`.
+        #
+        # Skipped silently when FIRECRAWL_BASE_URL is unset OR points at
+        # cloud Firecrawl with no key (config.py treats blank as opt-out
+        # for downstream Stage 2b, mirror that behaviour here).
+        logger.info("=== Stage 1.7: VC Portfolio Boards (Firecrawl) ===")
+        vc_stats: dict = {}
+        try:
+            with _stage_timeout("vc_boards", STAGE_BUDGETS["vc_boards"]):
+                # Read Firecrawl config directly from env. Avoids pulling
+                # full Settings (which requires unrelated secrets) inside
+                # the stage block — keeps the stage cheap to dry-run from
+                # tests that only fixture the env vars they need.
+                fc_base = (os.environ.get("FIRECRAWL_BASE_URL") or "").rstrip("/")
+                fc_key = os.environ.get("FIRECRAWL_API_KEY") or ""
+                if not fc_base:
+                    logger.info(
+                        "Stage 1.7 skipped: FIRECRAWL_BASE_URL not set"
+                    )
+                    stage_outcomes["vc_boards"] = "skipped"
+                else:
+                    vc_client = VCFirecrawlClient(base_url=fc_base, api_key=fc_key)
+                    vc_jobs_by_board = scrape_all_vc_boards(vc_client)
+                    total_scraped = sum(len(v) for v in vc_jobs_by_board.values())
+                    logger.info(
+                        "Stage 1.7 scrape: %d boards, %d total job rows",
+                        len(vc_jobs_by_board), total_scraped,
+                    )
+                    if total_scraped > 0:
+                        try:
+                            from wekruit_matching.scraper.upsert import (
+                                mark_stale_jobs as _mark_stale_vc,
+                                upsert_jobs as _upsert_vc,
+                            )
+                            with get_connection() as conn:
+                                for board_slug, jobs in vc_jobs_by_board.items():
+                                    if not jobs:
+                                        continue
+                                    repo_slug = f"vcboard:{board_slug}"
+                                    upsert_stats = _upsert_vc(jobs, conn)
+                                    seen_ids = {j.job_id for j in jobs}
+                                    stale_count = _mark_stale_vc(
+                                        seen_ids, repo_slug, conn
+                                    )
+                                    vc_stats[repo_slug] = {
+                                        **upsert_stats,
+                                        "stale": stale_count,
+                                    }
+                        except Exception as e:
+                            logger.error("Stage 1.7 upsert crashed: %s", e)
+                            errors.append(f"Stage 1.7 upsert: {e}")
+                    stage_outcomes["vc_boards"] = "ok"
+        except StageTimeoutError as e:
+            _record_timeout(errors, "vc_boards", e)
+            stage_outcomes["vc_boards"] = "timeout"
+
+        # Merge vc_stats into scrape_stats so the email + webhook see them.
+        for k, v in vc_stats.items():
             scrape_stats.setdefault(k, v)
 
         # --- Stage 2a: Enrich from JobRight pages (FREE — no LLM) ---
