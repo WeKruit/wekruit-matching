@@ -1,14 +1,17 @@
 name: daily-scrape
 
-# Cloud-side fault-tolerant scrape trigger.
+# Manual-only fault-tolerant scrape trigger ("nuclear option" button).
 #
-# Why this exists
-# ---------------
-# The pipeline was historically pinned to the macmini's launchd job. When
-# the host went dark on 2026-05-22 the daily scrape stopped for five days
-# before anyone noticed. This workflow is the cloud-side trigger so the
-# macmini's health is no longer on the critical path: GH Actions fires
-# every day at 10:00 UTC and runs the same pipeline.
+# 2026-05-27 — Adam directive: "我不想在 github 上跑，很浪费钱."
+# The scheduled cron was removed; the workflow is kept as a `workflow_dispatch`
+# emergency button so an on-call can fire a recovery run when:
+#   - Mac mini AND Adam's laptop fallback are both down, and
+#   - the active pool is degrading on `paScrapeFreshnessMonitorDaily`.
+# Cost = $0 when nobody pushes the button.
+#
+# Primary daily trigger now lives on Adam's laptop via
+# `scripts/install-laptop-scrape.sh` (macOS launchd + caffeinate + pmset
+# wake). See `SCRAPE-FAULT-TOLERANCE.md`.
 #
 # Anti-duplicate guarantee
 # ------------------------
@@ -40,19 +43,15 @@ name: daily-scrape
 # is a Phase B follow-up.
 
 on:
-  schedule:
-    # 10:00 UTC daily = 06:00 ET (matches the macmini's historical launchd
-    # cadence). Pick this time so a successful GH Actions run will have
-    # populated today's lock before the macmini wakes up around 06:00 local.
-    - cron: "0 10 * * *"
-  # Manual trigger so on-call can fire a recovery run without waiting for
-  # the cron tick.
+  # 2026-05-27: scheduled cron removed (cost). Daily trigger lives on
+  # Adam's laptop via launchd + caffeinate. This workflow only runs when
+  # an operator explicitly clicks "Run workflow" — emergency-only.
   workflow_dispatch:
     inputs:
       reason:
-        description: "Why are you firing this manually?"
-        required: false
-        default: "manual recovery"
+        description: "Why are you firing this manually? (e.g., 'macmini + laptop both down, pool > 24h stale')"
+        required: true
+        default: "emergency recovery"
 
 # Cancel an in-flight run if another is queued — GH Actions cron can
 # occasionally double-fire after an outage. The Firestore lock would

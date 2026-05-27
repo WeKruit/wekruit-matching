@@ -5,11 +5,10 @@
 > degraded because nothing else could trigger the daily run. This document
 > describes how that is no longer possible.
 
-## Architecture
+## Architecture (revised 2026-05-27 — Adam directive: no GH Actions cron)
 
-Three independent triggers can fire the same daily pipeline. A Firestore
-distributed lock guarantees only one of them actually writes Firestore each
-day.
+Two scheduled triggers + one emergency button. A Firestore distributed lock
+guarantees only one of them actually writes Firestore each day.
 
 ```
                         ┌───────────────────────────┐
@@ -18,15 +17,16 @@ day.
                         │    scrape-daily-YYYY-MM-DD │
                         └────────────▲──────────────┘
                                      │ atomic create()
-            ┌────────────────────────┼────────────────────────┐
-            │                        │                        │
-    ┌───────┴────────┐      ┌────────┴───────┐      ┌─────────┴────────┐
-    │ macmini        │      │ GH Actions     │      │ Adam laptop      │
-    │ launchd 06 ET  │      │ cron 10 UTC    │      │ ad-hoc `make     │
-    │ daily-update.sh│      │ daily-scrape   │      │ scrape-once`     │
-    └───────┬────────┘      └────────┬───────┘      └─────────┬────────┘
-            │                        │                        │
-            └────────── First runner to `doc.create()` wins ──┘
+        ┌────────────────────────────┼─────────────────────────────┐
+        │                            │                             │
+┌───────┴────────┐         ┌─────────┴──────────┐         ┌────────┴────────┐
+│ macmini         │         │ Adam laptop         │         │ GH Actions      │
+│ launchd 06 ET   │         │ launchd 10:05 UTC   │         │ workflow_       │
+│ daily-update.sh │         │ + caffeinate + pmset│         │ dispatch ONLY   │
+│ (when up)       │         │ wake — primary cron │         │ emergency button│
+└───────┬─────────┘         └──────────┬──────────┘         └────────┬────────┘
+        │                              │                             │
+        └─── First runner to `doc.create()` wins, others exit 0 ────┘
                                      │
                             pipeline.daily writes
                                      │
@@ -34,10 +34,15 @@ day.
                             matching-jobs (Firestore)
 ```
 
+Why no GH Actions cron: cost. The workflow file is retained as a manual
+"nuclear option" button (`workflow_dispatch` only) — $0 unless triggered.
+
 Outcome:
-- Mac mini offline → GH Actions still runs today's scrape.
-- GH Actions outage → Mac mini still runs.
-- Both run → second one sees `LockState.CONTENDED`, exits quietly, no double-write.
+- Mac mini offline → Adam laptop runs today's scrape.
+- Adam laptop closed all weekend → `pmset` wakes it 5 min before 10:05 UTC.
+- Both Mac mini + laptop down (rare) → operator clicks Run workflow on
+  GitHub for a one-off recovery run.
+- Two runners overlap → second sees `LockState.CONTENDED`, exits quietly, no double-write.
 - Yesterday's runner crashed mid-pipeline → today's lock starts clean (date-keyed).
 - Today's runner crashes without releasing → stale-lock recovery kicks in after 4h.
 
@@ -75,10 +80,45 @@ Tunables in `lock.py`:
 | `LOCK_KEY_PREFIX` | `scrape-daily-` | Doc-ID prefix (date suffix is UTC) |
 | `STALE_AFTER_SECONDS` | `14400` (4h) | Lock older than this can be stolen |
 
-### `.github/workflows/daily-scrape.yml`
+### `scripts/install-laptop-scrape.sh` (primary scheduled trigger)
 
-Runs at `cron: "0 10 * * *"` (10:00 UTC = 06:00 ET, matches the macmini's
-historical cadence). Steps:
+One-shot installer to enable the laptop-side daily run. Run once on
+Adam's MacBook:
+
+```bash
+cd ~/Desktop/WeKruit/wekruit-matching
+git checkout feat/cron-fault-tolerance       # until PR lands
+bash scripts/install-laptop-scrape.sh        # install
+bash scripts/install-laptop-scrape.sh --status
+bash scripts/install-laptop-scrape.sh --run-now   # smoke fire
+```
+
+What it sets up:
+
+1. `~/Library/LaunchAgents/com.wekruit.scrape.daily.plist` — launchd
+   agent calling `caffeinate -is scripts/daily-update.sh` daily at
+   the local equivalent of 10:05 UTC.
+2. `pmset repeat wakeorpoweron MTWRFSU HH:MM:00` — wakes the laptop
+   5 min before launchd fires so a closed-lid scenario still runs.
+3. `launchctl bootstrap` so the job is active immediately.
+
+Logs land at `~/Library/Logs/wekruit-scrape-daily.{out,err}.log`.
+
+Uninstall:
+
+```bash
+bash scripts/install-laptop-scrape.sh --remove
+```
+
+### `.github/workflows/daily-scrape.yml` (emergency button)
+
+`workflow_dispatch` only — no cron. Click "Run workflow" in the GitHub UI
+when:
+
+- Mac mini AND Adam's laptop are both unreachable
+- `paScrapeFreshnessMonitorDaily` is firing Slack alerts for ≥ 24h
+
+Steps when invoked:
 
 1. Spin up `pgvector/pgvector:pg16` as a service container.
 2. `uv sync --frozen` + `alembic upgrade head`.
