@@ -109,7 +109,7 @@ VC_BOARDS: list[VCBoardConfig] = [
     # ---- Getro-backed (5 funds) ----
     VCBoardConfig("accel",      "https://jobs.accel.com/jobs",              "Accel",               wait_ms=5000),
     VCBoardConfig("khosla",     "https://jobs.khoslaventures.com/jobs",     "Khosla Ventures",     wait_ms=5000),
-    VCBoardConfig("gc",         "https://jobs.generalcatalyst.com/companies","General Catalyst",   wait_ms=5000),
+    VCBoardConfig("gc",         "https://jobs.generalcatalyst.com/jobs",    "General Catalyst",   wait_ms=5000),
     VCBoardConfig("antler",     "https://careers.antler.co/jobs",           "Antler",              wait_ms=5000,
                   default_company_stage="pre_seed"),
     VCBoardConfig("bitkraft",   "https://careers.bitkraft.vc/jobs",         "BITKRAFT",            wait_ms=5000,
@@ -316,13 +316,135 @@ def parse_markdown_jobs(
             )
         )
 
-    if not out:
-        logger.warning(
-            "vc_board.parse: 0 jobs from {} ({} headings, {} chars) — "
-            "board layout may have changed",
-            board.slug,
-            len(headings),
-            len(markdown),
+    if out:
+        return out
+
+    # ---- Fallback: Consider layout (a16z / Sequoia / KP / Greylock /
+    # Lightspeed / Bessemer / Battery / NEA / Contrary). These boards
+    # don't use the `#### [...](url)` heading shape — they emit flat
+    # `[Title](ats_url)` links directly to Greenhouse/Lever/Ashby +
+    # `[Company](portfoliojobs.<fund>.com/jobs/<slug>)` preceding it.
+    # See `.planning/INITIATIVE-vc-portfolio-job-boards.md` § layout cheat.
+    out_consider = _parse_consider_flat_links(markdown, board, now=now, max_jobs=max_jobs)
+    if out_consider:
+        return out_consider
+
+    logger.warning(
+        "vc_board.parse: 0 jobs from {} ({} headings, {} chars) — "
+        "board layout may have changed",
+        board.slug,
+        len(headings),
+        len(markdown),
+    )
+    return out
+
+
+# ATS-link sniffer for the Consider-layout fallback. Matches the canonical
+# `(text)(url)` link form where the URL is a known external ATS host. Limited
+# to the hosts we've actually observed on Consider boards so a misleading
+# `[Apply](https://blog.<fund>.com/x)` link doesn't get treated as a job.
+_CONSIDER_ATS_LINK_RE = re.compile(
+    r"\[(?P<title>[^\]]{2,200})\]\((?P<url>https?://(?:"
+    r"job-boards\.greenhouse\.io|boards\.greenhouse\.io|"
+    r"jobs\.lever\.co|jobs\.ashbyhq\.com|"
+    r"apply\.workable\.com|jobs\.smartrecruiters\.com|"
+    r"[a-z0-9-]+\.recruitee\.com|[a-z0-9-]+\.workable\.com|"
+    r"[a-z0-9-]+\.bamboohr\.com|[a-z0-9-]+\.teamtailor\.com"
+    r")/[^)]+)\)"
+)
+
+# Company-link shape Consider emits right above each ATS link.
+_CONSIDER_COMPANY_LINK_RE = re.compile(
+    r"\[(?P<name>[^\]]{1,80})\]\(https?://[^)]*/jobs/(?P<slug>[a-z0-9][a-z0-9-]*)\)"
+)
+
+
+def _parse_consider_flat_links(
+    markdown: str,
+    board: VCBoardConfig,
+    *,
+    now: datetime,
+    max_jobs: int,
+) -> list[Job]:
+    """Fallback parser for boards using the Consider SaaS layout.
+
+    Walks every ATS-host link in order and pairs it with the most recent
+    preceding company link in the same markdown. Skips bare "Apply" links
+    so we don't write twice per posting. Pure function.
+    """
+    out: list[Job] = []
+    # First pass: index every company link by its end-offset so we can
+    # look up "most recent company before offset X" in O(log n).
+    company_anchors: list[tuple[int, str, str]] = []  # (end_pos, name, slug)
+    for cm in _CONSIDER_COMPANY_LINK_RE.finditer(markdown):
+        name = cm.group("name").strip()
+        if not name or name.lower() in {"apply", "view", "view job", "view all"}:
+            continue
+        company_anchors.append((cm.end(), name, cm.group("slug")))
+
+    seen_urls: set[str] = set()
+    for m in _CONSIDER_ATS_LINK_RE.finditer(markdown):
+        if len(out) >= max_jobs:
+            break
+        title = m.group("title").strip()
+        url = m.group("url").strip()
+        # Skip the "Apply" duplicate link Consider emits below every title.
+        if title.lower() == "apply" or len(title) < 3:
+            continue
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        # Find closest preceding company-link end-position.
+        offset = m.start()
+        company_name: str | None = None
+        company_slug: str | None = None
+        for end_pos, name, slug in reversed(company_anchors):
+            if end_pos < offset:
+                company_name = name
+                company_slug = slug
+                break
+        if not company_name:
+            continue
+
+        # Look in a small window for stage hints.
+        window_end = min(len(markdown), m.end() + 400)
+        window = markdown[max(0, m.start() - 200):window_end]
+        stage = _infer_stage(window) or board.default_company_stage
+
+        job_id = generate_job_id(
+            source_repo=f"vcboard:{board.slug}",
+            company_name=company_name,
+            role_title=title,
+        )
+        out.append(
+            Job(
+                job_id=job_id,
+                source_repo=f"vcboard:{board.slug}",
+                company_name=company_name,
+                role_title=title,
+                primary_url=url,
+                ats_apply_url=url,
+                location_raw="",
+                date_posted_raw=None,
+                first_seen_at=now,
+                last_seen_at=now,
+                content_hash=None,
+                industry=board.default_industry,
+                company_size=None,
+                required_skills=[],
+                sponsorship=None,
+                seniority_level=None,
+                role_function=[],
+                sources=[f"vcboard:{board.slug}"],
+                job_description=None,
+            )
+        )
+
+    if out:
+        logger.info(
+            "vc_board.parse[consider]: {} jobs from {} ({} chars)",
+            len(out), board.slug, len(markdown),
         )
     return out
 
