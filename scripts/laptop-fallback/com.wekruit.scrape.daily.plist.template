@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.wekruit.scrape.daily — macOS launchd agent for the daily scrape.
+
+  This file is the TEMPLATE. Run `scripts/install-laptop-scrape.sh` to
+  generate a copy with the right paths and place it at
+  `~/Library/LaunchAgents/com.wekruit.scrape.daily.plist`. Do NOT edit
+  this template's `__REPO_ROOT__` / `__USER_HOME__` placeholders — the
+  installer substitutes them at install time.
+
+  Why launchd (not cron)
+  ----------------------
+  macOS Apple-recommends launchd. Unlike cron, launchd can co-operate with
+  `pmset schedule wake` so a sleeping laptop wakes a few minutes before
+  the scheduled run. Caffeinate inside the script keeps the laptop awake
+  for the duration without disabling system-wide power management.
+
+  Schedule: 10:05 UTC daily.
+    - Chosen to fire 5 minutes after pmset wake at 10:00 UTC (see
+      install-laptop-scrape.sh) so the system has settled before the
+      pipeline starts.
+    - 10 UTC = 06 ET = 03 PT. Adjust by editing StartCalendarInterval if
+      Adam relocates timezones.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.wekruit.scrape.daily</string>
+
+  <!-- ProgramArguments: caffeinate -is wrap so the laptop stays awake
+       (and the display can sleep) for the full pipeline. -i = no idle
+       sleep, -s = system sleep prevented while plugged in. The wrapped
+       command is the existing scripts/daily-update.sh which already
+       handles Firestore lock acquire/release + post-pipeline webhook. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-is</string>
+    <string>__REPO_ROOT__/scripts/daily-update.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__REPO_ROOT__</string>
+
+  <!-- Environment for the run. The .env file is sourced inside
+       daily-update.sh too; this block just guarantees a sane PATH so
+       /usr/bin/python and friends resolve under launchd's stripped env. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SCRAPE_LOCK_RUNNER</key>
+    <string>laptop-launchd@__USER__</string>
+    <key>HOME</key>
+    <string>__USER_HOME__</string>
+  </dict>
+
+  <!-- Fire at 10:05 UTC every day. macOS launchd reads times in *local
+       time* by default; the installer converts the requested UTC hour
+       into local at install time and prints the conversion so Adam
+       knows what landed. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>__LOCAL_HOUR__</integer>
+    <key>Minute</key>
+    <integer>__LOCAL_MINUTE__</integer>
+  </dict>
+
+  <!-- Run missed jobs once the laptop comes back online — important
+       when Adam closes the lid all weekend. The Firestore lock prevents
+       a duplicate write if the laptop wakes Monday and tries to "catch
+       up" Friday's missed run while a fresh GH Actions emergency run is
+       also firing. -->
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StartOnMount</key>
+  <false/>
+
+  <!-- Logs land in the user's Library/Logs so launchctl can `tail` them
+       without sudo. -->
+  <key>StandardOutPath</key>
+  <string>__USER_HOME__/Library/Logs/wekruit-scrape-daily.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__USER_HOME__/Library/Logs/wekruit-scrape-daily.err.log</string>
+
+  <!-- Do NOT auto-restart on failure. The pipeline writes a Firestore
+       lock with `outcome=failed`; the next day's run picks up cleanly.
+       A tight restart loop would burn LLM cost. -->
+  <key>KeepAlive</key>
+  <false/>
+  <key>ThrottleInterval</key>
+  <integer>3600</integer>
+
+  <!-- Lower process priority so the scrape doesn't make the rest of
+       the laptop sluggish. -->
+  <key>Nice</key>
+  <integer>10</integer>
+</dict>
+</plist>
