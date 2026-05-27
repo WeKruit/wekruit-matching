@@ -354,8 +354,30 @@ _CONSIDER_ATS_LINK_RE = re.compile(
 )
 
 # Company-link shape Consider emits right above each ATS link.
+#
+# Critical: REQUIRES the host to be on a non-ATS domain. Both Consider's
+# company-filter URLs and the ATS job URLs share the `/jobs/<slug>` path
+# shape, so we discriminate by host. Without this, the regex was matching
+# `[Senior Data Engineer](https://job-boards.greenhouse.io/.../jobs/12345)`
+# (a job title link) AS a company anchor, which then attached the next
+# real job to the wrong "company name".
+_CONSIDER_ATS_HOSTS = (
+    "greenhouse.io",
+    "lever.co",
+    "ashbyhq.com",
+    "workable.com",
+    "smartrecruiters.com",
+    "recruitee.com",
+    "bamboohr.com",
+    "teamtailor.com",
+)
 _CONSIDER_COMPANY_LINK_RE = re.compile(
-    r"\[(?P<name>[^\]]{1,80})\]\(https?://[^)]*/jobs/(?P<slug>[a-z0-9][a-z0-9-]*)\)"
+    # Host capture is mandatory so we can reject ATS links. The optional
+    # `(?:[^)]*?/)?` segment handles boards where the company filter is at
+    # `/jobs/<slug>` directly (a16z) OR nested like `/x/jobs/<slug>` (some
+    # Consider variants). Slug allows hyphens but not digits-only (rules
+    # out job IDs that ATS systems use).
+    r"\[(?P<name>[^\]]{1,80})\]\((?P<url>https?://(?P<host>[^/]+)/(?:[^)]*?/)?jobs/(?P<slug>[a-z][a-z0-9-]*))\)"
 )
 
 
@@ -374,11 +396,22 @@ def _parse_consider_flat_links(
     """
     out: list[Job] = []
     # First pass: index every company link by its end-offset so we can
-    # look up "most recent company before offset X" in O(log n).
+    # look up "most recent company before offset X" in O(log n). Reject
+    # links whose host is a known ATS — those are job-title links, not
+    # company filters, and using them as anchors mis-attributes the next
+    # real job to a title string (e.g. "Senior Data Engineer" got logged
+    # as a company name on the 2026-05-27 first-pass smoke).
     company_anchors: list[tuple[int, str, str]] = []  # (end_pos, name, slug)
     for cm in _CONSIDER_COMPANY_LINK_RE.finditer(markdown):
         name = cm.group("name").strip()
-        if not name or name.lower() in {"apply", "view", "view job", "view all"}:
+        host = cm.group("host").lower()
+        if any(ats in host for ats in _CONSIDER_ATS_HOSTS):
+            continue  # title link to an ATS, not a company filter
+        if not name or name.lower() in {"apply", "view", "view job", "view all", "all jobs"}:
+            continue
+        # Filter obviously-not-company strings: long titles (company names
+        # are usually < 40 chars), trailing punctuation typical of UI text.
+        if len(name) > 50:
             continue
         company_anchors.append((cm.end(), name, cm.group("slug")))
 
