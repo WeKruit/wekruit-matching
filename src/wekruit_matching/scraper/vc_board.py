@@ -48,6 +48,7 @@ from typing import Callable, Iterable
 import httpx
 
 from wekruit_matching.models.job import Job
+from wekruit_matching.scraper.id_utils import generate_job_id
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +280,17 @@ def parse_markdown_jobs(
 
         stage = _infer_stage(window) or board.default_company_stage
 
-        job_id = f"vcboard-{board.slug}-{company_slug}-{_job_id_from_url(url)}"
+        # Use the canonical id_utils generator so we get a 64-char SHA-256
+        # that fits `jobs.job_id character varying(64)`. The cross-source
+        # collision policy is intentional: if Stripe SWE appears on both
+        # vcboard:a16z and vcboard:sequoia, the differing source_repo
+        # produces two distinct ids — we keep both rows and let downstream
+        # canonical-signature dedup (Phase B follow-up) collapse them.
+        job_id = generate_job_id(
+            source_repo=f"vcboard:{board.slug}",
+            company_name=company_name,
+            role_title=title,
+        )
 
         out.append(
             Job(
