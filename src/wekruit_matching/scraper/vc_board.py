@@ -407,6 +407,15 @@ def _parse_consider_flat_links(
         host = cm.group("host").lower()
         if any(ats in host for ats in _CONSIDER_ATS_HOSTS):
             continue  # title link to an ATS, not a company filter
+        # Consider renders BOTH `[Mercury](.../jobs/mercury)` AND
+        # `[All jobs at Mercury](.../jobs/mercury)` for the same company.
+        # The "All jobs at " variant was leaking through as a "company"
+        # name and getting attached to nearby ATS-link jobs. Strip the
+        # known UI prefixes so both forms collapse to the same anchor.
+        for prefix in ("all jobs at ", "all openings at ", "jobs at ", "view jobs at "):
+            if name.lower().startswith(prefix):
+                name = name[len(prefix):].strip()
+                break
         if not name or name.lower() in {"apply", "view", "view job", "view all", "all jobs"}:
             continue
         # Filter obviously-not-company strings: long titles (company names
