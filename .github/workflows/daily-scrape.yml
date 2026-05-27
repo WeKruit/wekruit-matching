@@ -1,0 +1,214 @@
+name: daily-scrape
+
+# Cloud-side fault-tolerant scrape trigger.
+#
+# Why this exists
+# ---------------
+# The pipeline was historically pinned to the macmini's launchd job. When
+# the host went dark on 2026-05-22 the daily scrape stopped for five days
+# before anyone noticed. This workflow is the cloud-side trigger so the
+# macmini's health is no longer on the critical path: GH Actions fires
+# every day at 10:00 UTC and runs the same pipeline.
+#
+# Anti-duplicate guarantee
+# ------------------------
+# Both the macmini's launchd job and this workflow acquire the SAME
+# Firestore distributed lock (`scrape-daily-YYYY-MM-DD` in `pa-system-locks`)
+# via ``python -m wekruit_matching.lock acquire``. First runner wins; the
+# loser exits 0 with a clear log line. If a runner crashes and never
+# releases, the lock is treated as stale after 4h and the next acquirer
+# steals it. See ``src/wekruit_matching/lock.py``.
+#
+# Required secrets
+# ----------------
+# Add these in Settings → Secrets and variables → Actions:
+#   - FIREBASE_SERVICE_ACCOUNT_JSON   (paste-the-full-JSON)
+#   - ANTHROPIC_API_KEY
+#   - OPENAI_API_KEY
+#   - SILICONFLOW_API_KEY
+#   - GITHUB_TOKEN_SCRAPER             (a PAT, NOT the default GITHUB_TOKEN —
+#                                       the runtime needs `public_repo` scope
+#                                       to fetch SimplifyJobs READMEs without
+#                                       hitting anonymous rate limits)
+#   - FIRECRAWL_API_KEY                (optional)
+#   - SERPER_API_KEY                   (optional)
+#   - MAILGUN_API_KEY                  (optional)
+#   - FIREBASE_SYNC_API_KEY            (Stage 4 sync target auth key)
+#
+# Why these are repo secrets and not env-injected via OIDC: the existing
+# pipeline already reads them via pydantic-settings + .env. Swapping to OIDC
+# is a Phase B follow-up.
+
+on:
+  schedule:
+    # 10:00 UTC daily = 06:00 ET (matches the macmini's historical launchd
+    # cadence). Pick this time so a successful GH Actions run will have
+    # populated today's lock before the macmini wakes up around 06:00 local.
+    - cron: "0 10 * * *"
+  # Manual trigger so on-call can fire a recovery run without waiting for
+  # the cron tick.
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you firing this manually?"
+        required: false
+        default: "manual recovery"
+
+# Cancel an in-flight run if another is queued — GH Actions cron can
+# occasionally double-fire after an outage. The Firestore lock would
+# protect Firestore writes anyway, but cancelling the duplicate saves
+# Actions minutes + LLM cost.
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    name: scrape → enrich → embed → sync
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    # Postgres 16 with pgvector — same engine the macmini runs locally.
+    # The pipeline reads/writes via DATABASE_URL set in the env block.
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: wekruit
+          POSTGRES_PASSWORD: wekruit_ci
+          POSTGRES_DB: wekruit_matching
+        ports:
+          - 5432:5432
+        # Wait for `pg_isready` before letting the job step run. Without
+        # this we race the alembic migration.
+        options: >-
+          --health-cmd="pg_isready -U wekruit -d wekruit_matching"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      DATABASE_URL: postgresql+psycopg://wekruit:wekruit_ci@localhost:5432/wekruit_matching
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN_SCRAPER }}
+      API_SECRET_KEY: ci-not-served-publicly
+      FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      FIRECRAWL_BASE_URL: https://api.firecrawl.dev
+      SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+      MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+      MAILGUN_DOMAIN: wekruit.com
+      PIPELINE_NOTIFY_EMAIL: admin1@wekruit.com
+      FIREBASE_SYNC_URL: https://us-central1-wekruit-5f89b.cloudfunctions.net/syncMatchingJobs
+      FIREBASE_SYNC_API_KEY: ${{ secrets.FIREBASE_SYNC_API_KEY }}
+      FIREBASE_SYNC_BATCH_SIZE: "50"
+      FIREBASE_SYNC_TIMEOUT_SECONDS: "30"
+      FIREBASE_SYNC_COLLECTION: matching-jobs
+      MATCHING_USE_DERIVED_EXPERIENCE: "false"
+      FIRESTORE_PROJECT_ID: wekruit-5f89b
+      LOG_LEVEL: INFO
+      SCRAPE_LOCK_RUNNER: "github-actions:${{ github.run_id }}"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.18"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: uv sync (frozen)
+        run: uv sync --frozen
+
+      - name: Materialize Firebase service-account JSON
+        run: |
+          # The pipeline + the lock module both honour
+          # GOOGLE_APPLICATION_CREDENTIALS. Writing the secret to a temp
+          # file keeps it off the env (which would show up in `printenv`
+          # if an Action prints env for debugging).
+          install -m 600 /dev/null "$RUNNER_TEMP/firebase-sa.json"
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' > "$RUNNER_TEMP/firebase-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-sa.json" >> "$GITHUB_ENV"
+          # Also expose the same JSON string for any code path that reads
+          # the env var directly (pa-resume-parser etc.).
+          {
+            echo "FIREBASE_SERVICE_ACCOUNT_JSON<<EOF"
+            cat "$RUNNER_TEMP/firebase-sa.json"
+            echo
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: alembic upgrade head
+        run: uv run alembic upgrade head
+
+      - name: Acquire daily lock
+        id: lock
+        run: |
+          set -euo pipefail
+          # The CLI prints one JSON line and exits:
+          #   0 = ACQUIRED / STOLEN_STALE → run the pipeline below
+          #   2 = CONTENDED / ALREADY_RUN → quiet exit; macmini or an earlier
+          #       Actions run already owns today.
+          set +e
+          OUTPUT="$(uv run python -m wekruit_matching.lock acquire --acquired-by "github-actions:${{ github.run_id }}")"
+          RC=$?
+          set -e
+          echo "$OUTPUT"
+          echo "lock_json=$OUTPUT" >> "$GITHUB_OUTPUT"
+          if [[ "$RC" -eq 2 ]]; then
+            echo "lock_skip=1" >> "$GITHUB_OUTPUT"
+            echo "::notice title=daily-scrape skipped::Another runner already owns today's lock — exiting cleanly."
+          elif [[ "$RC" -ne 0 ]]; then
+            echo "::error::Lock CLI returned unexpected exit code $RC"
+            exit "$RC"
+          fi
+
+      - name: Run pipeline.daily
+        if: steps.lock.outputs.lock_skip != '1'
+        id: run_pipeline
+        run: |
+          set -euo pipefail
+          uv run python -m wekruit_matching.pipeline.daily \
+            2>&1 | tee "$RUNNER_TEMP/pipeline.log"
+          # The pipeline prints `pipelineStatus=success|partial|failed` as
+          # its last line. Surface it as a step output so the release step
+          # can pass it to the lock.
+          STATUS="$(grep -oE 'pipelineStatus=[a-z]+' "$RUNNER_TEMP/pipeline.log" | tail -1 | cut -d= -f2 || echo "")"
+          echo "pipeline_status=${STATUS:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Release daily lock
+        # Always release if we acquired — but never release if we skipped.
+        # The lock CLI handles double-release gracefully on its own.
+        if: always() && steps.lock.outputs.lock_skip != '1'
+        run: |
+          set -euo pipefail
+          OUTCOME="${{ steps.run_pipeline.outputs.pipeline_status }}"
+          if [[ -z "$OUTCOME" || "$OUTCOME" == "unknown" ]]; then
+            # Job failed before pipeline.daily could print its sentinel.
+            OUTCOME="failed"
+          fi
+          # Map "partial" + "failed" 1:1; everything else collapses to failed.
+          case "$OUTCOME" in
+            success|partial|failed) ;;
+            *) OUTCOME="failed" ;;
+          esac
+          uv run python -m wekruit_matching.lock release \
+            --outcome "$OUTCOME" \
+            --stats-json "$(printf '{"runId":"%s","runUrl":"%s","outcome":"%s"}' \
+                "${{ github.run_id }}" \
+                "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+                "$OUTCOME")"
+
+      - name: Upload pipeline log
+        if: always() && steps.lock.outputs.lock_skip != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-${{ github.run_id }}
+          path: ${{ runner.temp }}/pipeline.log
+          if-no-files-found: ignore
+          retention-days: 14
