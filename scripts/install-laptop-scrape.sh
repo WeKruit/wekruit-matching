@@ -46,7 +46,13 @@ die() {
 }
 
 note() {
-  echo "[install-laptop-scrape] $*"
+  # Goes to stderr so that helpers called inside `$(...)` capture (notably
+  # render_plist → utc_to_local) don't leak progress lines into the rendered
+  # plist body. Without this fix `~/Library/LaunchAgents/com.wekruit.scrape.daily.plist`
+  # starts with "[install-laptop-scrape] fire-time UTC ..." which breaks the
+  # XML parser ("Unexpected character [ at line 1") and launchctl bootstrap
+  # then returns the famously vague "5: Input/output error".
+  echo "[install-laptop-scrape] $*" >&2
 }
 
 require_macos() {
