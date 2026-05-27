@@ -376,8 +376,11 @@ def run_daily_pipeline() -> dict:
                     vc_client = VCFirecrawlClient(base_url=fc_base, api_key=fc_key)
                     vc_jobs_by_board = scrape_all_vc_boards(vc_client)
                     total_scraped = sum(len(v) for v in vc_jobs_by_board.values())
+                    # loguru uses `{}` placeholders, NOT printf-style. The
+                    # earlier `%d %d` form printed literally and made the
+                    # stage look like 0 boards / 0 jobs.
                     logger.info(
-                        "Stage 1.7 scrape: %d boards, %d total job rows",
+                        "Stage 1.7 scrape: {} boards, {} total job rows",
                         len(vc_jobs_by_board), total_scraped,
                     )
                     if total_scraped > 0:
@@ -401,7 +404,7 @@ def run_daily_pipeline() -> dict:
                                         "stale": stale_count,
                                     }
                         except Exception as e:
-                            logger.error("Stage 1.7 upsert crashed: %s", e)
+                            logger.error("Stage 1.7 upsert crashed: {}", e)
                             errors.append(f"Stage 1.7 upsert: {e}")
                     stage_outcomes["vc_boards"] = "ok"
         except StageTimeoutError as e:
