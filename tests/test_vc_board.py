@@ -155,12 +155,25 @@ def test_parse_returns_empty_on_blank_markdown() -> None:
     assert parse_markdown_jobs("", board, now=NOW) == []
 
 
-def test_job_id_is_deterministic_and_per_board_namespaced() -> None:
+def test_job_id_is_deterministic_64_char_sha256() -> None:
+    """Per-job id must fit `jobs.job_id character varying(64)` AND be stable
+    across runs. The parser delegates to `id_utils.generate_job_id` which
+    hashes `(source_repo, company, title)` to a 64-char SHA-256 hex string.
+    """
+    import re
+
     board = VCBoardConfig("accel", "https://jobs.accel.com/jobs", "Accel")
-    jobs_first = parse_markdown_jobs(ACCEL_MARKDOWN_FRAGMENT, board, now=NOW)
-    jobs_second = parse_markdown_jobs(ACCEL_MARKDOWN_FRAGMENT, board, now=NOW)
-    assert [j.job_id for j in jobs_first] == [j.job_id for j in jobs_second]
-    assert all(j.job_id.startswith("vcboard-accel-sentinelone-") for j in jobs_first)
+    first = parse_markdown_jobs(ACCEL_MARKDOWN_FRAGMENT, board, now=NOW)
+    second = parse_markdown_jobs(ACCEL_MARKDOWN_FRAGMENT, board, now=NOW)
+    assert [j.job_id for j in first] == [j.job_id for j in second]
+    # Same source + company + title across two boards → distinct ids
+    # because source_repo differs.
+    other_board = VCBoardConfig("sequoia", "https://jobs.sequoiacap.com/jobs", "Sequoia")
+    cross = parse_markdown_jobs(ACCEL_MARKDOWN_FRAGMENT, other_board, now=NOW)
+    assert first[0].job_id != cross[0].job_id
+
+    for j in first:
+        assert re.fullmatch(r"[0-9a-f]{64}", j.job_id), f"non-sha256 id: {j.job_id!r}"
 
 
 def test_parse_caps_at_max_jobs() -> None:
