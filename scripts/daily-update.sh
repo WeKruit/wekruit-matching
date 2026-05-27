@@ -3,7 +3,13 @@
 # Runs via launchd at 6 AM CDT daily.
 # v1.5 Stream-A2: post-pipeline webhook to wekruit-pa.
 
-cd /Users/wekruitclaw1/Desktop/WeKruit/wekruit-matching
+# Resolve repo root from this script's location so the launchd plist works
+# regardless of which user/host runs it. 2026-05-27: dropped the hardcoded
+# `/Users/wekruitclaw1/...` path so Adam's laptop (or any fallback host) can
+# kick off the daily pipeline without editing this file. The script lives in
+# `<repo>/scripts/` so the parent of $SCRIPT_DIR is the repo root.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$(dirname "$SCRIPT_DIR")"
 
 if [[ -f .env ]]; then
   set -a

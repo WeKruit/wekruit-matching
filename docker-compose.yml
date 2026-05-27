@@ -1,0 +1,65 @@
+# wekruit-matching — local + portable scrape/enrich pipeline.
+#
+# Quick start:
+#   1. cp .env.docker.example .env
+#   2. Fill in API keys + paste FIREBASE_SERVICE_ACCOUNT_JSON
+#   3. docker compose up -d           # starts PG + FastAPI server
+#   4. make scrape-once               # runs one daily pipeline cycle
+#
+# Production-grade fallback: the `app` service has `restart: unless-stopped`,
+# so if the host reboots the container comes back automatically. The `db`
+# service persists data in the `wekruit_pg_data` named volume.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: wekruit-matching-db
+    restart: unless-stopped
+    # POSTGRES_* envs are read by the official image's entrypoint to create
+    # the application user + database on first boot.
+    environment:
+      POSTGRES_USER: wekruit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wekruit_local_dev}
+      POSTGRES_DB: wekruit_matching
+    volumes:
+      - wekruit_pg_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    # Bind 127.0.0.1:5433 so it doesn't clash with a system-wide Postgres on
+    # port 5432 (common on macOS dev laptops). Comment this out if you don't
+    # need host-side access.
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wekruit -d wekruit_matching"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wekruit-matching:latest
+    container_name: wekruit-matching-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # All runtime config comes from `.env`. The compose file overrides
+    # DATABASE_URL so the container points at the sibling `db` service
+    # regardless of what the developer has on their host machine.
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://wekruit:${POSTGRES_PASSWORD:-wekruit_local_dev}@db:5432/wekruit_matching
+      # Keep alembic on by default; one-off shells override with SKIP_ALEMBIC=1.
+      SKIP_ALEMBIC: "${SKIP_ALEMBIC:-0}"
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  wekruit_pg_data:
