@@ -100,7 +100,7 @@ VC_BOARDS: list[VCBoardConfig] = [
     VCBoardConfig("sequoia",    "https://jobs.sequoiacap.com/jobs",         "Sequoia Capital",     wait_ms=8000),
     VCBoardConfig("kp",         "https://jobs.kleinerperkins.com/jobs",     "Kleiner Perkins",     wait_ms=8000),
     VCBoardConfig("greylock",   "https://jobs.greylock.com/jobs",           "Greylock Partners",   wait_ms=8000),
-    VCBoardConfig("nea",        "https://careers.nea.com/job",              "NEA",                 wait_ms=8000),
+    VCBoardConfig("nea",        "https://careers.nea.com/jobs",             "NEA",                 wait_ms=8000),
     VCBoardConfig("lightspeed", "https://jobs.lsvp.com/jobs",               "Lightspeed",          wait_ms=8000),
     VCBoardConfig("bessemer",   "https://jobs.bvp.com/jobs",                "Bessemer",            wait_ms=8000),
     VCBoardConfig("battery",    "https://jobs.battery.com/jobs",            "Battery Ventures",    wait_ms=8000),
@@ -329,6 +329,18 @@ def parse_markdown_jobs(
     if out_consider:
         return out_consider
 
+    # ---- 3rd fallback: Ashby layout (Pear VC). Format:
+    #
+    #     CompanyName
+    #     ------
+    #
+    #     [### Job Title - CompanyName\
+    #     \
+    #     CompanyName • <location> • <type>](https://jobs.ashbyhq.com/<org>/<uuid>)
+    out_ashby = _parse_ashby_jobs(markdown, board, now=now, max_jobs=max_jobs)
+    if out_ashby:
+        return out_ashby
+
     logger.warning(
         "vc_board.parse: 0 jobs from {} ({} headings, {} chars) — "
         "board layout may have changed",
@@ -336,6 +348,75 @@ def parse_markdown_jobs(
         len(headings),
         len(markdown),
     )
+    return out
+
+
+# Ashby renders job listings as: `[### Title - Company\\\n\\\nLine](url)`. The
+# anchor text has the `### ` heading marker baked INSIDE the link, then a
+# title, " - ", company, a line break, and a one-line metadata blurb. URL
+# is `jobs.ashbyhq.com/<org-slug>/<uuid>` (UUID v4).
+_ASHBY_JOB_RE = re.compile(
+    r"\[###\s+(?P<title>[^\\\n\]]+?)\s+-\s+(?P<company>[^\\\n\]]+?)\\?\s*\n"
+    r"(?:\\?\s*\n)?"
+    r"(?P<meta>[^\]]+?)\]\((?P<url>https?://jobs\.ashbyhq\.com/[^)]+)\)",
+    re.MULTILINE,
+)
+
+
+def _parse_ashby_jobs(
+    markdown: str,
+    board: VCBoardConfig,
+    *,
+    now: datetime,
+    max_jobs: int,
+) -> list[Job]:
+    """Fallback parser for Ashby-hosted VC portfolio job boards (Pear etc.)."""
+    out: list[Job] = []
+    for m in _ASHBY_JOB_RE.finditer(markdown):
+        if len(out) >= max_jobs:
+            break
+        title = m.group("title").strip()
+        company = m.group("company").strip()
+        url = m.group("url").strip()
+        if not (title and company and url):
+            continue
+        # Stage hint sits in `meta` ("• Full time • Remote" — no stage info
+        # there usually, so fall back to board-level default).
+        meta = m.group("meta") or ""
+        stage = _infer_stage(meta) or board.default_company_stage
+        job_id = generate_job_id(
+            source_repo=f"vcboard:{board.slug}",
+            company_name=company,
+            role_title=title,
+        )
+        out.append(
+            Job(
+                job_id=job_id,
+                source_repo=f"vcboard:{board.slug}",
+                company_name=company,
+                role_title=title,
+                primary_url=url,
+                ats_apply_url=url,
+                location_raw="",
+                date_posted_raw=None,
+                first_seen_at=now,
+                last_seen_at=now,
+                content_hash=None,
+                industry=board.default_industry,
+                company_size=None,
+                required_skills=[],
+                sponsorship=None,
+                seniority_level=None,
+                role_function=[],
+                sources=[f"vcboard:{board.slug}"],
+                job_description=None,
+            )
+        )
+    if out:
+        logger.info(
+            "vc_board.parse[ashby]: {} jobs from {} ({} chars)",
+            len(out), board.slug, len(markdown),
+        )
     return out
 
 
