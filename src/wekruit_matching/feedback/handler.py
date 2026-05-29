@@ -3,7 +3,7 @@
 record_feedback(user_id, job_id, reaction, conn) — public API
 
 Internal flow for each call:
-  1. INSERT INTO feedback (idempotent via ON CONFLICT DO NOTHING)
+  1. INSERT INTO feedback; a suppressed duplicate (ON CONFLICT) short-circuits
   2. SELECT job's company_name and embedding
   3. Branch on reaction:
      - like:    append to liked_companies; blend affinity_embedding (70/30)
@@ -79,19 +79,35 @@ def _run(
     )
 
     # ------------------------------------------------------------------
-    # Step 1: Insert feedback row (idempotent)
+    # Step 1: Insert feedback row (idempotent) + detect duplicates
     # ------------------------------------------------------------------
-    # TODO(W8): ON CONFLICT DO NOTHING has no effect without a unique constraint on
-    # (user_id, job_id). A DB migration adding UNIQUE(user_id, job_id) to the feedback
-    # table is required to make duplicate-suppression work correctly.
-    conn.execute(
+    # The feedback table has UNIQUE(user_id, job_id) (constraint
+    # uq_feedback_user_job), so ON CONFLICT DO NOTHING suppresses a duplicate
+    # reaction row. RETURNING feedback_id lets us detect that suppression: a
+    # genuine insert returns a row; a conflict (double-click, client retry,
+    # at-least-once delivery) makes fetchone() None. We MUST short-circuit in
+    # the conflict case — otherwise a repeated "like" would re-blend the
+    # affinity EMA toward the same job on every replay, drifting the vector
+    # past the true distinct-job blend even though no new row was stored.
+    insert_cursor = conn.execute(
         """
         INSERT INTO feedback (user_id, job_id, reaction, recorded_at)
         VALUES (%s, %s, %s, NOW())
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (user_id, job_id) DO NOTHING
+        RETURNING feedback_id
         """,
         (user_id, job_id, reaction_str),
     )
+    if insert_cursor.fetchone() is None:
+        # Duplicate reaction — row suppressed; do NOT re-apply profile effects.
+        logger.debug(
+            "record_feedback: duplicate {} for user={} job={} — suppressed, "
+            "skipping profile update",
+            reaction_str,
+            user_id,
+            job_id,
+        )
+        return
 
     # ------------------------------------------------------------------
     # Step 2: Fetch job's company_name and embedding
