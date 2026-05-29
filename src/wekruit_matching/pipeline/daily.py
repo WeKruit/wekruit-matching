@@ -59,6 +59,7 @@ from wekruit_matching.notifications.email import (
     send_pipeline_complete_email,
     send_pipeline_start_email,
 )
+from wekruit_matching.pipeline.health_gate import run_health_gate
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 from wekruit_matching.pipeline.dead_backfill import firestore_dead_backfill
@@ -131,6 +132,9 @@ STAGE_BUDGETS = {
     "llm_enrich": 120 * 60,      # bumped 90→120 — gap-fill backlog
     "embed": 45 * 60,
     "sync": 30 * 60,
+    # P-REL Stage 5 — read-only data-quality gate; a handful of COUNT(*)
+    # queries against the live DB. 5 min is generous headroom.
+    "health_gate": 5 * 60,
 }
 
 
@@ -171,6 +175,12 @@ def run_daily_pipeline() -> dict:
     sync_stats: dict = {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0}
     dead_backfill_stats: dict = {"synced": 0, "total_seen": 0, "skipped": ""}
     stage_outcomes: dict[str, str] = {}  # stage_name -> "ok"|"error"|"timeout"
+    # Post-run reliability gate (P-REL): data-quality failures discovered by
+    # querying the live DB after the run. Populated by run_health_gate() as the
+    # final stage; surfaced in the completion email + folded into errors so a
+    # coverage/matchable-corpus regression is caught by the pipeline, not users.
+    health_metrics: dict = {}
+    health_failures: list[dict] = []
 
     # --- Notify: start ---
     send_pipeline_start_email()
@@ -495,6 +505,53 @@ def run_daily_pipeline() -> dict:
             errors.append(f"Job sync crash: {e}")
             stage_outcomes["sync"] = "error"
 
+        # --- Stage 5: Post-run reliability gate (P-REL) ---
+        # Computes coverage/reconciliation metrics from the live DB and FAILS
+        # the run when data quality regressed (embedded-coverage cliff,
+        # matchable-corpus drop vs prior, embeddable-but-unembedded backlog,
+        # field-coverage regression) -- even when every stage above
+        # "succeeded" without raising. This is the failure mode users were
+        # discovering by hand ("a new issue every day"). Fail-CLOSED: if the
+        # gate itself errors we record it as a failure so it stays visible,
+        # never silently green.
+        logger.info("=== Stage 5: Reliability Gate (data-quality) ===")
+        try:
+            with _stage_timeout("health_gate", STAGE_BUDGETS["health_gate"]):
+                gate = run_health_gate()
+                health_metrics = gate.get("metrics", {}) or {}
+                health_failures = gate.get("failures", []) or []
+                if gate.get("ok"):
+                    stage_outcomes["health_gate"] = "ok"
+                else:
+                    stage_outcomes["health_gate"] = "failed"
+                    errors.append(
+                        "Reliability gate: "
+                        + "; ".join(
+                            f.get("message", f.get("metric", "?"))
+                            for f in health_failures
+                        )
+                    )
+                    logger.error(
+                        "Reliability gate FAILED with {} data-quality "
+                        "failure(s)",
+                        len(health_failures),
+                    )
+        except StageTimeoutError as e:
+            _record_timeout(errors, "health_gate", e)
+            stage_outcomes["health_gate"] = "timeout"
+        except Exception as e:
+            logger.error("Reliability gate crashed (fail-closed): {}", e)
+            errors.append(f"Reliability gate crash: {e}")
+            stage_outcomes["health_gate"] = "error"
+            health_failures = [
+                {
+                    "metric": "health_gate",
+                    "value": "error",
+                    "threshold": "n/a",
+                    "message": f"reliability gate raised: {e}",
+                }
+            ]
+
     finally:
         # =========================================================
         # Always-fire finalizer (P7-B)
@@ -534,6 +591,8 @@ def run_daily_pipeline() -> dict:
                 duration_seconds=duration,
                 errors=errors,
                 stale_jobs=stale_jobs,
+                health_failures=health_failures,
+                health_metrics=health_metrics,
             )
         except Exception as e:
             logger.warning("send_pipeline_complete_email failed: {}", e)
@@ -595,6 +654,9 @@ def run_daily_pipeline() -> dict:
         "duration_seconds": duration,
         "pipeline_status": pipeline_status,
         "stage_outcomes": stage_outcomes,
+        # P-REL — post-run reliability gate results.
+        "health_metrics": health_metrics,
+        "health_failures": health_failures,
     }
 
 

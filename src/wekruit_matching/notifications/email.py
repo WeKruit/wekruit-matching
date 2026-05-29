@@ -165,6 +165,59 @@ def _stale_html(stale_jobs: list[dict]) -> str:
     </table>"""
 
 
+def _health_html(
+    health_failures: list[dict] | None,
+    health_metrics: dict | None,
+) -> str:
+    """Build the reliability-gate (data-quality) section of the email.
+
+    This is the path that surfaces a coverage/matchable-corpus regression even
+    when every stage 'succeeded' without raising. When the gate passed (no
+    failures) we still print a compact one-line health summary so a healthy run
+    is positively confirmed rather than silent.
+    """
+    metrics = health_metrics or {}
+
+    def _fmt_cov(key: str) -> str:
+        v = metrics.get(key)
+        return f"{v:.1%}" if isinstance(v, (int, float)) else "n/a"
+
+    summary_bits = []
+    if metrics:
+        mc = metrics.get("matchable_corpus")
+        summary_bits.append(
+            f"matchable {mc:,}" if isinstance(mc, int) else f"matchable {mc}"
+        )
+        summary_bits.append(f'embedded cov {_fmt_cov("embedded_cov_of_active")}')
+        summary_bits.append(
+            f'embed backlog {metrics.get("embeddable_unembedded_backlog", "?")}'
+        )
+    summary = " &middot; ".join(summary_bits)
+
+    if not health_failures:
+        if not metrics:
+            return ""
+        return (
+            '<h2>Reliability Gate</h2>'
+            '<p style="margin:0;color:#2d7d46;font-size:13px;">'
+            f'PASS &middot; {summary}</p>'
+        )
+
+    rows = "".join(
+        '<tr><td style="color:#922;font-weight:600;">'
+        f'{f.get("metric", "?")}</td>'
+        f'<td style="color:#922;font-size:12px;">{f.get("message", "")}</td></tr>'
+        for f in health_failures
+    )
+    return (
+        '<h2 style="color:#c0392b;">Reliability Gate FAILED</h2>'
+        f'<p style="margin:0 0 8px;color:#8a7d6b;font-size:12px;">{summary}</p>'
+        '<div class="error-box"><table>'
+        '<tr><th>Metric</th><th>Failure</th></tr>'
+        f'{rows}</table></div>'
+    )
+
+
 def send_pipeline_complete_email(
     scrape_stats: dict[str, dict],
     jd_stats: dict[str, int],
@@ -174,6 +227,8 @@ def send_pipeline_complete_email(
     errors: list[str],
     stale_jobs: list[dict] | None = None,
     url_resolution_stats: dict | None = None,
+    health_failures: list[dict] | None = None,
+    health_metrics: dict | None = None,
 ) -> bool:
     """Send an HTML notification with pipeline results."""
     now = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
@@ -198,12 +253,17 @@ def send_pipeline_complete_email(
     total_resolved = url_res.get("total_resolved", 0)
     resolution_rate = url_res.get("resolution_rate", 0.0)
 
-    has_errors = bool(errors) or any("error" in s for s in scrape_stats.values())
+    has_errors = (
+        bool(errors)
+        or any("error" in s for s in scrape_stats.values())
+        or bool(health_failures)
+    )
     status_label = "Completed with Errors" if has_errors else "Completed"
     status_color = "#c0392b" if has_errors else "#2d7d46"
 
     scrape_rows = _scrape_rows_html(scrape_stats)
     stale_section = _stale_html(stale_jobs or [])
+    health_section = _health_html(health_failures, health_metrics)
 
     error_section = ""
     if errors:
@@ -269,6 +329,7 @@ def send_pipeline_complete_email(
       <tr><td>Embedding (OpenAI)</td><td style="text-align:right;">{embedded:,} vectors</td><td style="text-align:right;color:#c0392b;">{embed_failed} failed</td></tr>
     </table>
 
+    {health_section}
     {stale_section}
     {error_section}
   </div>

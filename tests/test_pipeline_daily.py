@@ -104,6 +104,13 @@ def _patch_all_stages(monkeypatch):
         "wekruit_matching.pipeline.daily.get_connection",
         _fake_get_connection,
     )
+    # P-REL: the post-run reliability gate is now a stage of the pipeline.
+    # Stub it healthy by default so these DB-free unit tests don't touch the
+    # live DB; tests that exercise the gate override this.
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.run_health_gate",
+        lambda **kw: {"ok": True, "metrics": {}, "failures": []},
+    )
 
     return call_order
 
