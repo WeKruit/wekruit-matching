@@ -158,6 +158,16 @@ def _process_one_job(row: dict) -> tuple[str, str, Exception | None]:
         # the queue for the next run.
         return "skipped_no_jd", short_id, None
 
+    # 2026-05-28 lockout fix. A JD-bearing job that classify_job returns with
+    # ZERO skills is an extraction MISS, not a finished job. The old code
+    # stamped enriched_at unconditionally → the row (a) hid behind the 7-day
+    # staleness gate and (b) failed the embed gate (cardinality(skills)>0).
+    # Net effect at audit: 22,564 active JD-bearing jobs locked out of the
+    # matching pool. Leave enriched_at NULL on empty skills so the row stays
+    # eligible and retries next run (classify_job is cheap gpt-5.x-nano and,
+    # verified live, extracts skills fine on retry once JD is present).
+    has_skills = bool(result.required_skills)
+    enriched_at_val = _utcnow() if has_skills else None
     try:
         with get_connection() as conn:
             conn.execute(
@@ -176,7 +186,7 @@ def _process_one_job(row: dict) -> tuple[str, str, Exception | None]:
                     "company_size": result.company_size,
                     "required_skills": result.required_skills,
                     "sponsorship": result.sponsorship,
-                    "enriched_at": _utcnow(),
+                    "enriched_at": enriched_at_val,
                 },
             )
             conn.commit()
@@ -257,7 +267,7 @@ def enrich_pending(
             OR required_skills = ARRAY[]::text[]
           )
         ORDER BY first_seen_at ASC
-        LIMIT 500
+        LIMIT 3000
         """
     ).fetchall()
 
