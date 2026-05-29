@@ -211,6 +211,14 @@ def _fetch_active_jobs(
             embedded_at
         FROM jobs
         WHERE status = 'active'
+          -- Reliability (2026-05-29): a liveness sweep sets dead=true /
+          -- permanent_404=true WITHOUT flipping status, so a confirmed-dead
+          -- posting stayed status='active' and rode into Firestore — the user
+          -- clicked a match and the job was gone (1,792 such docs found in the
+          -- live matchable set on 2026-05-29). Exclude dead/404 at the sync
+          -- boundary, belt-and-suspenders with the Track-D JD/skills gate below.
+          AND COALESCE(dead, FALSE) = FALSE
+          AND COALESCE(permanent_404, FALSE) = FALSE
           AND embedding IS NOT NULL
           AND embedded_at IS NOT NULL
           -- Matching-quality launch blocker (Track D, 2026-05-20):
