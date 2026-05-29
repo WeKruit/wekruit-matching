@@ -15,16 +15,39 @@ import sys
 from loguru import logger
 
 from wekruit_matching.db.connection import get_connection
-from wekruit_matching.enrichment.worker import enrich_pending
+from wekruit_matching.enrichment.worker import (
+    backfill_seniority,
+    count_null_seniority_active,
+    enrich_pending,
+)
 
 
 def enrich_all() -> dict[str, int]:
     """Run enrichment for all pending jobs.
 
-    Returns {"enriched": N, "failed": M, "skipped": 0}
+    Steps:
+      1. ``enrich_pending`` — LLM classify the gap-fill queue (industry,
+         company_size, required_skills, sponsorship).
+      2. ``backfill_seniority`` — deterministic, source-agnostic regex fill of
+         ``jobs.seniority_level`` (canonical intern|entry|mid|senior vocab) for
+         every active row where it is NULL. Added 2026-05-29: 80.8% of active
+         jobs had NULL seniority_level, which job_sync was syncing as-is to the
+         live matcher; this had no zero-cost writer before.
+      3. ``count_null_seniority_active`` — runtime gate; logs a WARNING if any
+         active rows remain NULL after the backfill.
+
+    Returns the enrich_pending stats dict, augmented with
+    ``seniority_backfilled`` and ``seniority_null_after``.
     """
     with get_connection() as conn:
-        return enrich_pending(conn)
+        stats = enrich_pending(conn)
+        try:
+            stats["seniority_backfilled"] = backfill_seniority(conn)
+            stats["seniority_null_after"] = count_null_seniority_active(conn)
+        except Exception as exc:  # defensive — backfill must never crash the run
+            logger.warning("seniority backfill failed: {}", exc)
+            stats["seniority_backfilled"] = -1
+        return stats
 
 
 if __name__ == "__main__":

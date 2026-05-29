@@ -32,6 +32,7 @@ workers + the main-thread reader connection stays well under the cap.
 from __future__ import annotations
 
 import os
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
@@ -49,6 +50,170 @@ from wekruit_matching.models.job import Job
 # don't burn LLM credits weekly on permanently empty jobs (e.g. 1-line listings
 # whose careers page never loads). Tunable; revisit with telemetry.
 ENRICH_STALE_DAYS = 7
+
+# ---------------------------------------------------------------------------
+# Seniority backfill (deterministic, no-LLM) — 2026-05-29 reliability fix.
+#
+# ROOT CAUSE (live data): jobs.seniority_level was NULL for 80.8% of the active
+# corpus (23,331 / 28,882). job_sync SELECTs this column and writes it RAW
+# (no normalization) to the matching-jobs Firestore doc the LIVE TypeScript
+# matcher reads as `seniorityLevel`, so those NULLs blind the live seniority
+# filter/scoring for most jobs.
+#
+# Why the existing signals don't cover it:
+#   * scraper.title_inference.infer_seniority() emits a DIFFERENT vocabulary
+#     (entry_level/mid_level/junior/staff/principal/manager/...). Table-wide
+#     only 2 'mid_level' + 4 'junior' rows exist, i.e. that vocab effectively
+#     NEVER lands in this column, and the live matcher consumes the canonical
+#     intern|entry|mid|senior set (the 5,551 populated rows + jobright's
+#     numeric-enum SENIORITY_MAP all use it).
+#   * The ATS/vcboard scrapers that call infer_seniority show 0% coverage on
+#     their active rows anyway.
+#
+# So this backfill derives the CANONICAL vocab directly from role_title (every
+# job has one; no JD required). Validated against the 5,551 existing canonical
+# values: 86.3% agreement on rows where the title yields a cue. Titles with no
+# cue default to 'mid' (plain "Software Engineer"/"Account Executive" are
+# mid-level ICs) — matching infer_seniority's own documented default and the
+# live data where 'mid' is a populated bucket.
+# ---------------------------------------------------------------------------
+
+# Canonical seniority vocab consumed by the live matcher.
+CANONICAL_SENIORITY: frozenset[str] = frozenset({"intern", "entry", "mid", "senior"})
+
+# Default applied when a title carries no explicit seniority cue. Only ever
+# written to rows that are currently NULL — never overwrites an existing value.
+SENIORITY_DEFAULT = "mid"
+
+# Most-specific cue wins; ordered intern -> entry -> senior. A title with no
+# match falls through to SENIORITY_DEFAULT.
+_SENIORITY_TITLE_REGEX: list[tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(r"\b(intern(ship)?|co-?op|summer\s+(analyst|associate|20\d\d))\b", re.IGNORECASE),
+        "intern",
+    ),
+    (
+        re.compile(
+            r"\b(new\s*grad(uate)?|entry[\s-]*level|early[\s-]*career|"
+            r"university\s+grad(uate)?|campus|junior|jr\.?|"
+            r"associate(?!\s+(director|vp|partner)))\b",
+            re.IGNORECASE,
+        ),
+        "entry",
+    ),
+    (
+        re.compile(
+            r"\b(senior|sr\.?|staff|principal|lead|manager|mgr\.?|director|head\s+of|"
+            r"vp|vice\s*president|chief|c[teafmid]o|cxo|distinguished|fellow)\b",
+            re.IGNORECASE,
+        ),
+        "senior",
+    ),
+]
+
+# Batch cap for the backfill. It is a cheap deterministic regex over role_title
+# (no LLM, no network), so the cap only bounds a single statement's write set;
+# the default covers the whole active corpus in one pass.
+SENIORITY_BACKFILL_LIMIT = int(os.environ.get("SENIORITY_BACKFILL_LIMIT", "50000"))
+
+
+def classify_seniority_from_title(title: str | None) -> str:
+    """Map a free-text job title to the canonical intern|entry|mid|senior vocab.
+
+    Deterministic and pure (regex only). Returns ``SENIORITY_DEFAULT`` ("mid")
+    when the title carries no explicit seniority cue. The output is always a
+    member of :data:`CANONICAL_SENIORITY`, i.e. exactly what the live matcher
+    consumes — unlike ``scraper.title_inference.infer_seniority`` whose
+    ``*_level`` vocab does not match this column.
+    """
+    text = title or ""
+    for pattern, label in _SENIORITY_TITLE_REGEX:
+        if pattern.search(text):
+            return label
+    return SENIORITY_DEFAULT
+
+
+def backfill_seniority(conn: psycopg.Connection, *, limit: int | None = None) -> int:
+    """Populate ``jobs.seniority_level`` for active rows where it is NULL.
+
+    Fills the canonical vocab from ``role_title`` via
+    :func:`classify_seniority_from_title`. The live matcher reads this column
+    (synced raw by job_sync), so closing the NULL gap directly restores its
+    seniority filter/scoring for the ~81% of the corpus that was unset.
+
+    Reliability properties:
+      * Idempotent / non-destructive — only fills rows WHERE seniority_level IS
+        NULL, and every UPDATE re-asserts ``AND seniority_level IS NULL``, so
+        existing (jobright/legacy) values are never overwritten and re-runs
+        converge.
+      * Deterministic — pure regex over the title; no LLM call, no cost, no
+        network, no failure modes beyond a normal DB write.
+
+    Returns the number of rows updated this call.
+    """
+    cap = SENIORITY_BACKFILL_LIMIT if limit is None else limit
+    rows = conn.execute(
+        """
+        SELECT job_id, role_title
+        FROM jobs
+        WHERE status = 'active'
+          AND seniority_level IS NULL
+        ORDER BY first_seen_at DESC NULLS LAST
+        LIMIT %(limit)s
+        """,
+        {"limit": cap},
+    ).fetchall()
+
+    if not rows:
+        logger.info("seniority backfill: no NULL-seniority active rows")
+        return 0
+
+    updated = 0
+    for row in rows:
+        job_id = row["job_id"] if isinstance(row, dict) else row[0]
+        role_title = row["role_title"] if isinstance(row, dict) else row[1]
+        label = classify_seniority_from_title(role_title)
+        conn.execute(
+            """
+            UPDATE jobs
+            SET seniority_level = %(seniority_level)s
+            WHERE job_id = %(job_id)s
+              AND seniority_level IS NULL
+            """,
+            {"seniority_level": label, "job_id": job_id},
+        )
+        updated += 1
+    conn.commit()
+    logger.info("seniority backfill: labelled {} NULL-seniority active rows", updated)
+    return updated
+
+
+def count_null_seniority_active(conn: psycopg.Connection) -> int:
+    """Runtime GATE / EVAL: number of active rows with NULL ``seniority_level``.
+
+    Idempotent read-only query. The whole point of the backfill is to drive
+    this toward the small residual of jobs with no role_title; a large value
+    after a run means the backfill is not wired in / not running (the exact
+    failure mode this fix addresses), so it is logged as a WARNING and surfaces
+    on every pipeline run.
+    """
+    row = conn.execute(
+        """
+        SELECT COUNT(*)::int AS n
+        FROM jobs
+        WHERE status = 'active' AND seniority_level IS NULL
+        """
+    ).fetchone()
+    if row is None:
+        return 0
+    count = int(row["n"]) if isinstance(row, dict) else int(row[0])
+    if count > 0:
+        logger.warning(
+            "seniority coverage gap: {} active jobs still have NULL seniority_level "
+            "— backfill_seniority() is not keeping up (live matcher loses the signal)",
+            count,
+        )
+    return count
 
 # 2026-05-20 — empty-skills alert threshold.
 #
