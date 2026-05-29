@@ -31,10 +31,11 @@ Threshold philosophy (calibrated to the live baseline 2026-05-29)
 Absolute floors apply ONLY to robust, always-high signals so normal jitter
 never trips them:
 
-  * embedded/sync-gate coverage of active -> floor 0.97  (baseline 0.7813
-    today is BELOW this on purpose: ~6k active jobs are not matchable, the live
-    defect this gate is meant to make loud)
-  * embeddable-but-unembedded backlog      -> max 300    (baseline 34)
+  * embedded coverage of EMBEDDABLE jobs   -> floor 0.97  (embedded / (embedded
+    + embeddable-but-unembedded backlog); ~25% of active jobs have NULL JD /
+    empty skills and are never embeddable by design, so a cov-of-ACTIVE floor
+    would be unreachable and fail every run — we gate on the embeddable subset)
+  * embeddable-but-unembedded backlog      -> max 300    (baseline 0)
   * active job count                        -> min 1      (never empty)
 
 Fields whose coverage is legitimately low and source-dependent (sponsorship
@@ -63,7 +64,12 @@ from wekruit_matching.db.connection import get_connection
 # ---------------------------------------------------------------------------
 DEFAULT_THRESHOLDS: dict[str, float] = {
     # Absolute floors (apply even on the first run / no prior state).
-    "min_embedded_cov_of_active": 0.97,
+    # Coverage floor is on cov-of-EMBEDDABLE (embedded / (embedded + backlog)),
+    # NOT cov-of-active: ~25% of active jobs have NULL JD / empty skills and are
+    # INTENTIONALLY never embeddable (Track-D gate), so a cov-of-active floor is
+    # unreachable by design and would fail every run, masking real regressions.
+    # cov-of-active is still tracked below as a relative-drop signal.
+    "min_embedded_cov_of_embeddable": 0.97,
     "max_embeddable_unembedded_backlog": 300,
     "min_active": 1,
     # Relative drop guards (apply only when a prior run exists).
@@ -174,6 +180,15 @@ def compute_metrics(conn) -> dict[str, Any]:
     def _ratio(n: int, d: int) -> float:
         return (n / d) if d else 0.0
 
+    # Coverage of EMBEDDABLE jobs = embedded / (embedded + embeddable-but-
+    # unembedded). Denominator 0 means nothing is embeddable right now (or empty
+    # corpus) => the embed stage is trivially caught up, so 1.0 (the min_active
+    # floor guards the empty-corpus case separately).
+    embeddable_total = active_embedded + embeddable_unembedded
+    embedded_cov_of_embeddable = (
+        (active_embedded / embeddable_total) if embeddable_total else 1.0
+    )
+
     return {
         "active": active,
         "active_enriched": active_enriched,
@@ -181,6 +196,7 @@ def compute_metrics(conn) -> dict[str, Any]:
         "matchable_corpus": matchable,
         "embeddable_unembedded_backlog": embeddable_unembedded,
         "embedded_cov_of_active": _ratio(active_embedded, active),
+        "embedded_cov_of_embeddable": embedded_cov_of_embeddable,
         "sponsorship_cov_of_enriched": _ratio(spons, active_enriched),
         "seniority_cov_of_enriched": _ratio(sen, active_enriched),
         "industry_cov_of_enriched": _ratio(ind, active_enriched),
@@ -226,20 +242,18 @@ def evaluate(
                   "(corpus collapsed)")
         )
 
-    emb_cov = g(metrics, "embedded_cov_of_active")
-    if emb_cov is not None and emb_cov < t["min_embedded_cov_of_active"]:
-        not_matchable = None
-        if g(metrics, "active") and g(metrics, "matchable_corpus") is not None:
-            not_matchable = metrics["active"] - metrics["matchable_corpus"]
+    emb_cov = g(metrics, "embedded_cov_of_embeddable")
+    if emb_cov is not None and emb_cov < t["min_embedded_cov_of_embeddable"]:
+        backlog = g(metrics, "embeddable_unembedded_backlog")
         suffix = (
-            f" ({not_matchable} active jobs not matchable)"
-            if not_matchable is not None else ""
+            f" ({backlog} embeddable jobs still unembedded)"
+            if backlog is not None else ""
         )
         failures.append(
-            _fail("embedded_cov_of_active", round(emb_cov, 4),
-                  t["min_embedded_cov_of_active"],
-                  f"embedded coverage of active {emb_cov:.4f} below "
-                  f"{t['min_embedded_cov_of_active']:.2f}{suffix}")
+            _fail("embedded_cov_of_embeddable", round(emb_cov, 4),
+                  t["min_embedded_cov_of_embeddable"],
+                  f"embedded coverage of EMBEDDABLE jobs {emb_cov:.4f} below "
+                  f"{t['min_embedded_cov_of_embeddable']:.2f}{suffix}")
         )
 
     backlog = g(metrics, "embeddable_unembedded_backlog")

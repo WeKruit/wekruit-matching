@@ -26,6 +26,7 @@ def _healthy_metrics() -> dict:
         "matchable_corpus": 27500,
         "embeddable_unembedded_backlog": 34,
         "embedded_cov_of_active": 27500 / 28195,  # 0.9753
+        "embedded_cov_of_embeddable": 27500 / (27500 + 34),  # 0.9988
         "sponsorship_cov_of_enriched": 0.169,
         "seniority_cov_of_enriched": 0.206,
         "industry_cov_of_enriched": 0.989,
@@ -42,6 +43,7 @@ def _live_today_metrics() -> dict:
         "matchable_corpus": 22029,
         "embeddable_unembedded_backlog": 34,
         "embedded_cov_of_active": 22029 / 28195,  # 0.7813
+        "embedded_cov_of_embeddable": 22029 / (22029 + 34),  # 0.9985 (embed caught up)
         "sponsorship_cov_of_enriched": 0.1689,
         "seniority_cov_of_enriched": 0.2059,
         "industry_cov_of_enriched": 0.9891,
@@ -53,7 +55,7 @@ def _live_today_metrics() -> dict:
 
 def test_default_thresholds_sane():
     t = hg.DEFAULT_THRESHOLDS
-    assert 0.90 <= t["min_embedded_cov_of_active"] < 1.0
+    assert 0.90 <= t["min_embedded_cov_of_embeddable"] < 1.0
     assert t["max_embeddable_unembedded_backlog"] >= 100
     assert 0 < t["max_matchable_drop_frac"] <= 0.2
     assert t["min_active"] >= 1
@@ -72,38 +74,57 @@ def test_healthy_passes_stable_prior():
 
 # --- the live defect IS caught ---------------------------------------------
 
-def test_live_today_embedded_coverage_cliff_is_caught():
-    """The real 2026-05-29 corpus (0.7813 embedded coverage) MUST fail the
-    absolute floor even with no prior run -- this is the defect the gate
-    exists to surface."""
-    failures = hg.evaluate(_live_today_metrics(), prior=None)
+def test_real_embed_cliff_is_caught():
+    """A GENUINE embed-stage cliff -- a large embeddable-but-unembedded backlog
+    with low coverage of the EMBEDDABLE subset -- MUST fail the absolute floor
+    even with no prior run. This is the defect the gate exists to surface
+    (distinct from the JD-fetch ceiling that makes cov-of-ACTIVE low by design)."""
+    m = _healthy_metrics()
+    m["active_embedded"] = 10000
+    m["embeddable_unembedded_backlog"] = 12000
+    m["embedded_cov_of_embeddable"] = 10000 / (10000 + 12000)  # 0.4545
+    failures = hg.evaluate(m, prior=None)
     keys = {f["metric"] for f in failures}
-    assert "embedded_cov_of_active" in keys
-    # message should quantify the non-matchable jobs (28195 - 22029 = 6166)
-    msg = next(f["message"] for f in failures
-               if f["metric"] == "embedded_cov_of_active")
-    assert "6166" in msg
+    assert "embedded_cov_of_embeddable" in keys
+    assert "embeddable_unembedded_backlog" in keys
 
 
 def test_live_today_low_fields_do_NOT_false_positive():
-    """sponsorship 0.169 / seniority 0.206 must NOT trip an absolute floor;
-    only embedded coverage should fail today (no prior run)."""
+    """The live 2026-05-29 corpus: low cov-of-active (~0.78, the JD-fetch
+    ceiling) plus low sponsorship/seniority must NOT trip any absolute floor,
+    because the embed stage IS caught up (small backlog -> cov-of-embeddable
+    ~0.998). With no prior run the gate must be clean -- gating on cov-of-active
+    would cry wolf every single day and mask real regressions."""
     failures = hg.evaluate(_live_today_metrics(), prior=None)
-    keys = {f["metric"] for f in failures}
-    assert "sponsorship_cov_of_enriched" not in keys
-    assert "seniority_cov_of_enriched" not in keys
-    assert keys == {"embedded_cov_of_active"}
+    assert failures == [], failures
 
 
 # --- absolute floors --------------------------------------------------------
 
-def test_embedded_coverage_below_floor_fails():
+
+def test_low_cov_of_active_with_zero_backlog_passes():
+    """Regression for the 2026-05-29 false alarm: ~25% of active jobs are
+    un-embeddable by design (NULL JD / empty skills, Track-D), so cov-of-active
+    is ~0.75 while the embed stage is 100% caught up (backlog 0 ->
+    cov-of-embeddable 1.0). The absolute floor MUST pass."""
     m = _healthy_metrics()
-    m["active_embedded"] = int(0.90 * m["active"])
-    m["matchable_corpus"] = m["active_embedded"]
-    m["embedded_cov_of_active"] = m["active_embedded"] / m["active"]
+    m["active_embedded"] = 19806
+    m["active"] = 26569
+    m["embedded_cov_of_active"] = 19806 / 26569  # 0.7455
+    m["embeddable_unembedded_backlog"] = 0
+    m["embedded_cov_of_embeddable"] = 1.0
+    assert hg.evaluate(m, prior=None) == []
+
+
+def test_embedded_coverage_below_floor_fails():
+    # Embed stage behind: many embeddable jobs still unembedded -> cov of the
+    # embeddable subset drops below the floor.
+    m = _healthy_metrics()
+    m["active_embedded"] = 20000
+    m["embeddable_unembedded_backlog"] = 6000
+    m["embedded_cov_of_embeddable"] = 20000 / (20000 + 6000)  # 0.769
     keys = {f["metric"] for f in hg.evaluate(m, prior=None)}
-    assert "embedded_cov_of_active" in keys
+    assert "embedded_cov_of_embeddable" in keys
 
 
 def test_large_embeddable_backlog_fails():
@@ -244,12 +265,16 @@ def test_run_health_gate_passes_on_healthy(monkeypatch, tmp_path):
     assert state.exists()  # state persisted for next run
 
 
-def test_run_health_gate_fails_on_live_cliff(monkeypatch, tmp_path):
+def test_run_health_gate_fails_on_real_cliff(monkeypatch, tmp_path):
     monkeypatch.setattr(hg, "get_connection", lambda: _Conn())
-    monkeypatch.setattr(hg, "compute_metrics", lambda conn: _live_today_metrics())
+    cliff = _healthy_metrics()
+    cliff["active_embedded"] = 10000
+    cliff["embeddable_unembedded_backlog"] = 12000
+    cliff["embedded_cov_of_embeddable"] = 10000 / 22000  # 0.4545
+    monkeypatch.setattr(hg, "compute_metrics", lambda conn: cliff)
     result = hg.run_health_gate(state_path=tmp_path / "s.json")
     assert result["ok"] is False
-    assert any(f["metric"] == "embedded_cov_of_active"
+    assert any(f["metric"] == "embedded_cov_of_embeddable"
                for f in result["failures"])
 
 
