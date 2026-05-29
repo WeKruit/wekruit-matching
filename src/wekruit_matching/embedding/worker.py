@@ -14,9 +14,11 @@ from loguru import logger
 from pgvector.psycopg import register_vector
 
 from wekruit_matching.embedding.embedder import (
+    EMBED_BATCH_SIZE,
     EMBEDDING_MODEL,
     compose_embedding_text,
     embed_text,
+    embed_texts,
 )
 from wekruit_matching.models.job import Job
 
@@ -73,9 +75,16 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
 
     Query: WHERE embedded_at IS NULL AND enriched_at IS NOT NULL AND status = 'active'
 
-    For each job:
+    Jobs are embedded in BATCHES (one OpenAI request per ``EMBED_BATCH_SIZE``
+    inputs) rather than one request per job — the embeddings endpoint accepts
+    many inputs per call, and the per-job serial pattern was the drain
+    bottleneck. Order is preserved, so each job still receives its own correct
+    vector. If a batch request fails after retries, that batch falls back to
+    per-job embedding so one bad input cannot sink its whole batch.
+
+    For each job (within a batch):
       1. Compose embedding text: "{role_title} at {company_name}. Skills: {skills}"
-      2. Call embed_text() — raises on permanent failure
+      2. Obtain its vector from the batch (or per-job fallback)
       3. UPDATE jobs SET embedding, embedding_model, embedded_at
       4. commit() after each successful write
 
@@ -120,6 +129,54 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
     logger.info("Found {} enriched job(s) to embed", len(rows))
     embedded = failed = 0
 
+    def _write_vector(job: Job, vector: list[float]) -> None:
+        """Persist one job's vector + embedded_at, committing immediately.
+
+        Kept per-job (not a bulk UPDATE) so the embedded_at write/commit
+        semantics — and crash-resumability of the drain — are identical to the
+        pre-batch worker.
+        """
+        conn.execute(
+            """
+            UPDATE jobs SET
+                embedding       = %(embedding)s,
+                embedding_model = %(embedding_model)s,
+                embedded_at     = %(embedded_at)s
+            WHERE job_id = %(job_id)s
+            """,
+            {
+                "job_id": job.job_id,
+                "embedding": vector,
+                "embedding_model": EMBEDDING_MODEL,
+                "embedded_at": _utcnow(),
+            },
+        )
+        conn.commit()
+
+    def _embed_one(job: Job, text: str) -> bool:
+        """Embed + persist a single job. Returns True on success, False on failure.
+
+        Per-job isolation: any exception (embed or write) rolls back and is
+        swallowed so the rest of the queue proceeds.
+        """
+        nonlocal embedded, failed
+        try:
+            vector = embed_text(text)
+            _write_vector(job, vector)
+            embedded += 1
+            logger.debug("Embedded {}", job.job_id[:8])
+            return True
+        except Exception as exc:
+            failed += 1
+            logger.warning("Failed to embed job {}: {}", job.job_id[:8], exc)
+            conn.rollback()
+            return False
+
+    # Build the full (job, text) list once, preserving SELECT order so the
+    # i-th composed text always belongs to the i-th job — this is what keeps
+    # the job_id<->vector mapping correct across batching.
+    jobs: list[Job] = []
+    texts: list[str] = []
     for row in rows:
         job = Job(
             job_id=row["job_id"],
@@ -130,33 +187,38 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
             required_skills=list(row["required_skills"] or []),
             content_hash=row["content_hash"],
         )
+        jobs.append(job)
+        texts.append(compose_embedding_text(job))
+
+    # Embed in batches of EMBED_BATCH_SIZE — one OpenAI request per batch.
+    for start in range(0, len(jobs), EMBED_BATCH_SIZE):
+        batch_jobs = jobs[start : start + EMBED_BATCH_SIZE]
+        batch_texts = texts[start : start + EMBED_BATCH_SIZE]
         try:
-            text = compose_embedding_text(job)
-            vector = embed_text(text)
-            conn.execute(
-                """
-                UPDATE jobs SET
-                    embedding       = %(embedding)s,
-                    embedding_model = %(embedding_model)s,
-                    embedded_at     = %(embedded_at)s
-                WHERE job_id = %(job_id)s
-                """,
-                {
-                    "job_id": job.job_id,
-                    "embedding": vector,
-                    "embedding_model": EMBEDDING_MODEL,
-                    "embedded_at": _utcnow(),
-                },
-            )
-            conn.commit()
-            embedded += 1
-            logger.debug("Embedded {}", job.job_id[:8])
+            vectors = embed_texts(batch_texts)
         except Exception as exc:
-            failed += 1
-            logger.warning("Failed to embed job {}: {}", job.job_id[:8], exc)
-            # Roll back any partial writes so the connection is clean for the next job
-            conn.rollback()
-            # Continue to next job — per-job isolation
+            # Whole-batch API failure after retries — degrade to per-job so a
+            # single offending input doesn't drop the entire batch. This is
+            # also the path the per-job isolation tests exercise.
+            logger.warning(
+                "Batch embed failed ({} job(s)): {} — falling back to per-job",
+                len(batch_jobs),
+                exc,
+            )
+            for job, text in zip(batch_jobs, batch_texts):
+                _embed_one(job, text)
+            continue
+
+        # Batch succeeded — write each job's own vector (order-aligned).
+        for job, vector in zip(batch_jobs, vectors):
+            try:
+                _write_vector(job, vector)
+                embedded += 1
+                logger.debug("Embedded {}", job.job_id[:8])
+            except Exception as exc:
+                failed += 1
+                logger.warning("Failed to write embedding for job {}: {}", job.job_id[:8], exc)
+                conn.rollback()
 
     logger.info("Embedding complete: embedded={} failed={}", embedded, failed)
     return {"embedded": embedded, "failed": failed, "skipped": 0}
