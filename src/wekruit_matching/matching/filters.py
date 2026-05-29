@@ -130,15 +130,26 @@ def filter_by_job_type(jobs: list[dict], job_type: JobType) -> list[dict]:
 
 
 def filter_by_sponsorship(jobs: list[dict], requires_sponsorship: bool) -> list[dict]:
-    """Filter jobs by sponsorship requirement.
+    """Filter jobs by sponsorship requirement, treating UNKNOWN as eligible.
 
     If requires_sponsorship is False, all rows pass unchanged.
-    If requires_sponsorship is True, only rows where sponsorship is exactly
-    True (bool) are kept. Rows where sponsorship is False or None are excluded.
+
+    If requires_sponsorship is True, drop ONLY rows that are *explicitly* known
+    to NOT sponsor (sponsorship is False). Rows where sponsorship is True or
+    None (unknown) are KEPT.
+
+    Rationale (reliability fix): sponsorship is enriched, not authoritative, and
+    on the live corpus the vast majority of jobs have sponsorship = NULL
+    (unknown). Treating NULL as "no sponsorship" silently removes ~80%+ of the
+    candidate pool for international-student users — a confirmed-good job that
+    simply hasn't been classified would never be shown. Unknown must mean
+    "maybe", not "no". A False-positive (showing a maybe-no job) is recoverable
+    by the user; a False-negative (hiding a real match) is invisible and is the
+    worst failure mode for a matching engine.
     """
     if not requires_sponsorship:
         return jobs
-    return [job for job in jobs if job.get("sponsorship") is True]
+    return [job for job in jobs if job.get("sponsorship") is not False]
 
 
 def filter_by_location(jobs: list[dict], preferred_locations: list[str]) -> list[dict]:
@@ -187,11 +198,42 @@ def apply_hard_filters(jobs: list[dict], profile: UserProfile) -> list[dict]:
     """
     original_count = len(jobs)
 
-    result = filter_by_job_type(jobs, profile.preferred_job_type)
-    result = filter_by_sponsorship(result, profile.requires_sponsorship)
+    after_type = filter_by_job_type(jobs, profile.preferred_job_type)
+    result = filter_by_sponsorship(after_type, profile.requires_sponsorship)
     # Location is intentionally NOT a hard filter — it's a scoring signal.
     # Users should see all relevant jobs; location preference boosts score
     # via location_fit in scorer.py, but doesn't eliminate results.
 
     logger.debug("Hard filters: {} -> {} jobs", original_count, len(result))
+
+    # Runtime gate / observability: hard filters wiping out (nearly) the entire
+    # candidate pool is the dominant "no/irrelevant matches" failure mode. Emit
+    # a WARNING with the per-stage counts so it is diagnosable from logs on the
+    # very call that produced bad results — instead of being silently invisible.
+    if original_count > 0 and len(result) == 0:
+        logger.warning(
+            "Hard filters eliminated ALL {} candidates "
+            "(after_job_type={}, after_sponsorship={}; "
+            "job_type={}, requires_sponsorship={}, user_id={})",
+            original_count,
+            len(after_type),
+            len(result),
+            profile.preferred_job_type.value,
+            profile.requires_sponsorship,
+            profile.user_id,
+        )
+    elif (
+        profile.requires_sponsorship
+        and len(after_type) > 0
+        and len(result) / len(after_type) < 0.1
+    ):
+        logger.warning(
+            "Sponsorship hard filter removed {:.0%} of candidates "
+            "({} -> {}); most jobs may have unknown sponsorship (user_id={})",
+            1 - len(result) / len(after_type),
+            len(after_type),
+            len(result),
+            profile.user_id,
+        )
+
     return result

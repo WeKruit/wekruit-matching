@@ -149,28 +149,39 @@ class TestFilterBySponsorship:
         result = filter_by_sponsorship(jobs, requires_sponsorship=False)
         assert result == jobs
 
-    def test_true_requirement_keeps_only_true(self):
-        """Spec truth: requires_sponsorship=True keeps only rows where sponsorship is True."""
+    def test_true_requirement_keeps_true_and_unknown_drops_only_false(self):
+        """Reliability truth: requires_sponsorship=True keeps True AND unknown(None),
+        dropping ONLY rows explicitly known to NOT sponsor (False).
+
+        sponsorship is enriched, not authoritative; on the live corpus ~80%+ of
+        active jobs have sponsorship = NULL. Treating NULL as 'no sponsorship'
+        silently hides the bulk of real matches from international students.
+        Unknown must mean 'maybe', not 'no'.
+        """
         jobs = [
             _job(sponsorship=True),
             _job(sponsorship=False),
             _job(sponsorship=None),
         ]
         result = filter_by_sponsorship(jobs, requires_sponsorship=True)
-        assert len(result) == 1
-        assert result[0]["sponsorship"] is True
+        kept = {(j["sponsorship"]) for j in result}
+        assert len(result) == 2
+        assert True in kept
+        assert None in kept
+        assert False not in kept
 
     def test_true_requirement_drops_false(self):
-        """Spec truth: rows where sponsorship is False are excluded."""
+        """Rows explicitly marked sponsorship=False are excluded."""
         jobs = [_job(sponsorship=False)]
         result = filter_by_sponsorship(jobs, requires_sponsorship=True)
         assert result == []
 
-    def test_true_requirement_drops_none(self):
-        """Spec truth: rows where sponsorship is None are excluded."""
+    def test_true_requirement_keeps_none_unknown(self):
+        """Reliability fix: rows where sponsorship is None (unknown) are KEPT,
+        not dropped — unknown sponsorship is treated as eligible/'maybe'."""
         jobs = [_job(sponsorship=None)]
         result = filter_by_sponsorship(jobs, requires_sponsorship=True)
-        assert result == []
+        assert result == jobs
 
     def test_empty_jobs_returns_empty(self):
         assert filter_by_sponsorship([], requires_sponsorship=True) == []
@@ -332,14 +343,22 @@ class TestApplyHardFilters:
         assert newgrad_job not in result
         assert intern_job in result
 
-    def test_sponsorship_filter_excludes_none(self):
-        """Chained: sponsorship=None rows are excluded when requires_sponsorship=True."""
+    def test_sponsorship_filter_keeps_none_unknown(self):
+        """Chained: sponsorship=None (unknown) rows are KEPT when requires_sponsorship=True.
+
+        Reliability fix: unknown sponsorship is treated as eligible ('maybe'),
+        not as confirmed no-sponsorship. Only explicit sponsorship=False is
+        dropped. On the live corpus ~83% of active jobs have NULL sponsorship,
+        so dropping them silently hid the bulk of real matches.
+        """
         job_none = _job(sponsorship=None, location_raw="Remote")
         job_true = _job(sponsorship=True, location_raw="Remote")
+        job_false = _job(sponsorship=False, location_raw="Remote")
         profile = _profile(requires_sponsorship=True)
-        result = apply_hard_filters([job_none, job_true], profile)
-        assert job_none not in result
+        result = apply_hard_filters([job_none, job_true, job_false], profile)
+        assert job_none in result
         assert job_true in result
+        assert job_false not in result
 
     def test_location_preference_is_not_a_chained_hard_filter(self):
         """Chained filters keep non-matching locations for scoring."""
