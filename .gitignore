@@ -11,3 +11,7 @@ dist/
 build/
 .mypy_cache/
 .pyright/
+# session artifacts (job-id dumps, secrets) — never commit
+data/
+.env.bak
+.firebase-sa.json
