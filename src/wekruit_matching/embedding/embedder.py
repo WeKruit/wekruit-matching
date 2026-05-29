@@ -70,6 +70,73 @@ def _call_openai(client: openai.OpenAI, text: str) -> list[float]:
     return response.data[0].embedding
 
 
+# text-embedding-3-small accepts up to 2048 inputs per request. We keep batches
+# well under that (256) to bound per-request payload size and blast radius on a
+# transient 429/5xx — the whole batch retries together via tenacity.
+EMBED_BATCH_SIZE = 256
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=1, max=30),
+    retry=retry_if_exception(_should_retry_openai),
+    reraise=True,
+)
+def _call_openai_batch(
+    client: openai.OpenAI, texts: list[str]
+) -> list[list[float]]:
+    """Embed a list of texts in a SINGLE OpenAI request, preserving input order.
+
+    The embeddings endpoint returns ``data`` entries each carrying an ``index``
+    that maps back to the position in the ``input`` list. We sort by that index
+    rather than trusting array order, so the i-th returned vector always
+    corresponds to ``texts[i]`` — this is what guarantees the job_id<->vector
+    mapping stays correct in the caller.
+
+    Retries on RateLimitError (429) and server errors (5xx). Raises after 5
+    failed attempts — caller must handle isolation (per-item fallback).
+    """
+    response = client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
+    ordered = sorted(response.data, key=lambda d: d.index)
+    return [d.embedding for d in ordered]
+
+
+def embed_texts(
+    texts: list[str], client: openai.OpenAI | None = None
+) -> list[list[float]]:
+    """Generate embeddings for many texts using batched OpenAI requests.
+
+    Splits ``texts`` into chunks of ``EMBED_BATCH_SIZE`` and issues one
+    ``embeddings.create`` call per chunk (instead of one call per text). The
+    returned list is aligned 1:1 with ``texts`` (same length, same order), so
+    ``result[i]`` is the embedding for ``texts[i]``.
+
+    The in-memory LRU cache used by ``embed_text`` is intentionally NOT consulted
+    here: the embedding queue is gated on ``embedded_at IS NULL`` so duplicate
+    inputs within a drain are rare, and skipping the cache keeps batch ordering
+    trivial to reason about.
+
+    Args:
+        texts: List of texts to embed (use compose_embedding_text per job).
+        client: Optional OpenAI client (defaults to cached _get_client()).
+
+    Returns:
+        list[list[float]] of length ``len(texts)``; each inner list is 1536-dim.
+
+    Raises:
+        openai.RateLimitError / openai.APIStatusError if a batch fails after
+        retries — the caller is responsible for isolation/fallback.
+    """
+    if not texts:
+        return []
+    c = client if client is not None else _get_client()
+    out: list[list[float]] = []
+    for start in range(0, len(texts), EMBED_BATCH_SIZE):
+        chunk = texts[start : start + EMBED_BATCH_SIZE]
+        out.extend(_call_openai_batch(c, chunk))
+    return out
+
+
 _embedding_cache: dict[str, list[float]] = {}
 _CACHE_MAX = 256
 
