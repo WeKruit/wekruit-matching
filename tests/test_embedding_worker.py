@@ -199,3 +199,29 @@ def test_hnsw_index_used_for_cosine_query():
     assert "hnsw" in plan_text.lower() or "index" in plan_text.lower(), (
         f"Expected HNSW index scan in query plan. Got: {plan_text}"
     )
+
+
+class TestEmbedPendingCountParity:
+    """A short vector list from embed_texts must not silently truncate the batch;
+    the worker recovers via per-job embedding so every job is still embedded 1:1."""
+
+    def test_short_batch_response_falls_back_to_per_job(self) -> None:
+        from wekruit_matching.embedding.worker import embed_pending
+
+        conn = _make_conn([_job_row("job1"), _job_row("job2"), _job_row("job3")])
+        # 3 inputs but only 1 vector back -- the misalignment the guard catches.
+        with patch("wekruit_matching.embedding.worker.register_vector"), patch(
+            "wekruit_matching.embedding.worker.embed_texts",
+            return_value=[[0.1] * 1536],
+        ), patch(
+            "wekruit_matching.embedding.worker.embed_text",
+            return_value=[0.9] * 1536,
+        ) as mock_embed_text:
+            result = embed_pending(conn)
+
+        # All three recovered via per-job; none silently dropped.
+        assert result["embedded"] == 3, result
+        assert result["failed"] == 0, result
+        assert mock_embed_text.call_count == 3, (
+            "each job must be re-embedded individually after the count mismatch"
+        )

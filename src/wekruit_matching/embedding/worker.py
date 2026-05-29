@@ -209,6 +209,26 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
                 _embed_one(job, text)
             continue
 
+        # Count-parity guard: embed_texts documents a strict 1:1 contract
+        # (result[i] is the vector for texts[i]). If the response is short
+        # (a dropped/partial entry), the order-aligned zip() below would
+        # SILENTLY truncate — trailing jobs would be neither embedded nor
+        # counted as failed, vanishing from the matchable corpus with no
+        # signal (the silent-corruption class of "matches were fine yesterday,
+        # wrong today"). Rather than write a misaligned batch, recover the same
+        # way we do on a batch exception: fall back to per-job embedding (which
+        # is inherently 1:1) so every job still gets its own correct vector.
+        if len(vectors) != len(batch_jobs):
+            logger.warning(
+                "Batch embed returned {} vector(s) for {} input(s) — count "
+                "mismatch; falling back to per-job to avoid misalignment",
+                len(vectors),
+                len(batch_jobs),
+            )
+            for job, text in zip(batch_jobs, batch_texts):
+                _embed_one(job, text)
+            continue
+
         # Batch succeeded — write each job's own vector (order-aligned).
         for job, vector in zip(batch_jobs, vectors):
             try:
