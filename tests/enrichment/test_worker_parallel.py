@@ -250,7 +250,11 @@ def test_per_job_failure_does_not_halt_batch():
 
 
 def test_signature_accepts_max_workers_keyword():
-    """The acceptance criterion: enrich_pending(conn, *, max_workers=10) is callable."""
+    """The acceptance criterion: enrich_pending(conn, *, max_workers=30) is callable.
+
+    Default raised 10 -> 30 in commit e9710b4 (gpt-5.4-nano + 30 workers); this
+    assertion tracks the current intended default.
+    """
     import inspect
 
     from wekruit_matching.enrichment.worker import enrich_pending
@@ -260,8 +264,8 @@ def test_signature_accepts_max_workers_keyword():
     assert "max_workers" in params, (
         "enrich_pending must accept a max_workers kwarg per P7-A acceptance criteria"
     )
-    assert params["max_workers"].default == 10, (
-        f"Default max_workers must be 10; got {params['max_workers'].default}"
+    assert params["max_workers"].default == 30, (
+        f"Default max_workers must be 30; got {params['max_workers'].default}"
     )
     assert params["max_workers"].kind == inspect.Parameter.KEYWORD_ONLY, (
         "max_workers must be keyword-only (after *) so positional callers stay compatible"
