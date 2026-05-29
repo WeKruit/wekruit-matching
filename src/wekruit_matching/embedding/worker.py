@@ -109,7 +109,7 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
           AND required_skills IS NOT NULL
           AND cardinality(required_skills) > 0
         ORDER BY first_seen_at ASC
-        LIMIT 500
+        LIMIT 3000
         """
     ).fetchall()
 
