@@ -47,6 +47,75 @@ _DEAD_RETRY_AGE_DAYS = 90        # tombstone older than this => allow one retry
 _DEAD_RETRY_MAX_PER_RUN = 100    # safety cap so we don't undo all tombstones at once
 
 
+def _norm(s: str | None) -> str:
+    """Lowercase + collapse whitespace for stable-identity matching.
+
+    Mirrors the ``lower(btrim(...))`` normalization used in the SQL carry-forward
+    / integrity queries so the Python-side identity key agrees with Postgres.
+    """
+    return " ".join((s or "").strip().lower().split())
+
+
+def _carry_forward_first_seen(
+    batch: list[Job],
+    conn: psycopg.Connection,
+) -> dict[str, datetime]:
+    """Return {job_id -> earliest first_seen_at for that job's stable identity}.
+
+    first_seen_at preservation (recency-signal reliability)
+    -------------------------------------------------------
+    ``first_seen_at`` is the recency signal the downstream matcher relies on.
+    ``job_id`` is a content hash of (source_repo, norm company, norm role) — see
+    ``id_utils.generate_job_id``. Whenever those inputs change (the v1->v2 hash
+    migration, or a source simply editing a company/title string), the job
+    re-hashes to a BRAND NEW job_id. ``ON CONFLICT (job_id)`` then never fires,
+    so the INSERT below stamps ``first_seen_at = now()`` and the original row is
+    orphaned (later stale-marked). Observed on live data: the entire active
+    corpus had ``first_seen_at`` within ~3 days; 2,030 active rows had a
+    first_seen_at newer than an older sibling for the same identity.
+
+    Fix: look up the earliest ``first_seen_at`` ever recorded for each job's
+    stable identity ``(norm company, norm role, source_repo)`` across ALL rows
+    (any status) and carry it forward. Genuinely-new identities are absent from
+    the result and fall back to ``now()`` in the caller. One batched query per
+    upsert batch — no per-row round-trips.
+    """
+    if not batch:
+        return {}
+
+    companies = [j.company_name for j in batch]
+    roles = [j.role_title for j in batch]
+    repos = [j.source_repo for j in batch]
+    rows = conn.execute(
+        """
+        SELECT lower(btrim(company_name)) AS c,
+               lower(btrim(role_title))   AS r,
+               source_repo                AS s,
+               min(first_seen_at)         AS min_seen
+        FROM jobs
+        WHERE (lower(btrim(company_name)), lower(btrim(role_title)), source_repo)
+              IN (
+                SELECT lower(btrim(c)), lower(btrim(r)), s
+                FROM unnest(%(companies)s::text[], %(roles)s::text[], %(repos)s::text[])
+                     AS t(c, r, s)
+              )
+        GROUP BY 1, 2, 3
+        """,
+        {"companies": companies, "roles": roles, "repos": repos},
+    ).fetchall()
+
+    by_ident: dict[tuple[str, str, str | None], datetime] = {
+        (row["c"], row["r"], row["s"]): row["min_seen"] for row in rows
+    }
+    out: dict[str, datetime] = {}
+    for j in batch:
+        key = (_norm(j.company_name), _norm(j.role_title), j.source_repo)
+        prior = by_ident.get(key)
+        if prior is not None:
+            out[j.job_id] = prior
+    return out
+
+
 def _filter_dead_tombstoned(
     jobs: list[Job],
     conn: psycopg.Connection,
@@ -201,6 +270,11 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
             ).fetchall()
             existing = {r["job_id"]: r["content_hash"] for r in rows}
 
+        # first_seen_at preservation: carry forward the earliest first_seen_at
+        # recorded for each job's stable identity so a job_id re-hash never
+        # resets the recency signal. Genuinely-new jobs fall back to ``now``.
+        first_seen_map = _carry_forward_first_seen(batch, conn)
+
         # Batch upsert using cursor.executemany (psycopg3)
         conn.cursor().executemany(
             """
@@ -215,7 +289,7 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
             ) VALUES (
                 %(job_id)s, %(source_repo)s, %(company_name)s, %(role_title)s,
                 %(primary_url)s, %(ats_apply_url)s, %(location_raw)s, %(date_posted_raw)s,
-                'active', %(now)s, %(now)s, %(content_hash)s,
+                'active', %(first_seen_at)s, %(now)s, %(content_hash)s,
                 %(industry)s, %(company_size)s, %(required_skills)s, %(sponsorship)s,
                 %(enriched_at)s,
                 %(seniority_level)s, %(role_function)s, %(sources)s,
@@ -307,6 +381,10 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     "sources": job.sources or [],
                     "job_description": job.job_description,
                     "now": now,
+                    # Carry-forward earliest first_seen_at for this identity, or
+                    # ``now`` for a genuinely-new job. ON CONFLICT does NOT touch
+                    # first_seen_at, so existing rows keep their stored value.
+                    "first_seen_at": first_seen_map.get(job.job_id, now),
                 }
                 for job in batch
             ],
@@ -482,5 +560,86 @@ def mark_specific_ids_inactive(
           AND status = 'active'
         """,
         (_utcnow(), source_repo, list(stale_ids)),
+    )
+    return result.rowcount
+
+
+# Runtime gate threshold: how many "reset" offenders to tolerate before the
+# scrape run logs a regression warning. 0 = strict.
+FIRST_SEEN_INTEGRITY_THRESHOLD = 0
+
+
+def check_first_seen_integrity(conn: psycopg.Connection) -> int:
+    """Runtime GATE: count active jobs whose ``first_seen_at`` is newer than an
+    older sibling row (any status) sharing the same stable identity
+    ``(norm company, norm role, source_repo)``.
+
+    A non-zero result is the signature of a ``first_seen_at`` reset: a job_id
+    re-hash inserted a fresh row with ``first_seen_at = now()`` while an older
+    row for the same logical job still carries the true (earlier) timestamp.
+    The daily scrape calls this after upsert so the failure mode is auto-caught
+    on the next run instead of silently degrading match recency. Read-only.
+    """
+    row = conn.execute(
+        """
+        WITH ident AS (
+            SELECT lower(btrim(company_name)) AS c,
+                   lower(btrim(role_title))   AS r,
+                   source_repo                AS s,
+                   min(first_seen_at)         AS min_seen
+            FROM jobs
+            GROUP BY 1, 2, 3
+        )
+        SELECT count(*) AS n
+        FROM jobs j
+        JOIN ident i
+          ON lower(btrim(j.company_name)) = i.c
+         AND lower(btrim(j.role_title))   = i.r
+         AND j.source_repo IS NOT DISTINCT FROM i.s
+        WHERE j.status = 'active'
+          AND j.first_seen_at > i.min_seen
+        """
+    ).fetchone()
+    offenders = int(row["n"]) if row and row["n"] is not None else 0
+    if offenders > FIRST_SEEN_INTEGRITY_THRESHOLD:
+        logger.warning(
+            "pa.scraper.first_seen_integrity offenders={} — active rows with a "
+            "first_seen_at newer than an older sibling for the same identity "
+            "(likely a job_id re-hash reset). Run backfill_first_seen().",
+            offenders,
+        )
+    else:
+        logger.info("pa.scraper.first_seen_integrity offenders=0 (clean)")
+    return offenders
+
+
+def backfill_first_seen(conn: psycopg.Connection) -> int:
+    """Repair rows whose ``first_seen_at`` was reset by a past job_id re-hash.
+
+    For each stable identity, set every row's ``first_seen_at`` to the earliest
+    value recorded across the identity's rows. Idempotent: a second run updates
+    0 rows once the table is consistent. This is the one-time remediation for
+    the historical reset; the carry-forward in ``upsert_jobs`` prevents future
+    occurrences. Caller owns the transaction (no commit here) so it can scope /
+    review the write. Returns the number of rows updated.
+    """
+    result = conn.execute(
+        """
+        WITH ident AS (
+            SELECT lower(btrim(company_name)) AS c,
+                   lower(btrim(role_title))   AS r,
+                   source_repo                AS s,
+                   min(first_seen_at)         AS min_seen
+            FROM jobs
+            GROUP BY 1, 2, 3
+        )
+        UPDATE jobs j
+           SET first_seen_at = i.min_seen
+          FROM ident i
+         WHERE lower(btrim(j.company_name)) = i.c
+           AND lower(btrim(j.role_title))   = i.r
+           AND j.source_repo IS NOT DISTINCT FROM i.s
+           AND j.first_seen_at > i.min_seen
+        """
     )
     return result.rowcount

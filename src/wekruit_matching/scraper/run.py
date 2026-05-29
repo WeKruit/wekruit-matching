@@ -19,6 +19,7 @@ from wekruit_matching.scraper.fetcher import REPO_INTERNSHIPS, REPO_NEW_GRAD, fe
 from wekruit_matching.scraper.jobright_github import scrape_jobright_github
 from wekruit_matching.scraper.parser import parse_readme
 from wekruit_matching.scraper.upsert import (
+    check_first_seen_integrity,
     mark_specific_ids_inactive,
     mark_stale_jobs,
     upsert_jobs,
@@ -174,6 +175,18 @@ def scrape_all() -> dict[str, dict]:
             except Exception as e:
                 logger.error("Failed to refresh YC companies cache: {}", e)
                 all_stats["yc_companies"] = {"error": str(e)}
+
+        # --- Runtime GATE: first_seen_at integrity ---
+        # Auto-detect a recency-signal reset (a job_id re-hash that re-inserted
+        # rows with first_seen_at=now() while older siblings survive). Logs a
+        # warning when offenders>0 so the failure mode surfaces on the next run
+        # instead of silently degrading match quality. Read-only, non-fatal.
+        try:
+            offenders = check_first_seen_integrity(conn)
+            all_stats["first_seen_integrity"] = {"offenders": offenders}
+        except Exception as e:
+            logger.error("first_seen_integrity gate failed: {}", e)
+            all_stats["first_seen_integrity"] = {"error": str(e)}
 
     return all_stats
 
