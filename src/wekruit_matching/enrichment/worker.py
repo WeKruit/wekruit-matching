@@ -206,7 +206,7 @@ def _process_one_job(row: dict) -> tuple[str, str, Exception | None]:
 def enrich_pending(
     conn: psycopg.Connection,
     *,
-    max_workers: int = 10,
+    max_workers: int = 30,
 ) -> dict[str, int]:
     """Classify active jobs that are missing a JD or skills (ENRICH-01 gap-fill).
 

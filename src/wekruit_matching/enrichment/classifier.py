@@ -156,19 +156,20 @@ def _safe_default() -> EnrichmentResult:
 
 
 # ---------------------------------------------------------------------------
-# SiliconFlow client (Qwen3-8B — free tier, OpenAI-compatible)
+# OpenAI client (gpt-5.4-nano — Adam directive 2026-05-28).
+#
+# Was Qwen/Qwen3-8B on the SiliconFlow free tier (50K TPM, ~16 calls/min) —
+# that TPM ceiling, not latency, throttled the whole enrich stage and left
+# 22k+ JD-bearing jobs un-skilled. gpt-5.4-nano is ~1s/call, far higher TPM,
+# and cheap. Verified live producing valid 8-skill JSON on real JDs.
 # ---------------------------------------------------------------------------
 
-_CLASSIFIER_MODEL = "Qwen/Qwen3-8B"
-_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+_CLASSIFIER_MODEL = "gpt-5.4-nano"
 
 @lru_cache(maxsize=1)
 def _get_client() -> OpenAI:
     settings = get_settings()
-    return OpenAI(
-        api_key=settings.siliconflow_api_key,
-        base_url=_SILICONFLOW_BASE_URL,
-    )
+    return OpenAI(api_key=settings.openai_api_key)
 
 
 _SYSTEM_PROMPT = """\
@@ -205,19 +206,21 @@ def _should_retry(exc: BaseException) -> bool:
     reraise=True,
 )
 def _call_llm(client: OpenAI, prompt: str) -> str:
-    """Call SiliconFlow Qwen3-8B and return the raw text content.
+    """Call gpt-5.4-nano and return the raw JSON text content.
 
     Tenacity retries only on RateLimitError (429) and server-side 5xx errors.
-    Free tier: 1000 RPM, 50K TPM.
+    Note: gpt-5.x family requires ``max_completion_tokens`` (not ``max_tokens``)
+    and rejects non-default ``temperature`` — so neither is passed.
+    ``response_format=json_object`` guarantees parseable output.
     """
     response = client.chat.completions.create(
         model=_CLASSIFIER_MODEL,
-        max_tokens=512,
+        max_completion_tokens=512,
+        response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        temperature=0,
     )
     return response.choices[0].message.content or ""
 
