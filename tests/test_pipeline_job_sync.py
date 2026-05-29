@@ -60,6 +60,11 @@ class _FakeConn:
 
     def execute(self, sql: str, params: dict | None = None) -> _FakeResult:
         self.calls.append((sql, params))
+        # Durable sync-watermark statements: ensure-table / read / upsert.
+        # This fake has no stored watermark, so reads return empty and the
+        # effective ``since`` is unchanged (preserving legacy assertions).
+        if "pipeline_sync_state" in sql.lower():
+            return _FakeResult([])
         if "WHERE status = 'active'" in sql:
             rows = self.active_rows
             if params and "offset" in params:
@@ -79,6 +84,175 @@ def _load_sync_jobs_bulk_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class _WatermarkConn:
+    """Fake connection that also models the durable sync watermark table.
+
+    Routes:
+      * matchable SELECT   -> active_rows filtered by ``embedded_at >= since``
+        (mirrors the real ``embedded_at >= %(since)s`` predicate so the
+        resume-from-watermark behaviour is observable).
+      * inactive SELECT    -> inactive_rows
+      * watermark SELECT    -> current stored watermark (one row or empty)
+      * watermark UPSERT    -> records the advanced watermark value
+      * ensure-table DDL    -> no-op
+    """
+
+    def __init__(
+        self,
+        *,
+        active_rows: list[dict],
+        inactive_rows: list[dict],
+        stored_watermark: datetime | None,
+    ):
+        self.active_rows = active_rows
+        self.inactive_rows = inactive_rows
+        self.stored_watermark = stored_watermark
+        self.calls: list[tuple[str, dict | None]] = []
+        self.committed = 0
+
+    def execute(self, sql: str, params: dict | None = None) -> _FakeResult:
+        self.calls.append((sql, params))
+        lowered = sql.lower()
+        # Order matters: watermark statements are checked before the generic
+        # active/inactive routing so they are not shadowed.
+        if "pipeline_sync_state" in lowered:
+            if "create table" in lowered:
+                return _FakeResult([])
+            if lowered.strip().startswith("select"):
+                if self.stored_watermark is None:
+                    return _FakeResult([])
+                return _FakeResult([{"watermark": self.stored_watermark}])
+            # INSERT ... ON CONFLICT (advance)
+            if params and "watermark" in params:
+                self.stored_watermark = params["watermark"]
+            return _FakeResult([])
+        if "where status = 'active'" in lowered:
+            rows = self.active_rows
+            since = params.get("since") if params else None
+            if since is not None:
+                rows = [r for r in rows if r["embedded_at"] >= since]
+            return _FakeResult(rows)
+        if "where status = 'inactive'" in lowered:
+            return _FakeResult(self.inactive_rows)
+        raise AssertionError(f"Unexpected SQL: {sql}")
+
+    def commit(self) -> None:
+        self.committed += 1
+
+
+def _patch_settings(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.job_sync.get_settings",
+        lambda: SimpleNamespace(
+            firebase_sync_url="https://firebase-sync.example/api/sync/jobs",
+            firebase_sync_api_key="sync-secret",
+            firebase_sync_batch_size=50,
+            firebase_sync_timeout_seconds=15.0,
+            firebase_sync_collection="matching-jobs",
+        ),
+    )
+
+
+def test_incremental_sync_resumes_from_durable_watermark_not_run_start(monkeypatch) -> None:
+    """Regression: a job embedded BEFORE this run's ``since`` but AFTER the last
+    successfully-synced watermark must still be selected.
+
+    Root cause (live data, 2026-05-29): daily.py passes ``since=run_started_at``.
+    If a prior run embedded a job and then the Firestore push partially failed,
+    that job's ``embedded_at`` is in the past; the next run's ``since`` has moved
+    forward, so the job is *silently* never re-synced and the live matcher never
+    sees it. Resuming from the durable watermark (advanced only on success)
+    recovers it. Idempotent upserts make the overlapping re-send safe.
+    """
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    # Job embedded at hour 2 — older than this run's since (hour 5) but newer
+    # than the last successful watermark (hour 1). It MUST be re-synced.
+    dropped = _job_row(job_id="job-dropped", status="active", content_hash="d" * 64)
+    dropped["embedded_at"] = _dt(2)
+    fresh = _job_row(job_id="job-fresh", status="active", content_hash="f" * 64)
+    fresh["embedded_at"] = _dt(6)
+
+    conn = _WatermarkConn(
+        active_rows=[dropped, fresh],
+        inactive_rows=[],
+        stored_watermark=_dt(1),
+    )
+    pushed_ids: list[str] = []
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _fake_post(url: str, *, headers: dict, json: dict, timeout: float):
+        for job in json["jobs"]:
+            pushed_ids.append(job["job_id"])
+
+        class _Response:
+            is_success = True
+
+            def raise_for_status(self) -> None:
+                return None
+
+        return _Response()
+
+    _patch_settings(monkeypatch)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _fake_post)
+
+    # Caller passes run-start (hour 5); without the watermark the dropped job is lost.
+    sync_jobs_to_firebase(since=_dt(5), full_sync=False)
+
+    assert "job-dropped" in pushed_ids, (
+        "job embedded after the last successful watermark but before run-start "
+        "was silently dropped from the Firestore sync"
+    )
+    assert "job-fresh" in pushed_ids
+    # Watermark must advance to the max embedded_at that was successfully synced.
+    assert conn.stored_watermark == _dt(6)
+
+
+def test_incremental_sync_does_not_advance_watermark_when_push_fails(monkeypatch) -> None:
+    """If the Firestore push fails, the durable watermark must NOT advance, so
+    the next run re-covers the same window (self-healing retry)."""
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    job = _job_row(job_id="job-1", status="active", content_hash="a" * 64)
+    job["embedded_at"] = _dt(6)
+    conn = _WatermarkConn(active_rows=[job], inactive_rows=[], stored_watermark=_dt(1))
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _failing_post(url: str, *, headers: dict, json: dict, timeout: float):
+        class _Response:
+            status_code = 500
+            text = '{"ok":false,"error":"boom"}'
+            is_success = False
+
+            def raise_for_status(self) -> None:
+                raise httpx.HTTPStatusError(
+                    "boom",
+                    request=httpx.Request("POST", url),
+                    response=httpx.Response(500, text=self.text),
+                )
+
+        return _Response()
+
+    _patch_settings(monkeypatch)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _failing_post)
+
+    import pytest
+
+    with pytest.raises(httpx.HTTPStatusError):
+        sync_jobs_to_firebase(since=_dt(5), full_sync=False)
+
+    # Watermark must stay at its pre-run value so the failed window is retried.
+    assert conn.stored_watermark == _dt(1)
 
 
 def test_sync_jobs_to_firebase_posts_batched_payload_with_content_hash(monkeypatch) -> None:
@@ -146,7 +320,11 @@ def test_sync_jobs_to_firebase_posts_batched_payload_with_content_hash(monkeypat
     assert second_payload["jobs"][0]["job_id"] == "job-inactive-1"
     assert second_payload["jobs"][0]["status"] == "inactive"
 
-    active_sql, active_params = conn.calls[0]
+    # Incremental sync now issues durable-watermark queries (ensure table +
+    # read) before the active fetch, so locate the active call explicitly
+    # instead of assuming it is conn.calls[0].
+    active_calls = [c for c in conn.calls if "WHERE status = 'active'" in c[0]]
+    active_sql, active_params = active_calls[0]
     assert "embedded_at >= %(since)s" in active_sql
     assert active_params == {"since": _dt(0)}
 

@@ -281,6 +281,80 @@ def _fetch_inactive_jobs(conn) -> list[dict[str, Any]]:
     ).fetchall()
 
 
+# --- Durable incremental sync watermark -------------------------------------
+#
+# Reliability fix (2026-05-29): incremental sync was driven purely by the
+# caller's ``since`` (daily.py passes ``run_started_at`` — the wall clock at
+# pipeline start). If a run embedded jobs and then the Firestore push partially
+# failed (timeout / 503 / crash mid-batch), those rows kept their past
+# ``embedded_at`` while the NEXT run advanced ``since`` to a later wall clock —
+# so the un-synced jobs were SILENTLY skipped forever and the live matcher
+# never saw them. Symptom: "matching unreliable, a new issue every day".
+#
+# We persist a durable high-watermark = the max ``embedded_at`` that was *fully*
+# synced. Each incremental run resumes from ``min(caller_since, watermark)``
+# (re-covering any window a prior run failed on) and only advances the watermark
+# AFTER every batch succeeds. The Firestore receiver upserts by job_id, so
+# re-sending the overlap is idempotent and safe.
+#
+# The state table is created idempotently (CREATE TABLE IF NOT EXISTS) — a
+# non-destructive DDL that requires no separate migration step.
+_SYNC_STATE_KEY = "firebase_active_embedded_at"
+
+
+def _ensure_sync_state_table(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS pipeline_sync_state (
+            key        text PRIMARY KEY,
+            watermark  timestamptz,
+            updated_at timestamptz NOT NULL DEFAULT now()
+        )
+        """
+    )
+
+
+def _read_sync_watermark(conn, key: str = _SYNC_STATE_KEY) -> datetime | None:
+    rows = conn.execute(
+        "SELECT watermark FROM pipeline_sync_state WHERE key = %(key)s",
+        {"key": key},
+    ).fetchall()
+    if not rows:
+        return None
+    row = rows[0]
+    # Support both dict_row (production) and tuple rows (defensive).
+    if isinstance(row, dict):
+        return row.get("watermark")
+    return row[0]
+
+
+def _advance_sync_watermark(conn, watermark: datetime, key: str = _SYNC_STATE_KEY) -> None:
+    conn.execute(
+        """
+        INSERT INTO pipeline_sync_state (key, watermark, updated_at)
+        VALUES (%(key)s, %(watermark)s, now())
+        ON CONFLICT (key) DO UPDATE
+            SET watermark  = EXCLUDED.watermark,
+                updated_at = now()
+            WHERE pipeline_sync_state.watermark IS NULL
+               OR pipeline_sync_state.watermark < EXCLUDED.watermark
+        """,
+        {"key": key, "watermark": watermark},
+    )
+    commit = getattr(conn, "commit", None)
+    if callable(commit):
+        commit()
+
+
+def _max_embedded_at(rows: list[dict[str, Any]]) -> datetime | None:
+    values = [
+        r["embedded_at"]
+        for r in rows
+        if isinstance(r, dict) and isinstance(r.get("embedded_at"), datetime)
+    ]
+    return max(values) if values else None
+
+
 def sync_jobs_to_firebase(
     *,
     since: datetime | None = None,
@@ -288,11 +362,21 @@ def sync_jobs_to_firebase(
     active_limit: int | None = None,
     active_offset: int = 0,
     include_inactive: bool = True,
+    use_watermark: bool = True,
 ) -> dict[str, int]:
     """Sync job docs to Firebase in HTTP batches.
 
     Incremental mode syncs active jobs embedded since ``since`` plus all inactive jobs.
     Full mode syncs all active embedded jobs plus all inactive jobs.
+
+    In incremental mode the effective lower bound is
+    ``min(since, durable_watermark)`` so jobs that a prior run embedded but
+    failed to push (partial sync failure) are re-covered on the next run. The
+    durable watermark only advances after every batch succeeds; on any push
+    failure it is left untouched so the window is retried. Set
+    ``use_watermark=False`` to fall back to the legacy ``since``-only behaviour
+    (used by ``active_limit``/``active_offset`` staged backfills, which manage
+    their own windows).
     """
     settings = get_settings()
     if not settings.firebase_sync_url:
@@ -308,35 +392,61 @@ def sync_jobs_to_firebase(
 
     mode = "full" if full_sync else "incremental"
 
+    # Staged backfills (limit/offset) page through an explicit window and must
+    # not be perturbed by the shared watermark.
+    is_staged = active_limit is not None or active_offset > 0
+    watermark_active = use_watermark and not full_sync and not is_staged
+
+    effective_since = since
     with get_connection() as conn:
+        if watermark_active:
+            _ensure_sync_state_table(conn)
+            stored = _read_sync_watermark(conn)
+            if stored is not None and (effective_since is None or stored < effective_since):
+                logger.info(
+                    "Incremental sync resuming from durable watermark {} "
+                    "(caller since={})",
+                    stored.isoformat(),
+                    effective_since.isoformat() if effective_since else None,
+                )
+                effective_since = stored
+
         active_rows = _fetch_active_jobs(
             conn,
-            since=None if full_sync else since,
+            since=None if full_sync else effective_since,
             limit=active_limit,
             offset=active_offset,
         )
         inactive_rows = _fetch_inactive_jobs(conn) if include_inactive else []
 
-    jobs = [_serialize_job(row) for row in [*active_rows, *inactive_rows]]
-    batches = list(_batched(jobs, settings.firebase_sync_batch_size))
-    headers = {"X-API-Key": settings.firebase_sync_api_key}
-    sent_batches = 0
+        jobs = [_serialize_job(row) for row in [*active_rows, *inactive_rows]]
+        batches = list(_batched(jobs, settings.firebase_sync_batch_size))
+        headers = {"X-API-Key": settings.firebase_sync_api_key}
+        sent_batches = 0
 
-    for index, batch in enumerate(batches, start=1):
-        sent_batches += _post_jobs_batch(
-            url=settings.firebase_sync_url,
-            headers=headers,
-            collection=settings.firebase_sync_collection,
-            mode=mode,
-            jobs=batch,
-            timeout=settings.firebase_sync_timeout_seconds,
-        )
-        logger.info(
-            "Synced Firebase batch {}/{} ({} jobs)",
-            index,
-            len(batches),
-            len(batch),
-        )
+        # If any batch push raises, we propagate WITHOUT advancing the
+        # watermark, so the next run re-covers this window (self-healing).
+        for index, batch in enumerate(batches, start=1):
+            sent_batches += _post_jobs_batch(
+                url=settings.firebase_sync_url,
+                headers=headers,
+                collection=settings.firebase_sync_collection,
+                mode=mode,
+                jobs=batch,
+                timeout=settings.firebase_sync_timeout_seconds,
+            )
+            logger.info(
+                "Synced Firebase batch {}/{} ({} jobs)",
+                index,
+                len(batches),
+                len(batch),
+            )
+
+        # All batches succeeded — advance the durable watermark to the max
+        # embedded_at we just synced so the next incremental run starts there.
+        new_watermark = _max_embedded_at(active_rows)
+        if watermark_active and new_watermark is not None:
+            _advance_sync_watermark(conn, new_watermark)
 
     stats = {
         "active_jobs": len(active_rows),
