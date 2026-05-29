@@ -34,6 +34,13 @@ def _make_stubs(monkeypatch, *, enrich_jobright_side_effect=None, enrich_jobrigh
         "wekruit_matching.pipeline.daily.firestore_dead_backfill",
         lambda conn: {"synced": 0, "total_seen": 0, "skipped": "test"},
     )
+    # Stage 3.5 reconcile flips dead/404 active rows to inactive; stub it like
+    # every other stage so this test stays DB-free (the fake conn has no
+    # cursor.rowcount). Returns 0 flipped.
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.reconcile_dead_inactive",
+        lambda conn: 0,
+    )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
         lambda *, since, full_sync: {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0},
