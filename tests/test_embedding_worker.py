@@ -6,7 +6,7 @@ All embed_text calls are mocked — no real OpenAI API key needed.
 import os
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 skip_no_db = pytest.mark.skipif(
@@ -201,6 +201,43 @@ def test_hnsw_index_used_for_cosine_query():
     )
 
 
+def _job_row(job_id: str, skills=None):
+    """Minimal jobs-table row dict as embed_pending() reads it (dict access)."""
+    return {
+        "job_id": job_id,
+        "source_repo": "Summer2026-Internships",
+        "company_name": "TestCo",
+        "role_title": "SWE Intern",
+        "location_raw": "SF",
+        "required_skills": skills if skills is not None else ["python"],
+        "content_hash": "a" * 64,
+    }
+
+
+def _make_mock_conn(job_rows):
+    """Mock psycopg conn that feeds embed_pending() without a real DB.
+
+    - model-consistency check (SELECT DISTINCT embedding_model) -> []
+    - main eligibility SELECT (embedded_at IS NULL ...)         -> job_rows
+    - per-job UPDATE writes                                     -> empty cursor
+    """
+    conn = MagicMock()
+
+    def _execute(sql, params=None):
+        cur = MagicMock()
+        if "DISTINCT embedding_model" in sql:
+            cur.fetchall.return_value = []
+        elif "FROM jobs" in sql and "embedded_at IS NULL" in sql:
+            cur.fetchall.return_value = job_rows
+        else:
+            cur.fetchall.return_value = []
+            cur.fetchone.return_value = None
+        return cur
+
+    conn.execute.side_effect = _execute
+    return conn
+
+
 class TestEmbedPendingCountParity:
     """A short vector list from embed_texts must not silently truncate the batch;
     the worker recovers via per-job embedding so every job is still embedded 1:1."""
@@ -208,7 +245,7 @@ class TestEmbedPendingCountParity:
     def test_short_batch_response_falls_back_to_per_job(self) -> None:
         from wekruit_matching.embedding.worker import embed_pending
 
-        conn = _make_conn([_job_row("job1"), _job_row("job2"), _job_row("job3")])
+        conn = _make_mock_conn([_job_row("j1"), _job_row("j2"), _job_row("j3")])
         # 3 inputs but only 1 vector back -- the misalignment the guard catches.
         with patch("wekruit_matching.embedding.worker.register_vector"), patch(
             "wekruit_matching.embedding.worker.embed_texts",
@@ -219,7 +256,6 @@ class TestEmbedPendingCountParity:
         ) as mock_embed_text:
             result = embed_pending(conn)
 
-        # All three recovered via per-job; none silently dropped.
         assert result["embedded"] == 3, result
         assert result["failed"] == 0, result
         assert mock_embed_text.call_count == 3, (

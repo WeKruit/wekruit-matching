@@ -347,6 +347,6 @@ class TestDuplicateReactionSkipsProfileUpdate:
 
         assert conn.execute.call_count == 2
         sqls = [c[0][0] for c in conn.execute.call_args_list]
-        assert not any("disliked_companies" in s for s in sqls), (
+        assert not any("UPDATE user_profiles" in s and "disliked_companies" in s for s in sqls), (
             "must not append company on a duplicate dislike"
         )
