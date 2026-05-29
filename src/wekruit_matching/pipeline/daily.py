@@ -62,7 +62,10 @@ from wekruit_matching.notifications.email import (
 from wekruit_matching.pipeline.health_gate import run_health_gate
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
-from wekruit_matching.pipeline.dead_backfill import firestore_dead_backfill
+from wekruit_matching.pipeline.dead_backfill import (
+    firestore_dead_backfill,
+    reconcile_dead_inactive,
+)
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
 # Stage 1.7 — VC portfolio job boards via self-hosted Firecrawl.
@@ -489,6 +492,25 @@ def run_daily_pipeline() -> dict:
             logger.error("Embedding crashed: {}", e)
             errors.append(f"Embedding crash: {e}")
             stage_outcomes["embed"] = "error"
+
+        # --- Stage 3.5: Reconcile dead/404 jobs to inactive (pre-sync) ---
+        # dead_backfill (Stage 0) + the JD-404 path set dead/permanent_404
+        # WITHOUT flipping status, and upsert only SKIPS dead rows from its
+        # input. Left alone, confirmed-dead postings stay status='active' and
+        # sync to the live matcher as clickable matches that 404. Flip them to
+        # inactive HERE (after all dead-marking, before sync) so Stage 4's
+        # inactive-sync removes them from Firestore. Status-only; the 90-day
+        # dead-retry in upsert still re-activates genuinely re-listed jobs.
+        logger.info("=== Stage 3.5: Reconcile dead/404 -> inactive ===")
+        try:
+            with get_connection() as conn:
+                reconciled = reconcile_dead_inactive(conn)
+            logger.info("Dead/404 reconciled to inactive: {}", reconciled)
+            stage_outcomes["reconcile_dead"] = "ok"
+        except Exception as e:
+            logger.error("Dead reconcile crashed: {}", e)
+            errors.append(f"Dead reconcile crash: {e}")
+            stage_outcomes["reconcile_dead"] = "error"
 
         # --- Stage 4: Sync active/inactive jobs to Firebase ---
         logger.info("=== Stage 4: Firebase Job Sync ===")

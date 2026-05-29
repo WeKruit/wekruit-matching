@@ -192,3 +192,45 @@ def firestore_dead_backfill(
         synced, total_seen,
     )
     return {"synced": synced, "total_seen": total_seen, "skipped": ""}
+
+
+def reconcile_dead_inactive(conn: psycopg.Connection) -> int:
+    """Flip active jobs that are dead / permanent_404 to status='inactive'.
+
+    Durable root-fix for the "dead jobs served to users" defect (2026-05-29).
+    Both this module (``firestore_dead_backfill`` mirrors ``dead=true``) and the
+    Stage 2b JD path (``permanent_404=true``) set the dead flags WITHOUT flipping
+    ``status``, and ``scraper.upsert._filter_dead_tombstoned`` only SKIPS dead
+    rows from the upsert INPUT — it never deactivates an already-active dead row.
+    So confirmed-dead postings accumulate at ``status='active'`` and (absent the
+    ``job_sync`` dead-filter) rode into the live matcher as clickable "matches"
+    that 404. Live audit found 1,893 such rows.
+
+    Run this AFTER all dead-marking and BEFORE the Firestore sync so the
+    inactive-sync removes them from the live matcher. It only touches ``status``
+    (no other column), so the 90-day dead-retry path in ``upsert`` — which keys
+    on the ``dead`` flag at any status — still re-activates a genuinely re-listed
+    job on schedule.
+
+    Idempotent: re-running flips 0 once the corpus is clean. Caller-agnostic
+    commit (commits its own single UPDATE). Returns rows flipped.
+    """
+    result = conn.execute(
+        """
+        UPDATE jobs
+        SET status = 'inactive'
+        WHERE status = 'active'
+          AND (COALESCE(dead, FALSE) = TRUE
+               OR COALESCE(permanent_404, FALSE) = TRUE)
+        """
+    )
+    conn.commit()
+    flipped = result.rowcount
+    if flipped:
+        logger.info(
+            "pa.reconcile_dead_inactive flipped={} dead/404 active->inactive",
+            flipped,
+        )
+    else:
+        logger.info("pa.reconcile_dead_inactive flipped=0 (clean)")
+    return flipped
