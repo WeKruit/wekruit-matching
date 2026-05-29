@@ -71,6 +71,15 @@ def _make_stubs(monkeypatch, *, enrich_jobright_side_effect=None, enrich_jobrigh
         "wekruit_matching.pipeline.daily.get_connection",
         _fake_conn_ctx,
     )
+    # Stage 5 post-run reliability gate queries the live DB; stub it like every
+    # other stage so this test stays DB-free. Without this the gate runs against
+    # the real corpus and appends a coverage finding to result["errors"],
+    # breaking the "errors == []" contract below. Returns the gate's dict shape
+    # ({metrics, failures}) with no failures.
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.run_health_gate",
+        lambda *a, **k: {"ok": True, "metrics": {}, "failures": []},
+    )
 
     if enrich_jobright_side_effect is not None:
         def _raising_enrich(conn, *, max_workers=8, batch_size=50):
