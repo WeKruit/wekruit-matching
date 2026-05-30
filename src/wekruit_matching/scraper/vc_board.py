@@ -48,7 +48,7 @@ import httpx
 from loguru import logger
 
 from wekruit_matching.models.job import Job
-from wekruit_matching.scraper.id_utils import generate_job_id
+from wekruit_matching.scraper.id_utils import compute_content_hash, generate_job_id
 
 # Loguru placeholders are `{}`, not `{}` / `{}`. See `pipeline/daily.py`.
 
@@ -304,7 +304,7 @@ def parse_markdown_jobs(
                 date_posted_raw=None,
                 first_seen_at=now,
                 last_seen_at=now,
-                content_hash=None,  # Computed downstream by upsert.
+                content_hash=compute_content_hash(company_name, title),
                 industry=board.default_industry,
                 company_size=None,
                 required_skills=[],
@@ -401,7 +401,7 @@ def _parse_ashby_jobs(
                 date_posted_raw=None,
                 first_seen_at=now,
                 last_seen_at=now,
-                content_hash=None,
+                content_hash=compute_content_hash(company, title),
                 industry=board.default_industry,
                 company_size=None,
                 required_skills=[],
@@ -552,7 +552,7 @@ def _parse_consider_flat_links(
                 date_posted_raw=None,
                 first_seen_at=now,
                 last_seen_at=now,
-                content_hash=None,
+                content_hash=compute_content_hash(company_name, title),
                 industry=board.default_industry,
                 company_size=None,
                 required_skills=[],
