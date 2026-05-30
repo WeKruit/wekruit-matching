@@ -38,9 +38,34 @@ def enrich_all() -> dict[str, int]:
 
     Returns the enrich_pending stats dict, augmented with
     ``seniority_backfilled`` and ``seniority_null_after``.
+
+    Drain loop (2026-05-30): ``enrich_pending`` is LIMIT-bounded (3000/call), so
+    a single pass left a backlog whenever more than that needed gap-fill
+    (observed: 4,496 empty-skills active rows left after one pass → they never
+    embed/sync until drained by hand). Loop until a pass enriches nothing new.
+    We break on ``enriched == 0`` rather than "queue empty" because
+    ``skipped_no_jd`` rows can't progress without an upstream JD — counting them
+    would spin forever; they correctly wait for the next daily run's Stage 2b.
+    Bounded by ``max_passes`` as a hard backstop.
     """
+    max_passes = 15  # 15 * 3000 = 45k headroom; real gap-fill backlog < 30k
+    total = {"enriched": 0, "failed": 0, "skipped_no_jd": 0, "skipped": 0, "passes": 0}
     with get_connection() as conn:
-        stats = enrich_pending(conn)
+        for _ in range(max_passes):
+            stats = enrich_pending(conn)
+            total["passes"] += 1
+            total["enriched"] += stats.get("enriched", 0)
+            total["failed"] += stats.get("failed", 0)
+            total["skipped_no_jd"] += stats.get("skipped_no_jd", 0)
+            total["skipped"] += stats.get("skipped", 0)
+            if stats.get("enriched", 0) == 0:
+                break
+            logger.info("enrich_all pass {} enriched {} (total {})",
+                        total["passes"], stats.get("enriched", 0), total["enriched"])
+        else:
+            logger.warning("enrich_all hit max_passes={} — gap-fill backlog may "
+                           "remain (likely JD-less rows awaiting Stage 2b)", max_passes)
+        stats = total
         try:
             stats["seniority_backfilled"] = backfill_seniority(conn)
             stats["seniority_null_after"] = count_null_seniority_active(conn)
