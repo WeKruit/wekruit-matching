@@ -36,6 +36,24 @@ def _serialize_embedding(value: Any) -> Any:
 def _serialize_job(row: dict[str, Any]) -> dict[str, Any]:
     payload: dict[str, Any] = {}
     for key, value in row.items():
+        # Tag-ownership boundary (2026-05-29): role_function and
+        # seniority_level in Postgres are filled by the macmini *regex*
+        # heuristics (infer_role_function / infer_seniority in
+        # title_inference.py). The canonical, LLM-derived values are owned by
+        # the wekruit-pa `paMatchingJobsAutoEnrich` Firestore trigger
+        # (@pa/job-tag-enricher, an LLM router) which writes the matcher's
+        # `roleFunction` (D1 hard filter) and `seniorityLevel`.
+        #
+        # Verified on live data: the sync receiver (matching-api
+        # buildMatchingJobRecord) does NOT even map role_function (pa is the
+        # sole writer), and DOES map seniority_level — so our regex value
+        # raced pa's LLM value and left Firestore seniorityLevel split across
+        # two vocabularies (entry vs entry_level), silently dropping matches
+        # under the exact-match query. The receiver upserts with merge:true,
+        # so OMITTING these keys preserves pa's canonical values instead of
+        # clobbering them. We therefore stop emitting both from the sync.
+        if key in ("role_function", "seniority_level"):
+            continue
         if isinstance(value, datetime):
             payload[key] = value.isoformat()
         elif key == "embedding":
