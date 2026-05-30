@@ -89,8 +89,18 @@ def _batched(items: list[dict[str, Any]], batch_size: int) -> Iterable[list[dict
 
 
 def _should_split_failed_batch(status_code: int, response_text: str) -> bool:
+    """Return True if a failed batch should be retried as smaller halves.
+
+    Includes client 400/413/422: a batch-level rejection is almost always ONE
+    malformed doc among many (oversized field vs Firestore's 1MB limit, a value
+    the receiver schema rejects, a missing required key). Bisecting isolates that
+    doc to a single-job batch, where the terminal handler in ``_post_jobs_batch``
+    logs and SKIPS it instead of crashing the whole sync stage. Without this, one
+    bad doc in a 351-batch daily run aborts every remaining batch (observed
+    2026-05-30: only 2/351 batches synced before a batch-3 400 killed Stage 4).
+    """
     lowered = response_text.lower()
-    return status_code in {503, 504} or any(
+    return status_code in {400, 413, 422, 503, 504} or any(
         marker in lowered
         for marker in (
             "transaction too big",
@@ -184,6 +194,22 @@ def _post_jobs_batch(
             jobs=jobs[midpoint:],
             timeout=timeout,
         )
+
+    # Terminal case: a single doc the receiver rejects with a client 4xx
+    # (400 malformed / 413 too large / 422 invalid field). Bisecting above has
+    # narrowed the failure to this one job. Do NOT raise — that would crash the
+    # entire sync stage and drop every other doc (and every later batch). Log
+    # the offending job_id + reason and SKIP it (return 0 synced) so the rest of
+    # the corpus syncs. Auth (401/403) and unexpected statuses still raise loud.
+    if len(jobs) == 1 and response.status_code in {400, 413, 422}:
+        bad_id = jobs[0].get("job_id") if jobs else None
+        logger.error(
+            "Firebase sync: SKIPPING job {} — receiver rejected with {}: {}",
+            bad_id,
+            response.status_code,
+            response.text[:300],
+        )
+        return 0
 
     response.raise_for_status()
     return 1
