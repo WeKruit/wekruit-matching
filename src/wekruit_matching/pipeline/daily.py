@@ -64,10 +64,27 @@ from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 from wekruit_matching.pipeline.dead_backfill import (
     firestore_dead_backfill,
+    firestore_reconcile,
     reconcile_dead_inactive,
 )
 from wekruit_matching.scraper.enrich_from_jobright import enrich_all_jobs as enrich_jobright
 from wekruit_matching.scraper.run import scrape_all
+
+# Stage 2.5 — ATS resolve (re-introduced 2026-05-30, fix #2). The resolver lives
+# in scripts/ (a top-level package, scripts/__init__.py present) and the daily
+# run executes from the repo root (`daily-update.sh` cd's there before
+# `python -m wekruit_matching.pipeline.daily`). Guard the import so a path hiccup
+# degrades Stage 2.5 to a skip rather than crashing the whole module load. The
+# stage below checks `resolve_jobright_pending is not None`; tests monkeypatch
+# this module attribute directly.
+try:
+    from scripts.resolve_jobright_ats import resolve_jobright_pending
+except Exception as _ats_import_err:  # pragma: no cover - import-path safety
+    resolve_jobright_pending = None
+    logger.warning(
+        "Stage 2.5 ATS resolve import unavailable ({}); stage will skip",
+        _ats_import_err,
+    )
 # Stage 1.7 — VC portfolio job boards via self-hosted Firecrawl.
 # See `.planning/INITIATIVE-vc-portfolio-job-boards.md` for the 17-board roster.
 from wekruit_matching.scraper.vc_board import (
@@ -133,8 +150,16 @@ STAGE_BUDGETS = {
     "jobright": 20 * 60,
     "jd_enrich": 90 * 60,        # bumped 30→90 — Firecrawl JS pages slow
     "llm_enrich": 120 * 60,      # bumped 90→120 — gap-fill backlog
+    # Stage 2.5 (2026-05-30) — re-introduced ATS resolve via Serper. Each
+    # pending jobright row is up to 2 Serper POSTs + a HEAD liveness check,
+    # parallelized across a thread pool. 30 min covers a normal pending backlog
+    # without bleeding into embed/sync. Gated on SERPER_API_KEY being set.
+    "ats_resolve": 30 * 60,
     "embed": 45 * 60,
     "sync": 30 * 60,
+    # Stage 4.5 (2026-05-30) — Firestore<->Postgres reconcile; one PG COUNT(*)
+    # plus two Firestore aggregation COUNTs. 5 min is generous headroom.
+    "firestore_reconcile": 5 * 60,
     # P-REL Stage 5 — read-only data-quality gate; a handful of COUNT(*)
     # queries against the live DB. 5 min is generous headroom.
     "health_gate": 5 * 60,
@@ -478,6 +503,39 @@ def run_daily_pipeline() -> dict:
             errors.append(f"LLM enrichment crash: {e}")
             stage_outcomes["llm_enrich"] = "error"
 
+        # --- Stage 2.5: ATS resolve (jobright -> direct ATS url via Serper) ---
+        # Re-introduced 2026-05-30 (fix #2). For active jobs whose primary_url is
+        # a jobright redirect and that have no ats_apply_url, resolve the direct
+        # ATS apply URL via Serper and write it back with a bumped content_hash.
+        # MUST run BEFORE Stage 3 (embed) and Stage 4 (sync): the content_hash
+        # bump is what the Firestore receiver keys its re-upsert on, and Stage 4
+        # now also re-selects content_hash-only changes (fix #4) so the resolved
+        # url reaches the live matcher this same run. Gated on SERPER_API_KEY via
+        # env (mirrors Stage 1.7's FIRECRAWL_BASE_URL gate) — when unset the
+        # stage is a no-op skip. Best-effort: a failure here never blocks
+        # embed/sync/gate (each later stage is its own inline try/except).
+        logger.info("=== Stage 2.5: ATS Resolve (Serper) ===")
+        try:
+            _serper_key = os.environ.get("SERPER_API_KEY") or ""
+            if not _serper_key:
+                logger.info("Stage 2.5 skipped: SERPER_API_KEY not configured")
+                stage_outcomes["ats_resolve"] = "skipped"
+            elif resolve_jobright_pending is None:
+                logger.info("Stage 2.5 skipped: resolver import unavailable")
+                stage_outcomes["ats_resolve"] = "skipped"
+            else:
+                with _stage_timeout("ats_resolve", STAGE_BUDGETS["ats_resolve"]):
+                    ats_stats = resolve_jobright_pending()
+                    logger.info("ATS resolve stats: {}", ats_stats)
+                    stage_outcomes["ats_resolve"] = "ok"
+        except StageTimeoutError as e:
+            _record_timeout(errors, "ats_resolve", e)
+            stage_outcomes["ats_resolve"] = "timeout"
+        except Exception as e:
+            logger.error("ATS resolve crashed: {}", e)
+            errors.append(f"ATS resolve crash: {e}")
+            stage_outcomes["ats_resolve"] = "error"
+
         # --- Stage 3: Embed ---
         logger.info("=== Stage 3: Embedding ===")
         try:
@@ -526,6 +584,83 @@ def run_daily_pipeline() -> dict:
             logger.error("Job sync crashed: {}", e)
             errors.append(f"Job sync crash: {e}")
             stage_outcomes["sync"] = "error"
+
+        # --- Stage 4.5: Firestore <-> Postgres reconcile (fix #5) ---
+        # Distinct from Stage 5's PG-side data-quality FLOORS: this is a
+        # cross-store reconcile that detects DIVERGENCE between the PG matchable
+        # set and what is ACTUALLY in the live Firestore matching-jobs
+        # collection (the true FS-vs-PG active drift — FS active has been
+        # observed ~4k higher than PG active because stale-active docs were never
+        # flipped). Strongest available signal: if google-cloud-firestore + creds
+        # are available, count the live collection (server-side COUNT
+        # aggregation) and compare to the PG matchable count; if the Firestore
+        # read is unavailable, fall back to comparing the PG matchable count
+        # against what Stage 4 sync REPORTED as active_jobs this run. >5%
+        # divergence -> LOUD warning + stage_outcomes['firestore_reconcile']=
+        # 'degraded'. NEVER fatal (does not append to `errors`, so
+        # pipeline_status is unaffected), but always surfaces in stage_outcomes.
+        # Never prints service-account contents.
+        logger.info("=== Stage 4.5: Firestore <-> Postgres Reconcile ===")
+        try:
+            with _stage_timeout(
+                "firestore_reconcile", STAGE_BUDGETS["firestore_reconcile"]
+            ):
+                with get_connection() as conn:
+                    recon = firestore_reconcile(conn, threshold=0.05)
+                if recon.get("skipped"):
+                    # Firestore read unavailable — fall back to the count Stage 4
+                    # reported as active this run vs the PG matchable set.
+                    pg_n = recon.get("pg_matchable", 0)
+                    sent_n = sync_stats.get("active_jobs", 0)
+                    # Incremental sync sends only a window, so sent < pg is
+                    # expected and NOT divergence; only flag if sync claims to
+                    # have sent MORE active docs than PG considers matchable (a
+                    # real inconsistency), beyond the threshold.
+                    denom = max(pg_n, 1)
+                    over = max(sent_n - pg_n, 0) / denom
+                    if over > 0.05:
+                        logger.warning(
+                            "FIRESTORE RECONCILE DEGRADED (fallback): sync "
+                            "reported active_jobs={} but PG matchable={} "
+                            "(over {:.1%} > 5%); reason={}",
+                            sent_n, pg_n, over, recon.get("reason"),
+                        )
+                        stage_outcomes["firestore_reconcile"] = "degraded"
+                    else:
+                        logger.info(
+                            "Firestore reconcile: skipped live read ({}); "
+                            "fallback PG matchable={} sync active_jobs={} OK",
+                            recon.get("reason"), pg_n, sent_n,
+                        )
+                        stage_outcomes["firestore_reconcile"] = "skipped"
+                elif not recon.get("ok"):
+                    logger.warning(
+                        "FIRESTORE RECONCILE DEGRADED: {} (PG matchable={}, "
+                        "Firestore active={}, total={})",
+                        recon.get("reason"),
+                        recon.get("pg_matchable"),
+                        recon.get("fs_active"),
+                        recon.get("fs_total"),
+                    )
+                    stage_outcomes["firestore_reconcile"] = "degraded"
+                else:
+                    logger.success(
+                        "Firestore reconcile OK: PG matchable={} ~ Firestore "
+                        "active={} (divergence {:.1%})",
+                        recon.get("pg_matchable"),
+                        recon.get("fs_active"),
+                        recon.get("divergence", 0.0),
+                    )
+                    stage_outcomes["firestore_reconcile"] = "ok"
+        except StageTimeoutError as e:
+            _record_timeout(errors, "firestore_reconcile", e)
+            stage_outcomes["firestore_reconcile"] = "timeout"
+        except Exception as e:
+            # Non-fatal: a reconcile failure must not gate the run. Record it as
+            # 'error' in stage_outcomes (NOT in `errors`) so it surfaces without
+            # flipping pipeline_status.
+            logger.warning("Firestore reconcile crashed (non-fatal): {}", e)
+            stage_outcomes["firestore_reconcile"] = "error"
 
         # --- Stage 5: Post-run reliability gate (P-REL) ---
         # Computes coverage/reconciliation metrics from the live DB and FAILS

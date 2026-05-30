@@ -234,3 +234,178 @@ def reconcile_dead_inactive(conn: psycopg.Connection) -> int:
     else:
         logger.info("pa.reconcile_dead_inactive flipped=0 (clean)")
     return flipped
+
+
+# ---------------------------------------------------------------------------
+# Firestore <-> Postgres reconciliation gate (fix #5, 2026-05-30)
+# ---------------------------------------------------------------------------
+#
+# Distinct from health_gate's PG-side data-quality FLOORS: this compares the PG
+# matchable set against the count actually present in the live Firestore
+# matching-jobs collection, catching FS-vs-PG active drift (stale-active docs in
+# Firestore that PG no longer considers matchable, or matchable PG rows the sync
+# never delivered). It NEVER gates the run; the daily orchestrator surfaces a
+# divergence as stage_outcomes['firestore_reconcile']='degraded'.
+#
+# Graceful skip mirrors firestore_dead_backfill: if google-cloud-firestore is
+# not installed or creds are unavailable, return skipped=True (the caller then
+# falls back to a PG-vs-sync-reported comparison). Never prints SA contents.
+
+
+def _firestore_client_for_reconcile(project_id: str | None):
+    """Build a read-only Firestore client, or None if unavailable.
+
+    Resolves the project via the explicit ``project_id`` (settings /
+    ``FIRESTORE_PROJECT_ID``) falling back to the dead-backfill default, and
+    relies on Application Default Credentials (``GOOGLE_APPLICATION_CREDENTIALS``
+    / ``firebase_service_account_json``) — NEVER a hardcoded SA path. Any
+    import/credential failure returns None so the caller skips gracefully.
+    """
+    try:
+        from google.cloud import firestore  # type: ignore[import-not-found]
+    except Exception as e:  # SDK not installed in this env
+        logger.warning(
+            "firestore_reconcile SKIPPED (google-cloud-firestore not installed: {})",
+            e,
+        )
+        return None
+    try:
+        return firestore.Client(project=project_id or _FIREBASE_PROJECT_ID)
+    except Exception as e:  # DefaultCredentialsError, etc.
+        logger.warning("firestore_reconcile SKIPPED (Firestore client init failed: {})", e)
+        return None
+
+
+def _pg_matchable_count(conn) -> int:
+    """Count PG rows matching the EXACT Firestore sync-gate predicate
+    (job_sync._fetch_active_jobs)."""
+    result = conn.execute(
+        """
+        SELECT count(*) AS n FROM jobs
+        WHERE status = 'active'
+          AND COALESCE(dead, FALSE) = FALSE
+          AND COALESCE(permanent_404, FALSE) = FALSE
+          AND embedding IS NOT NULL
+          AND embedded_at IS NOT NULL
+          AND job_description IS NOT NULL
+          AND length(job_description) >= 200
+          AND required_skills IS NOT NULL
+          AND cardinality(required_skills) > 0
+        """
+    )
+    row = result.fetchone()
+    if row is None:
+        return 0
+    if isinstance(row, dict):
+        return int(next(iter(row.values())))
+    return int(row[0])
+
+
+def _firestore_count(client, collection: str, *, active_only: bool) -> int:
+    """Count docs in a Firestore collection.
+
+    Prefers the server-side COUNT aggregation (cheap, no doc reads); falls back
+    to streaming doc ids. ``active_only`` filters status=='active' to mirror the
+    PG matchable set as closely as the receiver schema allows.
+    """
+    ref = client.collection(collection)
+    query = ref
+    if active_only:
+        try:
+            query = ref.where("status", "==", "active")
+        except Exception:  # pragma: no cover - defensive
+            query = ref
+    try:
+        agg = query.count()
+        for chunk in agg.get():
+            for item in chunk:
+                return int(item.value)
+    except Exception as e:
+        logger.warning("firestore_reconcile count() aggregation failed ({}); streaming", e)
+    n = 0
+    for _ in query.stream():
+        n += 1
+    return n
+
+
+def firestore_reconcile(
+    conn,
+    *,
+    threshold: float = 0.05,
+    project_id: str | None = None,
+    collection: str | None = None,
+    client_factory=None,
+) -> dict:
+    """Reconcile the PG matchable set against the live Firestore collection.
+
+    Returns a dict: ``{ok, skipped, divergence, pg_matchable, fs_active,
+    fs_total, reason}``. ``ok`` is False when
+    ``abs(pg - fs_active) / max(pg, 1) > threshold``. ``skipped=True`` (with
+    ``ok=True``) when the Firestore client/creds are unavailable, so the gate
+    does not fail merely for lack of read access in a given environment. Never
+    raises for a Firestore read error — degrades to skipped.
+
+    ``client_factory`` / ``project_id`` / ``collection`` are injectable for
+    tests; production resolves them from settings with safe defaults.
+    """
+    # Resolve project + collection from settings (lazy import to avoid pulling
+    # config at module load; matches the rest of this module's local-import
+    # style). Fall back to the dead-backfill defaults.
+    if project_id is None or collection is None:
+        try:
+            from wekruit_matching.config import get_settings
+
+            settings = get_settings()
+            project_id = project_id or (settings.firestore_project_id or None)
+            collection = collection or settings.firebase_sync_collection
+        except Exception:  # config unavailable — use module defaults
+            collection = collection or _FIREBASE_COLLECTION
+    collection = collection or _FIREBASE_COLLECTION
+
+    pg_matchable = _pg_matchable_count(conn)
+
+    factory = client_factory or (lambda: _firestore_client_for_reconcile(project_id))
+    client = factory()
+    if client is None:
+        return {
+            "ok": True,
+            "skipped": True,
+            "divergence": 0.0,
+            "pg_matchable": pg_matchable,
+            "fs_active": 0,
+            "fs_total": 0,
+            "reason": "firestore client unavailable",
+        }
+
+    try:
+        fs_total = _firestore_count(client, collection, active_only=False)
+        fs_active = _firestore_count(client, collection, active_only=True)
+    except Exception as e:
+        logger.warning("firestore_reconcile read failed (skipping): {}", e)
+        return {
+            "ok": True,
+            "skipped": True,
+            "divergence": 0.0,
+            "pg_matchable": pg_matchable,
+            "fs_active": 0,
+            "fs_total": 0,
+            "reason": f"firestore read error: {e}",
+        }
+
+    denom = max(pg_matchable, 1)
+    divergence = abs(pg_matchable - fs_active) / denom
+    ok = divergence <= threshold
+    return {
+        "ok": ok,
+        "skipped": False,
+        "divergence": divergence,
+        "pg_matchable": pg_matchable,
+        "fs_active": fs_active,
+        "fs_total": fs_total,
+        "reason": ""
+        if ok
+        else (
+            f"PG matchable={pg_matchable} vs Firestore active={fs_active} "
+            f"diverge {divergence:.1%} > {threshold:.0%}"
+        ),
+    }

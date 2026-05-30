@@ -110,22 +110,41 @@ def _serper(client: httpx.Client, key: str, q: str) -> list[dict]:
     return []
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--no-verify", action="store_true", help="skip HEAD liveness check (faster)")
-    ap.add_argument("--workers", type=int, default=16, help="parallel Serper workers")
-    args = ap.parse_args()
+def resolve_jobright_pending(
+    *,
+    limit: int | None = None,
+    workers: int = 16,
+    dry_run: bool = False,
+    verify: bool = True,
+) -> dict[str, int]:
+    """Resolve direct ATS apply URLs for pending jobright jobs via Serper.
 
+    Importable entry point (e.g. daily.py Stage 2a). Selects active jobright
+    jobs missing ``ats_apply_url`` (skipping prior ``serper_miss`` rows),
+    resolves each in a thread pool, and flushes results in batches.
+
+    Returns a counts dict: ``{'resolved', 'missed', 'skipped', 'errors'}``.
+    ``skipped`` counts rows the SELECT itself excluded as already-resolved or
+    previously-missed is NOT observable here (they never enter ``rows``); the
+    key reflects per-row write skips — a resolve/miss whose UPDATE matched zero
+    rows because another writer already set ``ats_apply_url`` (the WHERE guard
+    keeps that idempotent). ``errors`` counts rows whose network resolve raised.
+
+    Raises:
+        RuntimeError: if ``serper_api_key`` is not configured. (A dict-returning
+        function cannot signal this via an exit code; ``main()`` catches it and
+        maps it to exit code 2.)
+    """
     settings = get_settings()
     key = settings.serper_api_key
     if not key:
-        logger.error("serper_api_key not configured")
-        return 2
-    logger.info(f"serper key present (len={len(key)}), dry_run={args.dry_run}, limit={args.limit}")
+        # Never log the key value; only its absence.
+        raise RuntimeError("serper_api_key not configured")
+    logger.info(f"serper key present (len={len(key)}), dry_run={dry_run}, limit={limit}")
 
-    limit_sql = f" LIMIT {int(args.limit)}" if args.limit else ""
+    counts = {"resolved": 0, "missed": 0, "skipped": 0, "errors": 0}
+
+    limit_sql = f" LIMIT {int(limit)}" if limit else ""
     with get_connection() as conn:
         rows = conn.execute(
             f"""
@@ -144,15 +163,13 @@ def main() -> int:
         logger.info(f"jobright jobs missing ats_apply_url to resolve: {total}")
         if total == 0:
             print("RESOLVE_DONE resolved=0 missed=0")
-            return 0
+            return counts
 
-        resolved = official = aggregator = missed = 0
+        official = aggregator = 0
         updates: list[tuple[str, str]] = []   # (ats_apply_url, job_id)
         misses: list[str] = []
         _RESOLVED_LOG.parent.mkdir(parents=True, exist_ok=True)
-        log_fh = None if args.dry_run else _RESOLVED_LOG.open("a")
-
-        verify = not args.no_verify
+        log_fh = None if dry_run else _RESOLVED_LOG.open("a")
 
         def _resolve_one(r) -> tuple[str, str | None, str]:
             """Pure network step (thread-safe: httpx client per call). No DB.
@@ -174,46 +191,70 @@ def main() -> int:
             return jid, None, "none"
 
         done = 0
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
             for jid, url, src in pool.map(_resolve_one, rows):
                 done += 1
                 if url:
-                    resolved += 1
+                    counts["resolved"] += 1
                     if src == "serper":
                         official += 1
                     else:
                         aggregator += 1
-                    if not args.dry_run:
+                    if not dry_run:
                         updates.append((url, jid))
                         log_fh.write(f"{jid}\t{url}\t{src}\n")
                 else:
-                    missed += 1
-                    if not args.dry_run:
+                    counts["missed"] += 1
+                    if not dry_run:
                         misses.append(jid)
 
                 # flush batch every 100 (serial DB writes — single connection)
-                if not args.dry_run and (len(updates) >= 100 or len(misses) >= 100):
+                if not dry_run and (len(updates) >= 100 or len(misses) >= 100):
                     _flush(conn, updates, misses)
                     log_fh.flush()
                     updates, misses = [], []
 
                 if done % 200 == 0:
                     logger.info(
-                        f"  {done}/{total} | resolved={resolved} "
-                        f"(official={official}, agg={aggregator}) missed={missed}"
+                        f"  {done}/{total} | resolved={counts['resolved']} "
+                        f"(official={official}, agg={aggregator}) missed={counts['missed']}"
                     )
 
-        if not args.dry_run:
+        if not dry_run:
             _flush(conn, updates, misses)
             if log_fh:
                 log_fh.close()
 
-    pct = 100 * resolved / max(total, 1)
+    pct = 100 * counts["resolved"] / max(total, 1)
     logger.info(
-        f"DONE: resolved={resolved}/{total} ({pct:.0f}%) "
-        f"official={official} aggregator={aggregator} missed={missed}"
+        f"DONE: resolved={counts['resolved']}/{total} ({pct:.0f}%) "
+        f"official={official} aggregator={aggregator} missed={counts['missed']}"
     )
-    print(f"RESOLVE_DONE resolved={resolved} missed={missed} pct={pct:.0f}")
+    print(
+        f"RESOLVE_DONE resolved={counts['resolved']} "
+        f"missed={counts['missed']} pct={pct:.0f}"
+    )
+    return counts
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--no-verify", action="store_true", help="skip HEAD liveness check (faster)")
+    ap.add_argument("--workers", type=int, default=16, help="parallel Serper workers")
+    args = ap.parse_args()
+
+    try:
+        resolve_jobright_pending(
+            limit=args.limit,
+            workers=args.workers,
+            dry_run=args.dry_run,
+            verify=not args.no_verify,
+        )
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        return 2
     return 0
 
 
@@ -229,9 +270,19 @@ def _flush(conn, updates: list[tuple[str, str]], misses: list[str]) -> None:
             # silently dropped at sync. Bump content_hash to include the URL so
             # the receiver detects the change and writes atsApplyUrl through.
             new_ch = hashlib.sha256(f"{jid}|{url}".encode()).hexdigest()
+            # Fix #4 (Option B): stamp embedded_at = now() on RESOLVED rows ONLY.
+            # INVARIANT: the Stage 4 Firestore sync selects rows by a durable
+            # watermark keyed on embedded_at (firebase_active_embedded_at). A
+            # jobright row that is already embedded only gets a content_hash
+            # change here — its embedded_at would stay in the past, so the
+            # watermark (already advanced beyond it) would NEVER re-select it
+            # and the freshly-resolved ats_apply_url would never reach Firestore.
+            # Bumping embedded_at=now() makes the existing watermark re-select
+            # this row on the next sync. Misses (below) are deliberately NOT
+            # bumped: nothing about them needs to propagate.
             cur.execute(
                 "UPDATE jobs SET ats_apply_url = %(u)s, jd_fetch_source = 'serper', "
-                "content_hash = %(ch)s "
+                "content_hash = %(ch)s, embedded_at = now() "
                 "WHERE job_id = %(j)s AND (ats_apply_url IS NULL OR ats_apply_url='')",
                 {"u": url, "ch": new_ch, "j": jid},
             )

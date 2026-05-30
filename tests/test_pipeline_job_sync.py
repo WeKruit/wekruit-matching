@@ -57,23 +57,34 @@ class _FakeConn:
         self.active_rows = active_rows
         self.inactive_rows = inactive_rows
         self.calls: list[tuple[str, dict | None]] = []
+        self.recorded_hashes: list[str] = []
 
     def execute(self, sql: str, params: dict | None = None) -> _FakeResult:
         self.calls.append((sql, params))
-        # Durable sync-watermark statements: ensure-table / read / upsert.
-        # This fake has no stored watermark, so reads return empty and the
-        # effective ``since`` is unchanged (preserving legacy assertions).
-        if "pipeline_sync_state" in sql.lower():
-            return _FakeResult([])
-        if "WHERE status = 'active'" in sql:
+        lowered = sql.lower()
+        # The active SELECT is checked FIRST: it LEFT JOINs pipeline_synced_hashes
+        # (fix #4), so a naive "pipeline_synced_hashes in sql" branch would
+        # shadow it. Match on the aliased predicate the active SELECT carries.
+        if "j.status = 'active'" in lowered:
             rows = self.active_rows
             if params and "offset" in params:
                 rows = rows[params["offset"] :]
             if params and "limit" in params:
                 rows = rows[: params["limit"]]
             return _FakeResult(rows)
-        if "WHERE status = 'inactive'" in sql:
+        if "status = 'inactive'" in lowered:
             return _FakeResult(self.inactive_rows)
+        # Durable sync-watermark statements: ensure-table / read / upsert.
+        # This fake has no stored watermark, so reads return empty and the
+        # effective ``since`` is unchanged (preserving legacy assertions).
+        if "pipeline_sync_state" in lowered:
+            return _FakeResult([])
+        # Fix #4 content_hash ledger: CREATE TABLE IF NOT EXISTS + per-job
+        # INSERT ... ON CONFLICT. Record the upserted job_id; return empty.
+        if "pipeline_synced_hashes" in lowered:
+            if "insert" in lowered and params and "j" in params:
+                self.recorded_hashes.append(params["j"])
+            return _FakeResult([])
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
@@ -111,12 +122,38 @@ class _WatermarkConn:
         self.stored_watermark = stored_watermark
         self.calls: list[tuple[str, dict | None]] = []
         self.committed = 0
+        self.recorded_hashes: list[str] = []
+        # job_ids already recorded as synced-with-current-hash. Empty by
+        # default so the fix #4 OR-clause includes every row (worst case);
+        # tests can pre-seed it to model an already-synced row.
+        self.synced_ledger: set[str] = set()
 
     def execute(self, sql: str, params: dict | None = None) -> _FakeResult:
         self.calls.append((sql, params))
         lowered = sql.lower()
-        # Order matters: watermark statements are checked before the generic
-        # active/inactive routing so they are not shadowed.
+        # The active SELECT is checked FIRST: it LEFT JOINs pipeline_synced_hashes
+        # (fix #4), so a naive "pipeline_synced_hashes in sql" branch would
+        # shadow it. Match on the aliased predicate the active SELECT carries.
+        if "j.status = 'active'" in lowered:
+            rows = self.active_rows
+            since = params.get("since") if params else None
+            if since is not None:
+                # Mirror the real fix #4 predicate: embedded_at window OR a
+                # content_hash differing from the ledger. When the SELECT
+                # carries the content_hash clause, widen accordingly.
+                if "content_hash is distinct from" in lowered:
+                    rows = [
+                        r
+                        for r in rows
+                        if r["embedded_at"] >= since
+                        or r.get("job_id") not in self.synced_ledger
+                    ]
+                else:
+                    rows = [r for r in rows if r["embedded_at"] >= since]
+            return _FakeResult(rows)
+        if "j.status = 'inactive'" in lowered or "where status = 'inactive'" in lowered:
+            return _FakeResult(self.inactive_rows)
+        # Durable sync-watermark statements (ensure-table / read / upsert).
         if "pipeline_sync_state" in lowered:
             if "create table" in lowered:
                 return _FakeResult([])
@@ -128,14 +165,11 @@ class _WatermarkConn:
             if params and "watermark" in params:
                 self.stored_watermark = params["watermark"]
             return _FakeResult([])
-        if "where status = 'active'" in lowered:
-            rows = self.active_rows
-            since = params.get("since") if params else None
-            if since is not None:
-                rows = [r for r in rows if r["embedded_at"] >= since]
-            return _FakeResult(rows)
-        if "where status = 'inactive'" in lowered:
-            return _FakeResult(self.inactive_rows)
+        # Fix #4 content_hash ledger: CREATE TABLE / per-job INSERT ON CONFLICT.
+        if "pipeline_synced_hashes" in lowered:
+            if "insert" in lowered and params and "j" in params:
+                self.recorded_hashes.append(params["j"])
+            return _FakeResult([])
         raise AssertionError(f"Unexpected SQL: {sql}")
 
     def commit(self) -> None:
@@ -323,9 +357,13 @@ def test_sync_jobs_to_firebase_posts_batched_payload_with_content_hash(monkeypat
     # Incremental sync now issues durable-watermark queries (ensure table +
     # read) before the active fetch, so locate the active call explicitly
     # instead of assuming it is conn.calls[0].
-    active_calls = [c for c in conn.calls if "WHERE status = 'active'" in c[0]]
+    # The active SELECT now aliases the jobs table as "j" and LEFT JOINs the
+    # synced-hash ledger (fix #4).
+    active_calls = [c for c in conn.calls if "j.status = 'active'" in c[0]]
     active_sql, active_params = active_calls[0]
-    assert "embedded_at >= %(since)s" in active_sql
+    assert "j.embedded_at >= %(since)s" in active_sql
+    # Fix #4: incremental selection also catches content_hash-only changes.
+    assert "content_hash IS DISTINCT FROM" in active_sql
     assert active_params == {"since": _dt(0)}
 
 
@@ -514,6 +552,100 @@ def test_sync_jobs_to_firebase_full_sync_can_stage_active_backfill(monkeypatch) 
     assert "OFFSET %(offset)s" in active_sql
     assert active_params == {"limit": 2, "offset": 1}
     assert len(conn.calls) == 1
+
+
+def test_content_hash_only_change_is_reselected_incrementally(monkeypatch) -> None:
+    """Fix #4: a row whose embedded_at is OLDER than the watermark (so the
+    embedded_at window would skip it) but whose content_hash changed (ATS url
+    resolved by Stage 2.5) MUST still be selected and pushed, and its new
+    content_hash recorded in the ledger so it is not re-sent forever.
+    """
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    resolved = _job_row(job_id="job-resolved", status="active", content_hash="new" + "0" * 61)
+    resolved["embedded_at"] = _dt(1)
+
+    conn = _WatermarkConn(
+        active_rows=[resolved],
+        inactive_rows=[],
+        stored_watermark=_dt(1),
+    )
+    pushed_ids: list[str] = []
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _fake_post(url: str, *, headers: dict, json: dict, timeout: float):
+        for job in json["jobs"]:
+            pushed_ids.append(job["job_id"])
+
+        class _Response:
+            is_success = True
+
+            def raise_for_status(self) -> None:
+                return None
+
+        return _Response()
+
+    _patch_settings(monkeypatch)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _fake_post)
+
+    sync_jobs_to_firebase(since=_dt(5), full_sync=False)
+
+    assert "job-resolved" in pushed_ids, (
+        "a content_hash-only change (resolved ATS url, embedded_at unchanged) "
+        "must be re-selected by the incremental sync (fix #4)"
+    )
+    active_sqls = [c[0] for c in conn.calls if "j.status = 'active'" in c[0]]
+    assert active_sqls and "content_hash IS DISTINCT FROM" in active_sqls[0]
+    assert "job-resolved" in conn.recorded_hashes
+
+
+def test_already_synced_hash_not_reselected_when_unchanged(monkeypatch) -> None:
+    """Fix #4 (no flood): a row past the watermark whose content_hash already
+    matches the ledger and whose embedded_at is below `since` must NOT be
+    re-sent — otherwise the whole corpus would re-sync every run."""
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    stable = _job_row(job_id="job-stable", status="active", content_hash="s" * 64)
+    stable["embedded_at"] = _dt(1)  # below run-start hour 5
+
+    conn = _WatermarkConn(
+        active_rows=[stable],
+        inactive_rows=[],
+        stored_watermark=_dt(5),
+    )
+    conn.synced_ledger = {"job-stable"}
+    pushed_ids: list[str] = []
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _fake_post(url: str, *, headers: dict, json: dict, timeout: float):
+        for job in json["jobs"]:
+            pushed_ids.append(job["job_id"])
+
+        class _Response:
+            is_success = True
+
+            def raise_for_status(self) -> None:
+                return None
+
+        return _Response()
+
+    _patch_settings(monkeypatch)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _fake_post)
+
+    sync_jobs_to_firebase(since=_dt(5), full_sync=False)
+
+    assert "job-stable" not in pushed_ids, (
+        "an unchanged, already-synced row below the watermark must NOT be "
+        "re-sent (fix #4 must not flood the corpus)"
+    )
 
 
 def test_sync_jobs_bulk_main_forwards_staged_backfill_flags(monkeypatch) -> None:

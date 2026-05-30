@@ -221,50 +221,57 @@ def _fetch_active_jobs(
     since: datetime | None,
     limit: int | None = None,
     offset: int = 0,
+    include_changed_hash: bool = False,
 ) -> list[dict[str, Any]]:
-    base_sql = """
+    # Fix #4: LEFT JOIN the content_hash ledger so the incremental window can
+    # also catch rows whose ONLY change is content_hash (e.g. a Stage 2.5 ATS
+    # url resolve that did not advance embedded_at). The base matchable
+    # predicate is unchanged; the join adds no rows on its own. The jobs table
+    # is aliased ``j`` so the join column references are unambiguous.
+    base_sql = f"""
         SELECT
-            job_id,
-            source_repo,
-            company_name,
-            role_title,
-            primary_url,
-            ats_apply_url,
-            location_raw,
-            date_posted_raw,
-            status,
-            content_hash,
-            job_description,
-            core_responsibilities,
-            salary_range,
-            seniority_level,
-            role_function,
-            sources,
-            benefits,
-            qualifications,
-            industry,
-            company_size,
-            required_skills,
-            sponsorship,
-            embedding,
-            embedding_model,
-            jd_fetch_source,
-            first_seen_at,
-            last_seen_at,
-            enriched_at,
-            embedded_at
-        FROM jobs
-        WHERE status = 'active'
+            j.job_id,
+            j.source_repo,
+            j.company_name,
+            j.role_title,
+            j.primary_url,
+            j.ats_apply_url,
+            j.location_raw,
+            j.date_posted_raw,
+            j.status,
+            j.content_hash,
+            j.job_description,
+            j.core_responsibilities,
+            j.salary_range,
+            j.seniority_level,
+            j.role_function,
+            j.sources,
+            j.benefits,
+            j.qualifications,
+            j.industry,
+            j.company_size,
+            j.required_skills,
+            j.sponsorship,
+            j.embedding,
+            j.embedding_model,
+            j.jd_fetch_source,
+            j.first_seen_at,
+            j.last_seen_at,
+            j.enriched_at,
+            j.embedded_at
+        FROM jobs j
+        LEFT JOIN {_SYNCED_HASHES_TABLE} sh ON sh.job_id = j.job_id
+        WHERE j.status = 'active'
           -- Reliability (2026-05-29): a liveness sweep sets dead=true /
           -- permanent_404=true WITHOUT flipping status, so a confirmed-dead
           -- posting stayed status='active' and rode into Firestore — the user
           -- clicked a match and the job was gone (1,792 such docs found in the
           -- live matchable set on 2026-05-29). Exclude dead/404 at the sync
           -- boundary, belt-and-suspenders with the Track-D JD/skills gate below.
-          AND COALESCE(dead, FALSE) = FALSE
-          AND COALESCE(permanent_404, FALSE) = FALSE
-          AND embedding IS NOT NULL
-          AND embedded_at IS NOT NULL
+          AND COALESCE(j.dead, FALSE) = FALSE
+          AND COALESCE(j.permanent_404, FALSE) = FALSE
+          AND j.embedding IS NOT NULL
+          AND j.embedded_at IS NOT NULL
           -- Matching-quality launch blocker (Track D, 2026-05-20):
           -- belt-and-suspenders with embedding/worker.py's gate. A job
           -- without a JD body or skills should NEVER land in Firestore
@@ -272,27 +279,82 @@ def _fetch_active_jobs(
           -- pre-dated the worker gate. This pins the contract at the sync
           -- boundary so an embedding row left behind by older code can't
           -- ride into the matching pool.
-          AND job_description IS NOT NULL
-          AND length(job_description) >= 200
-          AND required_skills IS NOT NULL
-          AND cardinality(required_skills) > 0
+          AND j.job_description IS NOT NULL
+          AND length(j.job_description) >= 200
+          AND j.required_skills IS NOT NULL
+          AND cardinality(j.required_skills) > 0
     """
     params: dict[str, Any] = {}
     if since is None:
         sql = base_sql
+    elif include_changed_hash:
+        # Fix #4: embedded_at window OR a content_hash that differs from the
+        # last value we successfully synced for this job (NULL ledger row =>
+        # never-synced-with-this-hash => DISTINCT FROM is TRUE => included).
+        sql = base_sql + """
+          AND (j.embedded_at >= %(since)s
+               OR sh.content_hash IS DISTINCT FROM j.content_hash)
+    """
+        params["since"] = since
     else:
         sql = base_sql + """
-          AND embedded_at >= %(since)s
+          AND j.embedded_at >= %(since)s
     """
         params["since"] = since
 
-    sql += "\n        ORDER BY embedded_at ASC, job_id ASC"
+    sql += "\n        ORDER BY j.embedded_at ASC, j.job_id ASC"
     if limit is not None:
         sql += "\n        LIMIT %(limit)s\n        OFFSET %(offset)s"
         params["limit"] = limit
         params["offset"] = offset
 
     return conn.execute(sql, params or None).fetchall()
+
+
+def _ensure_synced_hashes_table(conn) -> None:
+    """Idempotent DDL for the per-job content_hash ledger (fix #4)."""
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {_SYNCED_HASHES_TABLE} (
+            job_id       text PRIMARY KEY,
+            content_hash text,
+            synced_at    timestamptz NOT NULL DEFAULT now()
+        )
+        """
+    )
+    commit = getattr(conn, "commit", None)
+    if callable(commit):
+        commit()
+
+
+def _record_synced_hashes(conn, rows: list[dict[str, Any]]) -> None:
+    """Record the content_hash shipped for each pushed job (fix #4).
+
+    Called only after a fully-successful active push so a content_hash-only
+    change is re-selected exactly once (until confirmed synced here). Accepts
+    dict rows only; tuple rows are skipped (no key access).
+    """
+    pairs = [
+        (r.get("job_id"), r.get("content_hash"))
+        for r in rows
+        if isinstance(r, dict) and r.get("job_id") is not None
+    ]
+    if not pairs:
+        return
+    for job_id, content_hash in pairs:
+        conn.execute(
+            f"""
+            INSERT INTO {_SYNCED_HASHES_TABLE} (job_id, content_hash, synced_at)
+            VALUES (%(j)s, %(h)s, now())
+            ON CONFLICT (job_id) DO UPDATE
+                SET content_hash = EXCLUDED.content_hash,
+                    synced_at    = now()
+            """,
+            {"j": job_id, "h": content_hash},
+        )
+    commit = getattr(conn, "commit", None)
+    if callable(commit):
+        commit()
 
 
 def _fetch_inactive_jobs(conn) -> list[dict[str, Any]]:
@@ -352,6 +414,20 @@ def _fetch_inactive_jobs(conn) -> list[dict[str, Any]]:
 # The state table is created idempotently (CREATE TABLE IF NOT EXISTS) — a
 # non-destructive DDL that requires no separate migration step.
 _SYNC_STATE_KEY = "firebase_active_embedded_at"
+
+# Fix #4 (2026-05-30) — content_hash-only sync gap.
+# The incremental window above is keyed solely on ``embedded_at``. Stage 2.5
+# (ATS resolve) bumps a row's ``content_hash`` (and ats_apply_url) WITHOUT
+# touching ``embedded_at``; if the row is already embedded, Stage 3 embed skips
+# it, so ``embedded_at`` stays in the past and the embedded_at watermark/since
+# window MISSES the change — the resolved ats_apply_url never reaches Firestore
+# (even though the CF receiver would re-upsert on a content_hash change). We
+# close this with a per-job content_hash ledger: after a fully-successful active
+# push we record the content_hash we shipped, and the incremental SELECT also
+# picks up any matchable row whose current content_hash differs from the last
+# one we recorded. This re-sends a content_hash-only change exactly once (until
+# confirmed synced), never floods the corpus, and needs no jobs-table migration.
+_SYNCED_HASHES_TABLE = "pipeline_synced_hashes"
 
 
 def _ensure_sync_state_table(conn) -> None:
@@ -463,11 +539,22 @@ def sync_jobs_to_firebase(
                 )
                 effective_since = stored
 
+        # Fix #4: in a normal (non-staged) incremental run, also pull rows whose
+        # ONLY change is content_hash (e.g. a resolved ATS url that did not
+        # advance embedded_at). full_sync already selects everything; staged
+        # backfills page a strict embedded_at window and must not widen it.
+        include_changed_hash = (
+            not full_sync and not is_staged and effective_since is not None
+        )
+        if include_changed_hash:
+            _ensure_synced_hashes_table(conn)
+
         active_rows = _fetch_active_jobs(
             conn,
             since=None if full_sync else effective_since,
             limit=active_limit,
             offset=active_offset,
+            include_changed_hash=include_changed_hash,
         )
         inactive_rows = _fetch_inactive_jobs(conn) if include_inactive else []
 
@@ -494,8 +581,17 @@ def sync_jobs_to_firebase(
                 len(batch),
             )
 
-        # All batches succeeded — advance the durable watermark to the max
-        # embedded_at we just synced so the next incremental run starts there.
+        # All batches succeeded (any _post_jobs_batch raise propagates out of
+        # this `with`, so reaching here means every active batch was accepted).
+        # Fix #4: record the content_hash we just shipped for each active row so
+        # a content_hash-only change is not re-sent on the next run unless it
+        # changes again. Done before the watermark advance; skipped for staged
+        # backfills so a paged window does not mark the whole corpus as synced.
+        if include_changed_hash and active_rows:
+            _record_synced_hashes(conn, active_rows)
+
+        # Advance the durable watermark to the max embedded_at we just synced so
+        # the next incremental run starts there.
         new_watermark = _max_embedded_at(active_rows)
         if watermark_active and new_watermark is not None:
             _advance_sync_watermark(conn, new_watermark)

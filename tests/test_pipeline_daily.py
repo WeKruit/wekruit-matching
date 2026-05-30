@@ -92,6 +92,32 @@ def _patch_all_stages(monkeypatch):
         "wekruit_matching.pipeline.daily.sync_jobs_to_firebase",
         lambda **kw: (call_order.append("job_sync"), _SYNC_STATS)[1],
     )
+    # Stage 2.5 (ATS resolve) — stub the imported resolver so unit tests never
+    # hit Serper/DB. The stage is gated on the SERPER_API_KEY env var (mirrors
+    # Stage 1.7's FIRECRAWL_BASE_URL gate), so set it here; tests that exercise
+    # the skip path delete it. Records call order.
+    monkeypatch.setenv("SERPER_API_KEY", "test-serper-key")
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.resolve_jobright_pending",
+        lambda **kw: (
+            call_order.append("ats_resolve"),
+            {"resolved": 0, "missed": 0, "skipped": 0, "errors": 0},
+        )[1],
+    )
+    # Stage 4.5 (Firestore reconcile) — stub healthy/ok by default so DB-free
+    # unit tests don't touch Firestore. Tests that exercise it override this.
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_reconcile",
+        lambda conn, **kw: {
+            "ok": True,
+            "skipped": False,
+            "divergence": 0.0,
+            "pg_matchable": 5,
+            "fs_active": 5,
+            "fs_total": 7,
+            "reason": "",
+        },
+    )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.send_pipeline_start_email",
         lambda: True,
@@ -424,3 +450,155 @@ def test_stdout_emits_pipeline_status_token(monkeypatch, capsys):
         f"Wrapper depends on stdout 'pipelineStatus=' token; not found in: "
         f"{captured.out!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Fix #2: Stage 2.5 ATS resolve
+# ---------------------------------------------------------------------------
+
+
+def test_ats_resolve_runs_before_embed_and_sync(monkeypatch):
+    """Stage 2.5 ATS resolve must run AFTER llm enrich and BEFORE embed/sync
+    (ordering is load-bearing for fix #4: resolve content_hash before embed)."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+    result = run_daily_pipeline()
+
+    assert "ats_resolve" in call_order, "resolve_jobright_pending was not called"
+    assert "embed" in call_order and "job_sync" in call_order
+    assert call_order.index("llm_enrich") < call_order.index("ats_resolve")
+    assert call_order.index("ats_resolve") < call_order.index("embed")
+    assert call_order.index("ats_resolve") < call_order.index("job_sync")
+    assert result["stage_outcomes"].get("ats_resolve") == "ok"
+
+
+def test_ats_resolve_skipped_when_no_serper_key(monkeypatch):
+    """No SERPER_API_KEY -> stage skipped (no resolver call), pipeline healthy."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+    monkeypatch.delenv("SERPER_API_KEY", raising=False)
+
+    def _boom(**kw):
+        raise AssertionError("resolver must not run without a serper key")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.resolve_jobright_pending", _boom
+    )
+
+    result = run_daily_pipeline()
+
+    assert "ats_resolve" not in call_order
+    assert result["stage_outcomes"].get("ats_resolve") == "skipped"
+    assert result["pipeline_status"] == "success"
+
+
+def test_ats_resolve_crash_is_isolated(monkeypatch):
+    """A resolver crash must NOT block embed/sync/gate (best-effort stage)."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+
+    def _crash(**kw):
+        raise RuntimeError("simulated serper outage")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.resolve_jobright_pending", _crash
+    )
+
+    result = run_daily_pipeline()
+
+    assert "embed" in call_order, "embed must still run after ats_resolve crash"
+    assert "job_sync" in call_order, "sync must still run after ats_resolve crash"
+    assert result["stage_outcomes"].get("ats_resolve") == "error"
+    assert any("ATS resolve" in e for e in result["errors"])
+
+
+# ---------------------------------------------------------------------------
+# Fix #5: Stage 4.5 Firestore <-> Postgres reconcile
+# ---------------------------------------------------------------------------
+
+
+def test_firestore_reconcile_ok(monkeypatch):
+    """Reconcile ok -> stage_outcomes 'ok', pipeline still success (non-fatal)."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("firestore_reconcile") == "ok"
+    assert result["pipeline_status"] == "success"
+
+
+def test_firestore_reconcile_degraded_is_non_fatal(monkeypatch):
+    """Real divergence -> 'degraded' in stage_outcomes but NEVER flips the run
+    to partial/failed (must not append to errors)."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_reconcile",
+        lambda conn, **kw: {
+            "ok": False,
+            "skipped": False,
+            "divergence": 0.30,
+            "pg_matchable": 100,
+            "fs_active": 130,
+            "fs_total": 140,
+            "reason": "PG matchable=100 vs Firestore active=130 diverge 30.0% > 5%",
+        },
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("firestore_reconcile") == "degraded"
+    assert not any("reconcile" in e.lower() for e in result["errors"]), result["errors"]
+    assert result["pipeline_status"] == "success"
+
+
+def test_firestore_reconcile_skipped_falls_back_to_sync_count(monkeypatch):
+    """When Firestore read is unavailable, fall back to PG-matchable vs the
+    active_jobs count Stage 4 reported; a sane window stays 'skipped' (not a
+    false degraded)."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    # _SYNC_STATS reports active_jobs=3; pg_matchable=5 -> over = max(3-5,0)/5 = 0.
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_reconcile",
+        lambda conn, **kw: {
+            "ok": True,
+            "skipped": True,
+            "divergence": 0.0,
+            "pg_matchable": 5,
+            "fs_active": 0,
+            "fs_total": 0,
+            "reason": "firestore client unavailable",
+        },
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("firestore_reconcile") == "skipped"
+    assert result["pipeline_status"] == "success"
+
+
+def test_firestore_reconcile_crash_is_non_fatal(monkeypatch):
+    """A reconcile crash records 'error' in stage_outcomes but does not gate."""
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+
+    def _crash(conn, **kw):
+        raise RuntimeError("firestore boom")
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_reconcile", _crash
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("firestore_reconcile") == "error"
+    assert not any("reconcile" in e.lower() for e in result["errors"]), result["errors"]
+    assert result["pipeline_status"] == "success"
