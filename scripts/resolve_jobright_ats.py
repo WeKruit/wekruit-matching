@@ -219,12 +219,21 @@ def main() -> int:
 
 def _flush(conn, updates: list[tuple[str, str]], misses: list[str]) -> None:
     """Write a batch: ats_apply_url for resolved, jd_fetch_source='serper_miss' for misses."""
+    import hashlib
     with conn.cursor() as cur:
         for url, jid in updates:
+            # Durable propagation fix: the Firestore sync receiver
+            # (shouldUpsertMatchingJob) only re-writes a doc when content_hash
+            # changes — and ats_apply_url is NOT part of content_hash
+            # (=sha256(company|role)), so a resolved URL alone would be
+            # silently dropped at sync. Bump content_hash to include the URL so
+            # the receiver detects the change and writes atsApplyUrl through.
+            new_ch = hashlib.sha256(f"{jid}|{url}".encode()).hexdigest()
             cur.execute(
-                "UPDATE jobs SET ats_apply_url = %(u)s, jd_fetch_source = 'serper' "
+                "UPDATE jobs SET ats_apply_url = %(u)s, jd_fetch_source = 'serper', "
+                "content_hash = %(ch)s "
                 "WHERE job_id = %(j)s AND (ats_apply_url IS NULL OR ats_apply_url='')",
-                {"u": url, "j": jid},
+                {"u": url, "ch": new_ch, "j": jid},
             )
         for jid in misses:
             cur.execute(
