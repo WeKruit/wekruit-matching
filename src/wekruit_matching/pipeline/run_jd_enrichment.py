@@ -177,15 +177,53 @@ async def _search_url(row: dict, settings) -> str | None:
     )
 
 
+def _jd_is_thin(data: AtsJobData | None) -> bool:
+    """True when an ATS-API fetch came back with no usable JD body.
+
+    Some ATS public APIs (observed: Lever for Spotify/Ledger/Voltus, Ashby for
+    certain boards) return 200 with metadata but an EMPTY description_plain — the
+    JD only lives in the JS-rendered page. In that case the structured API path
+    yields a 0-length JD that fails the >=200 matchable gate, so the job never
+    becomes matchable. We treat that as "thin" and fall back to Firecrawl, which
+    renders the page and extracts the real JD.
+    """
+    if data is None:
+        return True
+    jd = (getattr(data, "description_plain", None) or "")
+    return len(jd.strip()) < 200
+
+
 async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
     classification = classify_job_url(url)
     route = classification.route
-    if route is FetchRoute.GREENHOUSE:
-        return fetch_greenhouse_job(url), 0
-    if route is FetchRoute.LEVER:
-        return fetch_lever_job(url), 0
-    if route is FetchRoute.ASHBY:
-        return fetch_ashby_job(url), 0
+
+    # Structured ATS-API routes first (cheap, no Firecrawl credits). If the API
+    # returns an empty/thin JD (the page renders the JD client-side), fall back
+    # to Firecrawl extract — the URL is valid, the API just doesn't expose the
+    # body. Verified 2026-05-31: lever.co/spotify/... API JD len=0 but Firecrawl
+    # extract returns the full ~2.5k-char JD.
+    if route in (FetchRoute.GREENHOUSE, FetchRoute.LEVER, FetchRoute.ASHBY):
+        if route is FetchRoute.GREENHOUSE:
+            api_data = fetch_greenhouse_job(url)
+        elif route is FetchRoute.LEVER:
+            api_data = fetch_lever_job(url)
+        else:
+            api_data = fetch_ashby_job(url)
+        if not _jd_is_thin(api_data):
+            return api_data, 0
+        # API JD was empty/thin — escalate to Firecrawl if available.
+        if not settings.firecrawl_api_key:
+            return api_data, 0  # nothing better available; let caller handle thin
+        firecrawl = await fetch_firecrawl_job(
+            url,
+            api_key=settings.firecrawl_api_key,
+            base_url=settings.firecrawl_base_url,
+        )
+        if firecrawl and not _jd_is_thin(firecrawl.job_data):
+            return firecrawl.job_data, firecrawl.credits_used
+        # Firecrawl also thin/failed — return whichever we had (API data keeps
+        # any metadata; caller's >=200 gate will mark it not-matchable honestly).
+        return api_data, (firecrawl.credits_used if firecrawl else 0)
     if route is FetchRoute.JOBRIGHT:
         # 2026-05-21: jobright.ai /jobs/info/<id> pages are server-rendered
         # with the full JD inline — no Firecrawl needed. Direct HTTP fetch
