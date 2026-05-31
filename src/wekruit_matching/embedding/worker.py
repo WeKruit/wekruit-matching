@@ -1,8 +1,14 @@
-"""Embedding worker: reads enriched unembedded jobs, calls embed_text, writes vectors.
+"""Embedding worker: reads unembedded jobs with usable content, calls embed_text, writes vectors.
 
-Gating: embedded_at IS NULL AND enriched_at IS NOT NULL
-When a job's content_hash changes, upsert.py clears enriched_at — so changed jobs
-re-enter the enrichment queue first; embedding follows automatically after re-enrichment.
+Gating: embedded_at IS NULL AND status='active' AND job_description>=200 chars
+AND cardinality(required_skills)>0. This is the real readiness bar —
+compose_embedding_text() uses role_title + company_name + required_skills, and the
+JD>=200 check screens out failed-fetch zombie rows. We deliberately do NOT gate on
+enriched_at (dropped 2026-05-31): upsert.py nulls enriched_at on content_hash change
+while preserving JD+skills, and the gap-fill enrichers skip rows that already have
+JD+skills, so requiring enriched_at here permanently locked out 18k churned-but-complete
+jobs from ever embedding. enriched_at stays a "LLM enrichment ran" signal for the health
+gate only.
 
 Per-job failure isolation: an embed_text() exception logs a warning and increments
 the failed counter — the batch continues to the next job.
@@ -96,22 +102,30 @@ def embed_pending(conn: psycopg.Connection) -> dict[str, int]:
     assert_embedding_model_consistency(conn)
 
     # Matching-quality launch blocker (Track D, 2026-05-20):
-    # enriched_at IS NOT NULL only signals "enrichment ran" — it does NOT
-    # signal "enrichment produced usable signal". A job whose JD fetch failed
-    # gracefully (Firecrawl 500 / Workday SPA) and whose skill extraction
-    # therefore yielded [] still gets enriched_at stamped. Without the JD +
-    # skills gate below, we'd compute an embedding from
-    # "{title} at {company}. Skills: " — a near-useless title-only vector
-    # that would then sync to Firestore active and ride into the matching
-    # pool. The result: 6,888 active docs with NULL JD and 2,425 zombie
-    # active docs with both NULL JD and empty skills. Cap that here.
+    # The real readiness signal for embedding is "has usable content", and
+    # compose_embedding_text() uses ONLY role_title + company_name +
+    # required_skills (NOT job_description). So the JD>=200 + skills>0 gate
+    # below is what prevents a near-useless title-only vector
+    # ("{title} at {company}. Skills: ") from riding into the matching pool
+    # (the Track-D zombie-doc problem: 6,888 active docs with NULL JD,
+    # 2,425 with NULL JD and empty skills).
+    #
+    # 2026-05-31 fix: we DROPPED the additional `enriched_at IS NOT NULL`
+    # gate that used to sit here. It was a redundant proxy on top of the
+    # JD+skills bar, and it created a permanent lockout: upsert.py nulls
+    # enriched_at on any content_hash change while PRESERVING JD+skills, and
+    # both re-enrichers are gap-fill-only (they skip rows that already have
+    # JD+skills), so a churned-but-complete row never got enriched_at
+    # re-stamped and was therefore never embedded (18,187 active jobs stuck
+    # unmatchable on 2026-05-31). JD+skills is the correct, sufficient gate;
+    # enriched_at remains a pure "LLM enrichment ran" signal used by the
+    # health gate, not an embed precondition.
     rows = conn.execute(
         """
         SELECT job_id, source_repo, company_name, role_title, location_raw,
                required_skills, content_hash
         FROM jobs
         WHERE embedded_at IS NULL
-          AND enriched_at IS NOT NULL
           AND status = 'active'
           AND job_description IS NOT NULL
           AND length(job_description) >= 200
