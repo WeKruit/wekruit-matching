@@ -47,124 +47,114 @@ def _insert_job(
     conn.commit()
 
 
-def _insert_job_unenriched(conn, job_id: str, content_hash: str = "a" * 64):
-    """Insert a job with enriched_at=None (not enriched, should be skipped by embedder)."""
-    conn.execute(
-        """
-        INSERT INTO jobs (job_id, source_repo, company_name, role_title, location_raw,
-                          status, content_hash, required_skills, enriched_at, embedded_at)
-        VALUES (%(job_id)s, 'Summer2026-Internships', 'TestCo', 'SWE Intern', 'SF',
-                'active', %(content_hash)s, ARRAY[]::text[], NULL, NULL)
-        ON CONFLICT (job_id) DO NOTHING
-        """,
-        {"job_id": job_id, "content_hash": content_hash},
+# NOTE (2026-05-31): these worker tests use a mock connection (see _make_mock_conn
+# below), NOT a live DB. The previous versions ran embed_pending() against the real
+# prod database: embed_pending's eligibility SELECT does `... WHERE embedded_at IS NULL
+# ... LIMIT 3000` with no test scoping, so it grabbed the whole prod backlog and
+# committed real embeddings as a side effect of running the test. The mock approach is
+# deterministic and never touches prod. SQL-gate semantics are checked by asserting on
+# the SELECT text (the gate must screen on JD+skills, and must NOT require enriched_at).
+
+
+def _captured_sql(conn):
+    """All SQL strings embed_pending passed to conn.execute (mock)."""
+    return [c.args[0] for c in conn.execute.call_args_list if c.args]
+
+
+def test_embed_gate_screens_on_jd_and_skills_not_enriched_at():
+    """The eligibility SELECT must gate on JD>=200 + skills>0 and must NOT require enriched_at.
+
+    Regression for the 2026-05-31 lockout fix: requiring `enriched_at IS NOT NULL`
+    stranded ~18k churned-but-complete jobs (upsert nulls enriched_at while preserving
+    JD+skills; gap-fill enrichers skip rows that already have JD+skills).
+    """
+    from wekruit_matching.embedding.worker import embed_pending
+
+    conn = _make_mock_conn([])  # no eligible rows -> worker returns early, we inspect SQL
+    with patch("wekruit_matching.embedding.worker.register_vector"), patch(
+        "wekruit_matching.embedding.worker.assert_embedding_model_consistency"
+    ):
+        embed_pending(conn)
+
+    sel = next(
+        s for s in _captured_sql(conn)
+        if "FROM jobs" in s and "embedded_at IS NULL" in s
     )
-    conn.commit()
+    assert "enriched_at" not in sel, "embed gate must NOT require enriched_at (lockout fix)"
+    assert "length(job_description) >= 200" in sel, "must keep the JD>=200 quality gate"
+    assert "cardinality(required_skills) > 0" in sel, "must keep the skills gate"
+    assert "status = 'active'" in sel
 
 
-def _cleanup(conn, *job_ids):
-    conn.execute("DELETE FROM jobs WHERE job_id = ANY(%(ids)s)", {"ids": list(job_ids)})
-    conn.commit()
+def test_embed_pending_embeds_churned_job_with_jd_and_skills():
+    """A churned job (JD+skills present, enriched_at=None) MUST be embedded.
 
-
-@skip_no_db
-def test_embed_pending_skips_already_embedded():
-    """Jobs with embedded_at already set must not be re-embedded (skip via SQL gate)."""
+    This is the row shape that was permanently stranded before the fix. The eligibility
+    SELECT (real SQL) already filters by JD+skills; here the mock returns one such row
+    and we assert the worker embeds it (enriched_at is irrelevant to the worker now).
+    """
     from wekruit_matching.embedding.worker import embed_pending
 
-    job_id = "1" * 64
-    now = datetime.now(timezone.utc)
-    get_conn = _connect()
+    conn = _make_mock_conn([_job_row("churned-1", skills=["python", "sql"])])
+    with patch("wekruit_matching.embedding.worker.register_vector"), patch(
+        "wekruit_matching.embedding.worker.assert_embedding_model_consistency"
+    ), patch(
+        "wekruit_matching.embedding.worker.embed_texts", return_value=[[0.1] * 1536]
+    ), patch(
+        "wekruit_matching.embedding.worker.embed_text", return_value=[0.1] * 1536
+    ):
+        result = embed_pending(conn)
 
-    with get_conn() as conn:
-        _insert_job(conn, job_id, embedded_at=now)
-        try:
-            with patch("wekruit_matching.embedding.worker.embed_text") as mock_embed:
-                mock_embed.return_value = [0.5] * 1536
-                result = embed_pending(conn)
-            assert mock_embed.call_count == 0, (
-                "embed_text must not be called for already-embedded jobs"
-            )
-            assert result["embedded"] == 0
-        finally:
-            _cleanup(conn, job_id)
+    assert result["embedded"] == 1, result
+    assert result["failed"] == 0, result
 
 
-@skip_no_db
-def test_embed_pending_skips_unenriched():
-    """Jobs with enriched_at=None must not appear in the embedding queue."""
+def test_embed_pending_no_eligible_rows_is_noop():
+    """When the SELECT returns nothing, the worker embeds nothing (no crash)."""
     from wekruit_matching.embedding.worker import embed_pending
 
-    job_id = "2" * 64
-    get_conn = _connect()
+    conn = _make_mock_conn([])
+    with patch("wekruit_matching.embedding.worker.register_vector"), patch(
+        "wekruit_matching.embedding.worker.assert_embedding_model_consistency"
+    ), patch(
+        "wekruit_matching.embedding.worker.embed_texts", return_value=[]
+    ) as mock_batch:
+        result = embed_pending(conn)
 
-    with get_conn() as conn:
-        _insert_job_unenriched(conn, job_id)
-        try:
-            with patch("wekruit_matching.embedding.worker.embed_text") as mock_embed:
-                mock_embed.return_value = [0.5] * 1536
-                result = embed_pending(conn)
-            assert mock_embed.call_count == 0, (
-                "embed_text must not be called for unenriched jobs"
-            )
-            assert result["embedded"] == 0
-        finally:
-            _cleanup(conn, job_id)
+    assert result["embedded"] == 0, result
+    assert mock_batch.call_count == 0
 
 
-@skip_no_db
-def test_embed_pending_embeds_enriched_job():
-    """Jobs with enriched_at set and embedded_at=None must be embedded."""
-    from wekruit_matching.embedding.worker import embed_pending
-
-    job_id = "3" * 64
-    get_conn = _connect()
-
-    with get_conn() as conn:
-        _insert_job(conn, job_id, embedded_at=None)
-        try:
-            with patch("wekruit_matching.embedding.worker.embed_text") as mock_embed:
-                mock_embed.return_value = [0.5] * 1536
-                result = embed_pending(conn)
-
-            assert result["embedded"] >= 1, f"Expected at least 1 embedded, got {result}"
-            row = conn.execute(
-                "SELECT embedding_model, embedded_at FROM jobs WHERE job_id = %(id)s",
-                {"id": job_id},
-            ).fetchone()
-            assert row["embedding_model"] == "text-embedding-3-small"
-            assert row["embedded_at"] is not None
-        finally:
-            _cleanup(conn, job_id)
-
-
-@skip_no_db
 def test_embed_pending_continues_after_failure():
-    """Per-job isolation: embed_text() exception for one job does not abort the batch."""
+    """Per-job isolation: an embed_text() exception for one job does not abort the batch.
+
+    Uses the per-job fallback path (batch raises -> per-job), so the middle job's
+    failure is isolated and the other two still embed.
+    """
     from wekruit_matching.embedding.worker import embed_pending
 
-    job_ids = ["4" * 64, "5" * 64, "6" * 64]
-    get_conn = _connect()
+    conn = _make_mock_conn([_job_row("j1"), _job_row("j2"), _job_row("j3")])
+    call_count = [0]
 
-    with get_conn() as conn:
-        for jid in job_ids:
-            _insert_job(conn, jid, embedded_at=None)
-        try:
-            call_count = [0]
+    def per_job(text, client=None):
+        call_count[0] += 1
+        if call_count[0] == 2:
+            raise RuntimeError("simulated embed_text failure")
+        return [0.1] * 1536
 
-            def side_effect(text, client=None):
-                call_count[0] += 1
-                if call_count[0] == 2:
-                    raise RuntimeError("simulated embed_text failure")
-                return [0.5] * 1536
+    with patch("wekruit_matching.embedding.worker.register_vector"), patch(
+        "wekruit_matching.embedding.worker.assert_embedding_model_consistency"
+    ), patch(
+        # force the per-job path so each job is isolated
+        "wekruit_matching.embedding.worker.embed_texts",
+        side_effect=RuntimeError("batch down"),
+    ), patch(
+        "wekruit_matching.embedding.worker.embed_text", side_effect=per_job
+    ):
+        result = embed_pending(conn)
 
-            with patch("wekruit_matching.embedding.worker.embed_text", side_effect=side_effect):
-                result = embed_pending(conn)
-
-            assert result["embedded"] == 2, f"Expected 2 embedded, got {result}"
-            assert result["failed"] == 1, f"Expected 1 failed, got {result}"
-        finally:
-            _cleanup(conn, *job_ids)
+    assert result["embedded"] == 2, result
+    assert result["failed"] == 1, result
 
 
 @skip_no_db
