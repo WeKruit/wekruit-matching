@@ -232,6 +232,11 @@ def enrich_all_jobs(
     enriched_total = 0
     failed_total = 0
     skills_found = 0
+    # In-run guard: rows that yield ZERO skills now keep enriched_at NULL (see
+    # the stamp logic below), so without an exclusion set the same rows would be
+    # re-SELECTed every iteration → infinite loop. Track attempted job_ids and
+    # exclude them from subsequent batches within this run.
+    attempted_ids: set[str] = set()
 
     while True:
         rows = conn.execute(
@@ -242,13 +247,16 @@ def enrich_all_jobs(
               AND primary_url LIKE 'https://jobright.ai/%%'
               AND enriched_at IS NULL
               AND (required_skills IS NULL OR required_skills = '{}')
+              AND job_id <> ALL(%(attempted)s)
             LIMIT %(limit)s
             """,
-            {"limit": batch_size},
+            {"limit": batch_size, "attempted": list(attempted_ids)},
         ).fetchall()
 
         if not rows:
             break
+
+        attempted_ids.update(r["job_id"] for r in rows)
 
         logger.info(
             "Batch: fetching {} jobs ({}/{} done, {} with skills)",
@@ -293,7 +301,20 @@ def enrich_all_jobs(
 
         # Update DB
         for r in results:
-            set_parts = ["required_skills = %(skills)s", "enriched_at = NOW()"]
+            # 2026-06-01 lockout fix (mirrors enrichment/worker.py:_process_one_job).
+            # Only stamp enriched_at when skills were actually extracted. A
+            # JD-bearing job that returns ZERO skills is an extraction MISS, not a
+            # finished job — stamping enriched_at would (a) hide it behind the
+            # staleness gate and (b) fail the embed gate (cardinality(skills)>0),
+            # locking it out of matching. Leaving enriched_at NULL keeps the row
+            # eligible for the Stage 2c LLM gap-fill pass (worker.embed_pending's
+            # SELECT picks up enriched_at IS NULL + empty skills) which extracts
+            # skills reliably on retry. The in-run attempted_ids set above stops
+            # this from re-looping forever within a single run.
+            has_skills = bool(r["skills"])
+            set_parts = ["required_skills = %(skills)s"]
+            if has_skills:
+                set_parts.append("enriched_at = NOW()")
             params: dict = {"job_id": r["job_id"], "skills": r["skills"]}
 
             if not r["failed"]:
