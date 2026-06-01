@@ -151,13 +151,18 @@ def test_sync_active_select_gates_on_jd_and_skills(monkeypatch) -> None:
 
     class _Conn:
         def execute(self, query: str, params=None):  # noqa: ARG002
-            if query.lstrip().startswith("SELECT") and "WHERE status = 'active'" in query:
+            # Fix #4 aliases the jobs table AS j (LEFT JOIN the synced-hash
+            # ledger), so the active SELECT now reads "WHERE j.status = 'active'".
+            # Match alias-agnostically.
+            normalized = query.replace("j.", "")
+            if query.lstrip().startswith("SELECT") and "WHERE status = 'active'" in normalized:
                 captured["active_sql"] = query
             return _FakeResult([])
 
     job_sync._fetch_active_jobs(_Conn(), since=None)
 
-    sql = captured.get("active_sql", "")
+    # Strip the ``j.`` alias so the column-gate assertions are alias-agnostic.
+    sql = captured.get("active_sql", "").replace("j.", "")
     assert "job_description IS NOT NULL" in sql, (
         "active sync must exclude rows with NULL job_description"
     )
