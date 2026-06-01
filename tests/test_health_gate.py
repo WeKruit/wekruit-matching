@@ -26,6 +26,8 @@ def _healthy_metrics() -> dict:
         "matchable_corpus": 27500,
         "embeddable_unembedded_backlog": 34,
         "stamp_without_verify_violations": 0,
+        "embedded_no_vector_violations": 0,
+        "stamped_thin_jd": 0,
         "embedded_cov_of_active": 27500 / 28195,  # 0.9753
         "embedded_cov_of_embeddable": 27500 / (27500 + 34),  # 0.9988
         "sponsorship_cov_of_enriched": 0.169,
@@ -44,6 +46,8 @@ def _live_today_metrics() -> dict:
         "matchable_corpus": 22029,
         "embeddable_unembedded_backlog": 34,
         "stamp_without_verify_violations": 0,
+        "embedded_no_vector_violations": 0,
+        "stamped_thin_jd": 0,
         "embedded_cov_of_active": 22029 / 28195,  # 0.7813
         "embedded_cov_of_embeddable": 22029 / (22029 + 34),  # 0.9985 (embed caught up)
         "sponsorship_cov_of_enriched": 0.1689,
@@ -61,8 +65,9 @@ def test_default_thresholds_sane():
     assert t["max_embeddable_unembedded_backlog"] >= 100
     assert 0 < t["max_matchable_drop_frac"] <= 0.2
     assert t["min_active"] >= 1
-    # STAMP_WITHOUT_VERIFY guard is a zero-tolerance invariant.
+    # STAMP_WITHOUT_VERIFY guards are zero-tolerance invariants.
     assert t["max_stamp_without_verify_violations"] == 0
+    assert t["max_embedded_no_vector_violations"] == 0
 
 
 # --- STAMP_WITHOUT_VERIFY guard (2026-06-01 JobRight lockout class) ----------
@@ -113,6 +118,22 @@ def test_run_health_gate_fails_on_stamp_without_verify(monkeypatch, tmp_path):
     assert result["ok"] is False
     assert any(f["metric"] == "stamp_without_verify_violations"
                for f in result["failures"])
+
+
+def test_embedded_no_vector_hard_fails():
+    """embed-side STAMP_WITHOUT_VERIFY: embedded_at set with NULL embedding ->
+    certified embedded with no vector. Hard-fail at >0."""
+    m = _healthy_metrics()
+    m["embedded_no_vector_violations"] = 3
+    keys = {f["metric"] for f in hg.evaluate(m, prior=None)}
+    assert "embedded_no_vector_violations" in keys
+
+
+def test_embedded_no_vector_zero_passes():
+    m = _healthy_metrics()
+    m["embedded_no_vector_violations"] = 0
+    assert not any(f["metric"] == "embedded_no_vector_violations"
+                   for f in hg.evaluate(m, prior=None))
 
 
 # --- healthy passes ---------------------------------------------------------

@@ -86,6 +86,10 @@ DEFAULT_THRESHOLDS: dict[str, float] = {
     # NULL/thin JD are the genuine empty-at-source floor and are EXCLUDED by the
     # length(job_description)>=200 clause, so this never false-trips on them.)
     "max_stamp_without_verify_violations": 0,
+    # Embed-side invariant: "embedded" (embedded_at set) with a NULL vector is
+    # never valid — the matcher would score against nothing. 0 live violations
+    # today, so this is a safe hard-fail.
+    "max_embedded_no_vector_violations": 0,
     # Relative drop guards (apply only when a prior run exists).
     "max_matchable_drop_frac": 0.10,   # matchable corpus not down >10% vs prior
     "max_active_drop_frac": 0.10,      # active count not down >10% vs prior
@@ -184,6 +188,33 @@ def compute_metrics(conn) -> dict[str, Any]:
           AND (required_skills IS NULL OR cardinality(required_skills) = 0)
         """,
     )
+    # Embed-side STAMP_WITHOUT_VERIFY: embedded_at stamped but the vector is
+    # NULL -> "embedded" certified without an embedding. Must be 0 (hard-fail).
+    embedded_no_vector = _scalar(
+        conn,
+        """
+        SELECT count(*) FROM jobs
+        WHERE status='active'
+          AND embedded_at IS NOT NULL
+          AND embedding IS NULL
+        """,
+    )
+    # jd-fetch STAMP_WITHOUT_VERIFY: a real ATS source name stamped on a sub-200
+    # JD (route succeeded "done" but the body is unusable). Tracked now for
+    # visibility; the hard-fail threshold is deferred until the rank-5
+    # _write_success fix + backfill land (32 genuine empty-at-source rows
+    # currently carry a route name with a thin/empty JD).
+    stamped_thin_jd = _scalar(
+        conn,
+        """
+        SELECT count(*) FROM jobs
+        WHERE status='active'
+          AND jd_fetch_source IS NOT NULL
+          AND jd_fetch_source NOT IN ('failed', 'skip_no_url', 'closed_at_source')
+          AND jd_fetch_attempted_at IS NOT NULL
+          AND (job_description IS NULL OR length(job_description) < 200)
+        """,
+    )
     spons = _scalar(
         conn,
         "SELECT count(*) FROM jobs WHERE status='active' "
@@ -225,6 +256,8 @@ def compute_metrics(conn) -> dict[str, Any]:
         "matchable_corpus": matchable,
         "embeddable_unembedded_backlog": embeddable_unembedded,
         "stamp_without_verify_violations": stamp_without_verify,
+        "embedded_no_vector_violations": embedded_no_vector,
+        "stamped_thin_jd": stamped_thin_jd,
         "embedded_cov_of_active": _ratio(active_embedded, active),
         "embedded_cov_of_embeddable": embedded_cov_of_embeddable,
         "sponsorship_cov_of_enriched": _ratio(spons, active_enriched),
@@ -309,6 +342,17 @@ def evaluate(
                   f"out of the embed gate (needs skills>0). An enrichment writer "
                   f"stamped a done-flag without extracting the skills it "
                   f"certifies (the 2026-06-01 JobRight lockout class). Must be 0.")
+        )
+
+    env = g(metrics, "embedded_no_vector_violations")
+    if env is not None and env > t["max_embedded_no_vector_violations"]:
+        failures.append(
+            _fail("embedded_no_vector_violations", env,
+                  t["max_embedded_no_vector_violations"],
+                  f"{env} active job(s) have embedded_at set but a NULL embedding "
+                  f"-> certified embedded with no vector. The matcher would score "
+                  f"against nothing. An embed writer stamped the done-flag without "
+                  f"persisting the vector it certifies. Must be 0.")
         )
 
     # --- relative guards (need a prior run) --------------------------------
