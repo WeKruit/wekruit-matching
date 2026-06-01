@@ -27,6 +27,7 @@ that migration. On every batch:
 Logs ``pa.scraper.skipped_dead_jobs {count: N}`` on every run for
 ops dashboards.
 """
+import os
 from collections.abc import Collection
 from datetime import UTC, datetime
 
@@ -446,11 +447,39 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
 
 _STALE_BATCH_SIZE = 5000
 
+# Circuit-breaker (reliability audit 2026-06-01, ranks 9-13). A partial/failed
+# scrape returns a truncated seen-set; mark_stale_jobs would then flip every
+# active row NOT in that set to inactive, silently mass-deactivating live jobs
+# (observed across jobright_github / direct-ATS / social / vc_board / simplify).
+# If a single run would deactivate more than this FRACTION of a repo's current
+# active rows, treat it as a partial fetch and REFUSE — unless force=True.
+# Tunable via env for the rare legitimate bulk-clear.
+_STALE_MAX_DEACTIVATION_FRACTION = float(
+    os.environ.get("STALE_MAX_DEACTIVATION_FRACTION", "0.5")
+)
+# Below this many active rows the fraction guard is noisy/irrelevant (a small
+# board legitimately churning a few jobs), so the guard only engages at/above it.
+_STALE_GUARD_MIN_ACTIVE = int(os.environ.get("STALE_GUARD_MIN_ACTIVE", "20"))
+
+# Sentinel return: the circuit-breaker tripped and NOTHING was deactivated.
+# Negative so callers can distinguish "guard blocked" from "0 were stale".
+STALE_GUARD_TRIPPED = -1
+
+
+def _count_active(conn: psycopg.Connection, source_repo: str) -> int:
+    row = conn.execute(
+        "SELECT count(*) AS n FROM jobs WHERE source_repo = %(r)s AND status = 'active'",
+        {"r": source_repo},
+    ).fetchone()
+    return int(row["n"]) if row else 0
+
 
 def mark_stale_jobs(
     seen_ids: Collection[str],
     source_repo: str,
     conn: psycopg.Connection,
+    *,
+    force: bool = False,
 ) -> int:
     """Mark active jobs from source_repo as inactive if their job_id is not in seen_ids.
 
@@ -462,10 +491,47 @@ def mark_stale_jobs(
     timeouts on Supabase's pooler: first collects active IDs, then batches
     updates on the smaller stale subset.
 
-    Returns: count of rows marked inactive
+    Circuit-breaker (2026-06-01): refuses to deactivate when the seen-set is
+    implausibly small vs the repo's current active count — the signature of a
+    partial/failed scrape — to prevent silent mass-deactivation of live jobs.
+    Pass ``force=True`` for a legitimate bulk-clear (e.g. a repo truly emptied).
+    When the guard trips it deactivates NOTHING and returns
+    ``STALE_GUARD_TRIPPED`` (-1) so the caller can surface a dependency error.
+
+    Returns: count of rows marked inactive, or ``STALE_GUARD_TRIPPED`` if the
+    circuit-breaker blocked a suspicious mass-deactivation.
     """
+    seen_set = set(seen_ids)
+
+    # Circuit-breaker: how many active rows would this run deactivate?
+    if not force:
+        active_n = _count_active(conn, source_repo)
+        if active_n >= _STALE_GUARD_MIN_ACTIVE:
+            would_deactivate = conn.execute(
+                """
+                SELECT count(*) AS n FROM jobs
+                WHERE source_repo = %(r)s AND status = 'active'
+                  AND NOT (job_id = ANY(%(seen)s))
+                """,
+                {"r": source_repo, "seen": list(seen_set)},
+            ).fetchone()
+            would_n = int(would_deactivate["n"]) if would_deactivate else 0
+            frac = would_n / active_n if active_n else 0.0
+            if frac > _STALE_MAX_DEACTIVATION_FRACTION:
+                logger.error(
+                    "STALE GUARD TRIPPED for repo {}: run would deactivate {}/{} "
+                    "active rows ({:.0%} > {:.0%} limit) from a seen-set of {} — "
+                    "treating as a PARTIAL/failed scrape and deactivating NOTHING. "
+                    "Pass force=True for a legitimate bulk clear.",
+                    source_repo, would_n, active_n, frac,
+                    _STALE_MAX_DEACTIVATION_FRACTION, len(seen_set),
+                )
+                return STALE_GUARD_TRIPPED
+
     if not seen_ids:
-        # Edge case: all jobs disappeared — mark all active as inactive
+        # Edge case: all jobs disappeared. Reaching here means either force=True
+        # or the repo had < _STALE_GUARD_MIN_ACTIVE active rows (guard skipped),
+        # so a full clear is acceptable.
         result = conn.execute(
             """
             UPDATE jobs
@@ -479,7 +545,6 @@ def mark_stale_jobs(
         logger.info("Marked {} stale jobs inactive for repo {}", count, source_repo)
         return count
 
-    seen_set = set(seen_ids)
     total_marked = 0
 
     if len(seen_set) <= _STALE_BATCH_SIZE:

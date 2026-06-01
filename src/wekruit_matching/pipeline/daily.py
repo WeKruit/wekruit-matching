@@ -363,10 +363,24 @@ def run_daily_pipeline() -> dict:
                             by_repo: dict[str, list] = {}
                             for j in deduped:
                                 by_repo.setdefault(j.source_repo, []).append(j)
+                            from wekruit_matching.scraper.upsert import (
+                                STALE_GUARD_TRIPPED,
+                            )
                             for repo_slug, group in by_repo.items():
                                 upsert_stats = _upsert(group, conn)
                                 seen_ids = {j.job_id for j in group}
                                 stale_count = _mark_stale(seen_ids, repo_slug, conn)
+                                if stale_count == STALE_GUARD_TRIPPED:
+                                    # Partial-scrape circuit-breaker tripped: the
+                                    # run would have mass-deactivated live jobs.
+                                    # Surface it so the health gate / email flags
+                                    # a degraded source instead of silently
+                                    # losing the corpus.
+                                    errors.append(
+                                        f"Stage 1.5 stale-guard tripped for "
+                                        f"{repo_slug}: partial scrape, skipped "
+                                        f"deactivation"
+                                    )
                                 senior_stats[repo_slug] = {
                                     **(senior_stats.get(repo_slug) or {}),
                                     **upsert_stats,
@@ -427,6 +441,9 @@ def run_daily_pipeline() -> dict:
                                 mark_stale_jobs as _mark_stale_vc,
                                 upsert_jobs as _upsert_vc,
                             )
+                            from wekruit_matching.scraper.upsert import (
+                                STALE_GUARD_TRIPPED as _VC_GUARD_TRIPPED,
+                            )
                             with get_connection() as conn:
                                 for board_slug, jobs in vc_jobs_by_board.items():
                                     if not jobs:
@@ -437,6 +454,12 @@ def run_daily_pipeline() -> dict:
                                     stale_count = _mark_stale_vc(
                                         seen_ids, repo_slug, conn
                                     )
+                                    if stale_count == _VC_GUARD_TRIPPED:
+                                        errors.append(
+                                            f"Stage 1.7 stale-guard tripped for "
+                                            f"{repo_slug}: partial render, skipped "
+                                            f"deactivation"
+                                        )
                                     vc_stats[repo_slug] = {
                                         **upsert_stats,
                                         "stale": stale_count,
