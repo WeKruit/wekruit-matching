@@ -72,6 +72,20 @@ DEFAULT_THRESHOLDS: dict[str, float] = {
     "min_embedded_cov_of_embeddable": 0.97,
     "max_embeddable_unembedded_backlog": 300,
     "min_active": 1,
+    # STAMP_WITHOUT_VERIFY guard (2026-06-01). An active row that was marked
+    # enriched (enriched_at NOT NULL) while HAVING a usable JD (>=200 chars) but
+    # ZERO skills is a silent extraction miss that the embed gate
+    # (cardinality(required_skills)>0) then locks out of the matching pool — the
+    # exact bug that dropped matchable 99.94%->92.48% overnight (1,902 JobRight
+    # rows). The previous gate could not see it: today's intake RAISED `active`
+    # so absolute matchable still grew (no drop_frac trip), and these rows have
+    # NO skills so they are excluded from embeddable_unembedded_backlog
+    # (which requires skills>0). This is a HARD-FAIL absolute invariant: any
+    # nonzero count means a writer stamped a done-flag without the data it
+    # certifies. Threshold 0 — there is no acceptable nonzero level. (Rows with
+    # NULL/thin JD are the genuine empty-at-source floor and are EXCLUDED by the
+    # length(job_description)>=200 clause, so this never false-trips on them.)
+    "max_stamp_without_verify_violations": 0,
     # Relative drop guards (apply only when a prior run exists).
     "max_matchable_drop_frac": 0.10,   # matchable corpus not down >10% vs prior
     "max_active_drop_frac": 0.10,      # active count not down >10% vs prior
@@ -155,6 +169,21 @@ def compute_metrics(conn) -> dict[str, Any]:
           AND cardinality(required_skills) > 0
         """,
     )
+    # STAMP_WITHOUT_VERIFY signature: active rows marked enriched, WITH a usable
+    # JD (>=200), but ZERO skills -> certified "done" yet locked out of embed.
+    # Must be 0 (see DEFAULT_THRESHOLDS note). JD<200 / NULL excluded = genuine
+    # empty-at-source floor, not a violation.
+    stamp_without_verify = _scalar(
+        conn,
+        """
+        SELECT count(*) FROM jobs
+        WHERE status='active'
+          AND enriched_at IS NOT NULL
+          AND job_description IS NOT NULL
+          AND length(job_description) >= 200
+          AND (required_skills IS NULL OR cardinality(required_skills) = 0)
+        """,
+    )
     spons = _scalar(
         conn,
         "SELECT count(*) FROM jobs WHERE status='active' "
@@ -195,6 +224,7 @@ def compute_metrics(conn) -> dict[str, Any]:
         "active_embedded": active_embedded,
         "matchable_corpus": matchable,
         "embeddable_unembedded_backlog": embeddable_unembedded,
+        "stamp_without_verify_violations": stamp_without_verify,
         "embedded_cov_of_active": _ratio(active_embedded, active),
         "embedded_cov_of_embeddable": embedded_cov_of_embeddable,
         "sponsorship_cov_of_enriched": _ratio(spons, active_enriched),
@@ -264,6 +294,21 @@ def evaluate(
                   f"embeddable-but-unembedded backlog {backlog} exceeds "
                   f"{t['max_embeddable_unembedded_backlog']} (these jobs have "
                   "a JD + skills but no embedding -> not matchable)")
+        )
+
+    # STAMP_WITHOUT_VERIFY hard-fail: must be exactly 0. Any active row marked
+    # enriched with a usable JD but no skills was certified done without the
+    # data the flag promises, and is silently locked out of embed/matching.
+    swv = g(metrics, "stamp_without_verify_violations")
+    if swv is not None and swv > t["max_stamp_without_verify_violations"]:
+        failures.append(
+            _fail("stamp_without_verify_violations", swv,
+                  t["max_stamp_without_verify_violations"],
+                  f"{swv} active job(s) marked enriched (enriched_at set) with a "
+                  f"JD>=200 chars but ZERO skills -> certified done yet locked "
+                  f"out of the embed gate (needs skills>0). An enrichment writer "
+                  f"stamped a done-flag without extracting the skills it "
+                  f"certifies (the 2026-06-01 JobRight lockout class). Must be 0.")
         )
 
     # --- relative guards (need a prior run) --------------------------------

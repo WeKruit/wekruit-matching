@@ -25,6 +25,7 @@ def _healthy_metrics() -> dict:
         "active_embedded": 27500,
         "matchable_corpus": 27500,
         "embeddable_unembedded_backlog": 34,
+        "stamp_without_verify_violations": 0,
         "embedded_cov_of_active": 27500 / 28195,  # 0.9753
         "embedded_cov_of_embeddable": 27500 / (27500 + 34),  # 0.9988
         "sponsorship_cov_of_enriched": 0.169,
@@ -42,6 +43,7 @@ def _live_today_metrics() -> dict:
         "active_embedded": 22029,
         "matchable_corpus": 22029,
         "embeddable_unembedded_backlog": 34,
+        "stamp_without_verify_violations": 0,
         "embedded_cov_of_active": 22029 / 28195,  # 0.7813
         "embedded_cov_of_embeddable": 22029 / (22029 + 34),  # 0.9985 (embed caught up)
         "sponsorship_cov_of_enriched": 0.1689,
@@ -59,6 +61,58 @@ def test_default_thresholds_sane():
     assert t["max_embeddable_unembedded_backlog"] >= 100
     assert 0 < t["max_matchable_drop_frac"] <= 0.2
     assert t["min_active"] >= 1
+    # STAMP_WITHOUT_VERIFY guard is a zero-tolerance invariant.
+    assert t["max_stamp_without_verify_violations"] == 0
+
+
+# --- STAMP_WITHOUT_VERIFY guard (2026-06-01 JobRight lockout class) ----------
+
+def test_stamp_without_verify_hard_fails_no_prior():
+    """The exact 2026-06-01 incident: active rows marked enriched with a JD but
+    zero skills. MUST hard-fail on the absolute floor even with no prior run —
+    the old gate missed this entirely (active rose so matchable didn't 'drop',
+    and skill-less rows are excluded from the embeddable backlog)."""
+    m = _healthy_metrics()
+    m["stamp_without_verify_violations"] = 1902
+    failures = hg.evaluate(m, prior=None)
+    keys = {f["metric"] for f in failures}
+    assert "stamp_without_verify_violations" in keys
+
+
+def test_stamp_without_verify_zero_passes():
+    """Zero violations is the healthy state — must not trip."""
+    m = _healthy_metrics()
+    m["stamp_without_verify_violations"] = 0
+    failures = hg.evaluate(m, prior=None)
+    assert not any(f["metric"] == "stamp_without_verify_violations"
+                   for f in failures)
+
+
+def test_stamp_without_verify_caught_even_when_matchable_grows():
+    """Reproduces WHY the gate missed today: matchable GREW vs prior (intake
+    surge) so no drop_frac trip, yet the lockout is present. The new absolute
+    invariant must still fire."""
+    prior = _healthy_metrics()
+    prior["matchable_corpus"] = 20550
+    cur = _healthy_metrics()
+    cur["matchable_corpus"] = 23970  # grew — relative guards stay silent
+    cur["active"] = 25920
+    cur["stamp_without_verify_violations"] = 1902
+    failures = hg.evaluate(cur, prior=prior)
+    keys = {f["metric"] for f in failures}
+    assert "stamp_without_verify_violations" in keys
+    assert "matchable_corpus" not in keys  # confirm the OLD net stays silent
+
+
+def test_run_health_gate_fails_on_stamp_without_verify(monkeypatch, tmp_path):
+    monkeypatch.setattr(hg, "get_connection", lambda: _Conn())
+    bad = _healthy_metrics()
+    bad["stamp_without_verify_violations"] = 7
+    monkeypatch.setattr(hg, "compute_metrics", lambda conn: bad)
+    result = hg.run_health_gate(state_path=tmp_path / "s.json")
+    assert result["ok"] is False
+    assert any(f["metric"] == "stamp_without_verify_violations"
+               for f in result["failures"])
 
 
 # --- healthy passes ---------------------------------------------------------
