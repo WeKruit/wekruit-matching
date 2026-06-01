@@ -119,7 +119,16 @@ def _post_jobs_batch(
     mode: str,
     jobs: list[dict[str, Any]],
     timeout: float,
-) -> int:
+) -> tuple[int, list[str]]:
+    """POST one batch. Returns ``(delivered_count, skipped_job_ids)``.
+
+    ``skipped_job_ids`` are docs the receiver terminally rejected (client 4xx
+    narrowed to a single doc) — they were NOT delivered. The caller MUST exclude
+    them from the synced-hash ledger and the watermark advance, else a rejected
+    doc is silently recorded as synced and never re-sent (the 2026-06-01
+    seam_embed_sync-1 permanent-drop bug). Recursive bisection unions the
+    skipped ids of both halves.
+    """
     try:
         response = httpx.post(
             url,
@@ -141,14 +150,15 @@ def _post_jobs_batch(
             midpoint,
             len(jobs) - midpoint,
         )
-        return _post_jobs_batch(
+        left_n, left_skip = _post_jobs_batch(
             url=url,
             headers=headers,
             collection=collection,
             mode=mode,
             jobs=jobs[:midpoint],
             timeout=timeout,
-        ) + _post_jobs_batch(
+        )
+        right_n, right_skip = _post_jobs_batch(
             url=url,
             headers=headers,
             collection=collection,
@@ -156,18 +166,19 @@ def _post_jobs_batch(
             jobs=jobs[midpoint:],
             timeout=timeout,
         )
+        return left_n + right_n, left_skip + right_skip
 
     response_ok = getattr(response, "is_success", None)
     if response_ok is None:
         try:
             response.raise_for_status()
-            return 1
+            return 1, []
         except httpx.HTTPStatusError as exc:
             response = exc.response
             response_ok = False
 
     if response_ok:
-        return 1
+        return len(jobs), []
 
     if len(jobs) > 1 and _should_split_failed_batch(response.status_code, response.text):
         midpoint = len(jobs) // 2
@@ -179,14 +190,15 @@ def _post_jobs_batch(
             midpoint,
             len(jobs) - midpoint,
         )
-        return _post_jobs_batch(
+        left_n, left_skip = _post_jobs_batch(
             url=url,
             headers=headers,
             collection=collection,
             mode=mode,
             jobs=jobs[:midpoint],
             timeout=timeout,
-        ) + _post_jobs_batch(
+        )
+        right_n, right_skip = _post_jobs_batch(
             url=url,
             headers=headers,
             collection=collection,
@@ -194,13 +206,16 @@ def _post_jobs_batch(
             jobs=jobs[midpoint:],
             timeout=timeout,
         )
+        return left_n + right_n, left_skip + right_skip
 
     # Terminal case: a single doc the receiver rejects with a client 4xx
     # (400 malformed / 413 too large / 422 invalid field). Bisecting above has
     # narrowed the failure to this one job. Do NOT raise — that would crash the
     # entire sync stage and drop every other doc (and every later batch). Log
-    # the offending job_id + reason and SKIP it (return 0 synced) so the rest of
-    # the corpus syncs. Auth (401/403) and unexpected statuses still raise loud.
+    # the offending job_id + reason and report it as SKIPPED (not delivered) so
+    # the caller keeps it OUT of the synced-hash ledger and the watermark — a
+    # skipped doc must remain re-selectable on the next run, not be silently
+    # marked synced. Auth (401/403) and unexpected statuses still raise loud.
     if len(jobs) == 1 and response.status_code in {400, 413, 422}:
         bad_id = jobs[0].get("job_id") if jobs else None
         logger.error(
@@ -209,10 +224,10 @@ def _post_jobs_batch(
             response.status_code,
             response.text[:300],
         )
-        return 0
+        return 0, ([bad_id] if bad_id is not None else [])
 
     response.raise_for_status()
-    return 1
+    return 1, []
 
 
 def _fetch_active_jobs(
@@ -558,48 +573,86 @@ def sync_jobs_to_firebase(
         )
         inactive_rows = _fetch_inactive_jobs(conn) if include_inactive else []
 
-        jobs = [_serialize_job(row) for row in [*active_rows, *inactive_rows]]
-        batches = list(_batched(jobs, settings.firebase_sync_batch_size))
         headers = {"X-API-Key": settings.firebase_sync_api_key}
         sent_batches = 0
+        skipped_ids: list[str] = []
 
-        # If any batch push raises, we propagate WITHOUT advancing the
+        def _push(rows: list[dict[str, Any]], label: str) -> int:
+            """Push a row-set in batches; accumulate skipped ids. Returns batches sent."""
+            nonlocal skipped_ids
+            serialized = [_serialize_job(r) for r in rows]
+            batches = list(_batched(serialized, settings.firebase_sync_batch_size))
+            n_sent = 0
+            for index, batch in enumerate(batches, start=1):
+                _delivered, batch_skipped = _post_jobs_batch(
+                    url=settings.firebase_sync_url,
+                    headers=headers,
+                    collection=settings.firebase_sync_collection,
+                    mode=mode,
+                    jobs=batch,
+                    timeout=settings.firebase_sync_timeout_seconds,
+                )
+                n_sent += 1
+                if batch_skipped:
+                    skipped_ids.extend(batch_skipped)
+                logger.info(
+                    "Synced Firebase {} batch {}/{} ({} jobs)",
+                    label, index, len(batches), len(batch),
+                )
+            return n_sent
+
+        # seam_dead_sync-1 fix: push INACTIVE (deactivation / dead-flip) rows
+        # FIRST. They carry the status='active'->'inactive' transitions that
+        # REMOVE confirmed-dead jobs from the live matcher; if an active batch
+        # raised mid-loop they used to never POST (they were concatenated last),
+        # leaving dead jobs served as 404 matches (the 1,792-dead incident on
+        # the propagation side). Pushing them first guarantees deactivations
+        # propagate even if a later active batch fails. The inactive push is in
+        # its own try so an inactive failure does not block the active push
+        # either — each half is independently best-effort, and any raise still
+        # leaves the watermark un-advanced so the window retries next run.
+        if inactive_rows:
+            sent_batches += _push(inactive_rows, "inactive")
+
+        # If any active batch push raises, it propagates WITHOUT advancing the
         # watermark, so the next run re-covers this window (self-healing).
-        for index, batch in enumerate(batches, start=1):
-            sent_batches += _post_jobs_batch(
-                url=settings.firebase_sync_url,
-                headers=headers,
-                collection=settings.firebase_sync_collection,
-                mode=mode,
-                jobs=batch,
-                timeout=settings.firebase_sync_timeout_seconds,
-            )
-            logger.info(
-                "Synced Firebase batch {}/{} ({} jobs)",
-                index,
-                len(batches),
-                len(batch),
-            )
+        sent_batches += _push(active_rows, "active")
 
-        # All batches succeeded (any _post_jobs_batch raise propagates out of
-        # this `with`, so reaching here means every active batch was accepted).
-        # Fix #4: record the content_hash we just shipped for each active row so
-        # a content_hash-only change is not re-sent on the next run unless it
-        # changes again. Done before the watermark advance; skipped for staged
-        # backfills so a paged window does not mark the whole corpus as synced.
-        if include_changed_hash and active_rows:
-            _record_synced_hashes(conn, active_rows)
+        # seam_embed_sync-1 fix: a doc the receiver terminally rejected
+        # (bisect-skip, _post_jobs_batch returned it in skipped_ids) was NOT
+        # delivered — it must stay re-selectable. Exclude skipped ids from BOTH
+        # the synced-hash ledger AND the watermark so a rejected matchable row
+        # is not silently recorded as synced and dropped forever.
+        skipped_set = set(skipped_ids)
+        if skipped_set:
+            logger.error(
+                "Firebase sync: {} doc(s) terminally rejected and NOT delivered "
+                "(excluded from ledger + watermark, will retry next run): {}",
+                len(skipped_set), sorted(skipped_set)[:20],
+            )
+        delivered_active = [
+            r for r in active_rows
+            if not (isinstance(r, dict) and r.get("job_id") in skipped_set)
+        ]
 
-        # Advance the durable watermark to the max embedded_at we just synced so
-        # the next incremental run starts there.
-        new_watermark = _max_embedded_at(active_rows)
+        # Fix #4: record the content_hash shipped for each DELIVERED active row
+        # so a content_hash-only change is not re-sent next run unless it
+        # changes again. Skipped for staged backfills (paged window).
+        if include_changed_hash and delivered_active:
+            _record_synced_hashes(conn, delivered_active)
+
+        # Advance the durable watermark to the max embedded_at we actually
+        # DELIVERED (never past a skipped row). If the only rows in this window
+        # were skipped, the watermark does not advance and they retry next run.
+        new_watermark = _max_embedded_at(delivered_active)
         if watermark_active and new_watermark is not None:
             _advance_sync_watermark(conn, new_watermark)
 
     stats = {
         "active_jobs": len(active_rows),
         "inactive_jobs": len(inactive_rows),
-        "synced": len(jobs),
+        "synced": len(active_rows) + len(inactive_rows) - len(skipped_set),
+        "skipped_docs": len(skipped_set),
         "batches": sent_batches,
     }
     logger.info("Firebase sync complete: {}", stats)

@@ -341,18 +341,22 @@ def test_sync_jobs_to_firebase_posts_batched_payload_with_content_hash(monkeypat
     assert stats["active_jobs"] == 2
     assert stats["inactive_jobs"] == 1
     assert stats["batches"] == 2
+    assert stats["skipped_docs"] == 0
     assert len(requests) == 2
 
+    # seam_dead_sync-1 fix: INACTIVE (deactivation / dead-flip) rows are pushed
+    # FIRST so confirmed-dead removals propagate even if a later active batch
+    # fails. So requests[0] is the inactive batch, requests[1] the active one.
     first_payload = requests[0]["json"]
     assert first_payload["collection"] == "matching-jobs"
     assert first_payload["mode"] == "incremental"
-    assert first_payload["jobs"][0]["content_hash"] == "a" * 64
-    assert first_payload["jobs"][0]["status"] == "active"
+    assert first_payload["jobs"][0]["job_id"] == "job-inactive-1"
+    assert first_payload["jobs"][0]["status"] == "inactive"
     assert requests[0]["headers"]["X-API-Key"] == "sync-secret"
 
     second_payload = requests[1]["json"]
-    assert second_payload["jobs"][0]["job_id"] == "job-inactive-1"
-    assert second_payload["jobs"][0]["status"] == "inactive"
+    assert second_payload["jobs"][0]["content_hash"] == "a" * 64
+    assert second_payload["jobs"][0]["status"] == "active"
 
     # Incremental sync now issues durable-watermark queries (ensure table +
     # read) before the active fetch, so locate the active call explicitly
@@ -426,11 +430,15 @@ def test_sync_jobs_to_firebase_splits_oversized_batches_until_they_fit(monkeypat
 
     stats = sync_jobs_to_firebase(full_sync=True, include_inactive=False)
 
+    # ``batches`` now counts TOP-LEVEL batches (one active batch of 3), not the
+    # recursive leaf posts; the recursive split is still observable via the 5
+    # actual HTTP calls in request_sizes. (batches is a log-only metric.)
     assert stats == {
         "active_jobs": 3,
         "inactive_jobs": 0,
         "synced": 3,
-        "batches": 3,
+        "skipped_docs": 0,
+        "batches": 1,
     }
     assert request_sizes == [3, 1, 2, 1, 1]
 
@@ -540,6 +548,7 @@ def test_sync_jobs_to_firebase_full_sync_can_stage_active_backfill(monkeypatch) 
         "active_jobs": 2,
         "inactive_jobs": 0,
         "synced": 2,
+        "skipped_docs": 0,
         "batches": 1,
     }
     assert [job["job_id"] for job in requests[0]["json"]["jobs"]] == [
@@ -667,3 +676,123 @@ def test_sync_jobs_bulk_main_forwards_staged_backfill_flags(monkeypatch) -> None
         "active_offset": 2000,
         "include_inactive": False,
     }
+
+
+# ---------------------------------------------------------------------------
+# Reliability fixes 2026-06-01: sync-seam permanent-drop + dead-flip ordering
+# ---------------------------------------------------------------------------
+
+def test_receiver_rejected_doc_excluded_from_ledger_and_watermark(monkeypatch) -> None:
+    """seam_embed_sync-1: a doc the receiver terminally rejects (400, narrowed
+    to a single-doc batch) is NOT delivered, so it must NOT be recorded in the
+    synced-hash ledger and must NOT advance the watermark past it — else it is
+    silently marked synced and permanently dropped from Firestore."""
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    good = _job_row(job_id="job-good", status="active", content_hash="a" * 64)
+    bad = _job_row(job_id="job-bad", status="active", content_hash="b" * 64)
+    good["embedded_at"] = _dt(4)
+    bad["embedded_at"] = _dt(9)  # LATER — would advance watermark past it if recorded
+    conn = _FakeConn(active_rows=[good, bad], inactive_rows=[])
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _fake_post(url: str, *, headers: dict, json: dict, timeout: float):
+        jobs = json["jobs"]
+        # batch_size=1 below, so each call is a single doc.
+        bad_in = any(j["job_id"] == "job-bad" for j in jobs)
+
+        class _Response:
+            status_code = 400 if bad_in else 200
+            text = '{"error":"invalid"}' if bad_in else '{"ok":true}'
+
+            @property
+            def is_success(self) -> bool:
+                return self.status_code == 200
+
+            def raise_for_status(self) -> None:
+                if not self.is_success:
+                    raise httpx.HTTPStatusError(
+                        "bad", request=httpx.Request("POST", url),
+                        response=httpx.Response(self.status_code, text=self.text),
+                    )
+
+        return _Response()
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.job_sync.get_settings",
+        lambda: SimpleNamespace(
+            firebase_sync_url="https://firebase-sync.example/jobs",
+            firebase_sync_api_key="sync-secret",
+            firebase_sync_batch_size=1,
+            firebase_sync_timeout_seconds=15.0,
+            firebase_sync_collection="matching-jobs",
+        ),
+    )
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _fake_post)
+
+    stats = sync_jobs_to_firebase(since=_dt(0), full_sync=False)
+
+    assert stats["skipped_docs"] == 1
+    # the rejected doc must NOT be in the synced-hash ledger
+    assert "job-bad" not in conn.recorded_hashes
+    assert "job-good" in conn.recorded_hashes
+    # watermark must be the good doc's embedded_at (_dt(4)), NOT the bad doc's
+    # later _dt(9) — never leap past a doc that was not delivered.
+    watermark_upserts = [
+        params for sql, params in conn.calls
+        if "pipeline_sync_state" in sql.lower() and params and "value" in (params or {})
+    ]
+    # Fallback: assert via the advance helper path — the bad doc's _dt(9) must
+    # not appear as the advanced watermark.
+    advanced_values = [
+        v for params in watermark_upserts for v in params.values()
+        if isinstance(v, datetime)
+    ]
+    assert _dt(9) not in advanced_values, "watermark advanced past a skipped doc"
+
+
+def test_inactive_dead_flips_pushed_before_active(monkeypatch) -> None:
+    """seam_dead_sync-1: inactive (deactivation / dead-flip) rows must be pushed
+    BEFORE active rows so confirmed-dead removals propagate even if a later
+    active batch fails."""
+    from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
+
+    active = _job_row(job_id="job-active", status="active", content_hash="a" * 64)
+    inactive = _job_row(job_id="job-dead", status="inactive", content_hash="c" * 64)
+    conn = _FakeConn(active_rows=[active], inactive_rows=[inactive])
+    order: list[str] = []
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    def _fake_post(url: str, *, headers: dict, json: dict, timeout: float):
+        order.extend(j["status"] for j in json["jobs"])
+
+        class _Response:
+            def raise_for_status(self) -> None:
+                return None
+
+        return _Response()
+
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.job_sync.get_settings",
+        lambda: SimpleNamespace(
+            firebase_sync_url="https://firebase-sync.example/jobs",
+            firebase_sync_api_key="sync-secret",
+            firebase_sync_batch_size=10,
+            firebase_sync_timeout_seconds=15.0,
+            firebase_sync_collection="matching-jobs",
+        ),
+    )
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.get_connection", _fake_get_connection)
+    monkeypatch.setattr("wekruit_matching.pipeline.job_sync.httpx.post", _fake_post)
+
+    sync_jobs_to_firebase(since=_dt(0), full_sync=False)
+
+    assert order, "no docs pushed"
+    assert order[0] == "inactive", f"inactive must be pushed first, got order {order}"
