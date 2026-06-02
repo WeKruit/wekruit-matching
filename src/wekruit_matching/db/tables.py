@@ -212,3 +212,31 @@ feedback_table = sa.Table(
     ),
     sa.Index("ix_feedback_user_job", "user_id", "job_id"),
 )
+
+# Rolling baseline for the BLOCKING pre-sync data-quality gate (reliability
+# audit 2026-06-01, Gate-4 / IL-5). One row per tracked metric (e.g.
+# "matchable"); health_gate.assert_pre_sync_ready UPSERTs the current matchable
+# count after a clean pass and reads it back as the relative floor on the next
+# run. Mirrors alembic 0011 so the SQLAlchemy schema and the live DB agree.
+jobs_health_state_table = sa.Table(
+    "jobs_health_state",
+    metadata,
+    sa.Column(
+        "metric",
+        sa.Text,
+        primary_key=True,
+        comment="metric name, e.g. 'matchable'",
+    ),
+    sa.Column(
+        "value",
+        sa.BigInteger,
+        nullable=False,
+        comment="last known-good baseline count for this metric",
+    ),
+    sa.Column(
+        "updated_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("NOW()"),
+    ),
+)

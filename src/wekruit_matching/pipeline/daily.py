@@ -53,13 +53,19 @@ from datetime import UTC, datetime
 from loguru import logger
 
 from wekruit_matching.db.connection import get_connection
+from wekruit_matching.db.schema_guard import ensure_schema_current
 from wekruit_matching.embedding.run import embed_all
 from wekruit_matching.enrichment.run import enrich_all
 from wekruit_matching.notifications.email import (
     send_pipeline_complete_email,
     send_pipeline_start_email,
 )
-from wekruit_matching.pipeline.health_gate import run_health_gate
+from wekruit_matching.pipeline import preflight as preflight_mod
+from wekruit_matching.pipeline.health_gate import (
+    PreSyncGateError,
+    assert_pre_sync_ready,
+    run_health_gate,
+)
 from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
 from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 from wekruit_matching.pipeline.dead_backfill import (
@@ -99,6 +105,14 @@ from wekruit_matching.scraper.vc_board import (
 
 class StageTimeoutError(TimeoutError):
     """Raised by the SIGALRM handler when a stage exceeds its time budget."""
+
+
+class _PreflightAbort(Exception):
+    """Internal control-flow signal: Stage 0 preflight hard-failed (a required
+    core dependency is missing). Raised inside the main try so the always-fire
+    finalizer (completion email + ``pipelineStatus`` sentinel) still runs, then
+    caught just before ``finally`` so the run ends as 'failed' with no stages
+    executed. Never escapes ``run_daily_pipeline``."""
 
 
 @contextmanager
@@ -209,11 +223,105 @@ def run_daily_pipeline() -> dict:
     # coverage/matchable-corpus regression is caught by the pipeline, not users.
     health_metrics: dict = {}
     health_failures: list[dict] = []
+    # WS-B Gate-6: when True, the Firestore sync stage is skipped this run.
+    # Set by Stage 0 preflight (sync credential down OR WEKRUIT_SKIP_SYNC=1) or
+    # by the Stage 3.5 blocking pre-sync gate (corrupt batch must not reach
+    # Firestore). The rest of the pipeline still runs so Postgres stays current.
+    skip_sync = False
+
+    # --- WS-B CID-05: startup schema-current guard (fail fast) ---
+    # Catch ANY entrypoint that ran the pipeline without first migrating: if the
+    # DB schema is OLDER than the code expects (alembic current != head), abort
+    # the run loudly rather than operate on a skewed schema. daily-update.sh
+    # already runs `alembic upgrade head` + a head-assert before us; this is the
+    # belt-and-suspenders for direct/forgotten invocations. ensure_schema_current
+    # fails OPEN on an undeterminable revision (does not wedge), CLOSED on a real
+    # skew. Runs BEFORE the start email + any stage so a skewed run does no work.
+    # Use the module-level get_connection (so tests can patch it) and pass the
+    # open connection in, rather than letting schema_guard open its own — keeps
+    # this offline/patchable and reuses the pool connection.
+    try:
+        with get_connection() as conn:
+            ensure_schema_current(conn)
+    except Exception as e:  # noqa: BLE001 - genuine skew (RuntimeError) or worse
+        logger.error("Schema guard FAILED (aborting run): {}", e)
+        errors.append(f"Schema guard: {e}")
+        stage_outcomes["schema_guard"] = "error"
+        # Emit the sentinel + diagnostic tokens that daily-scrape.yml and
+        # daily-update.sh grep, then abort. No stage ran, so status is 'failed'.
+        try:
+            print("jobsScraped=0")
+            print("jobsNew=0")
+            print("jobsUpdated=0")
+            print(f"jobsErrored={len(errors)}")
+            print("costUsd=0")
+            print("pipelineStatus=failed")
+            for stage, outcome in stage_outcomes.items():
+                print(f"stageOutcome.{stage}={outcome}")
+        except Exception as _tok_err:  # noqa: BLE001
+            logger.warning("Failed to emit schema-guard abort tokens: {}", _tok_err)
+        return {
+            "scrape": {},
+            "errors": errors,
+            "dependency_errors": dependency_errors,
+            "duration_seconds": time.monotonic() - start,
+            "pipeline_status": "failed",
+            "stage_outcomes": stage_outcomes,
+            "health_metrics": health_metrics,
+            "health_failures": health_failures,
+        }
 
     # --- Notify: start ---
     send_pipeline_start_email()
 
     try:
+        # --- WS-B Stage 0: dependency / credential preflight ---
+        # Decide UP FRONT whether the night can sync. A missing core secret
+        # (DATABASE_URL / ANTHROPIC / OPENAI) is a HARD FAIL -> abort. A
+        # Firestore credential that is configured-but-unusable (expired/revoked
+        # SA) is a SOFT DEGRADE -> skip ONLY sync and keep scrape/enrich/embed so
+        # Postgres stays current and the next healthy night syncs the backlog.
+        # WEKRUIT_SKIP_SYNC=1 (set by daily-update.sh when preflight exited 2)
+        # forces the same degrade. preflight does NO network at import and only
+        # mints a live token when WEKRUIT_PREFLIGHT_PROBE_FIRESTORE is set.
+        logger.info("=== Stage 0: Dependency / Credential Preflight ===")
+        try:
+            pf = preflight_mod.run_preflight()
+            if pf.problems:
+                for _p in pf.problems:
+                    logger.warning("preflight: {}", _p)
+            if pf.hard_fail:
+                logger.error(
+                    "Preflight HARD FAIL (aborting run): {}",
+                    "; ".join(pf.problems) or "missing required core dependency",
+                )
+                errors.append(
+                    "Preflight hard fail: "
+                    + ("; ".join(pf.problems) or "missing required core dependency")
+                )
+                stage_outcomes["preflight"] = "error"
+                raise _PreflightAbort()
+            if (not pf.sync_ok) or os.environ.get("WEKRUIT_SKIP_SYNC") == "1":
+                skip_sync = True
+                reason = (
+                    "WEKRUIT_SKIP_SYNC=1"
+                    if os.environ.get("WEKRUIT_SKIP_SYNC") == "1"
+                    else "Firestore/sync credential down"
+                )
+                logger.warning(
+                    "degrade: sync will be skipped this run ({})", reason
+                )
+                stage_outcomes["preflight"] = "degraded"
+            else:
+                stage_outcomes["preflight"] = "ok"
+        except _PreflightAbort:
+            raise
+        except Exception as e:  # noqa: BLE001 - preflight itself failing is non-fatal
+            # The preflight is best-effort guidance; if IT crashes we proceed
+            # rather than no-op the whole night. Record it for visibility.
+            logger.warning("Preflight crashed (non-fatal, proceeding): {}", e)
+            stage_outcomes["preflight"] = "error"
+
         # --- Stage 0: Firestore dead-flag backfill (P7-K) ---
         # Mirror Firestore matching-jobs.dead==true into Postgres jobs.dead
         # so the scraper UPSERT below can short-circuit on already-dead URLs.
@@ -593,20 +701,66 @@ def run_daily_pipeline() -> dict:
             errors.append(f"Dead reconcile crash: {e}")
             stage_outcomes["reconcile_dead"] = "error"
 
+        # --- WS-B Stage 3.6: BLOCKING pre-sync data-quality gate (Gate-4) ---
+        # The post-run reliability gate (Stage 5) runs AFTER sync — too late to
+        # stop a corrupt batch from reaching the live matcher. This gate runs
+        # AFTER embed + dead-reconcile and BEFORE the Firestore sync: if any
+        # absolute matching-ready invariant is violated (stamp-without-verify,
+        # embedded-without-vector, thin-JD-with-source) or the matchable corpus
+        # dropped below the persisted floor, it RAISES PreSyncGateError and we
+        # SKIP the sync stage so the bad/regressed data never propagates. The
+        # rest of the run still completes (Postgres stays current); the next
+        # clean run syncs. Skipped entirely when sync is already being skipped
+        # (preflight degrade) — there is nothing to gate.
+        if not skip_sync:
+            logger.info("=== Stage 3.6: Pre-Sync Data-Quality Gate ===")
+            try:
+                with get_connection() as conn:
+                    assert_pre_sync_ready(conn)
+                stage_outcomes["pre_sync_gate"] = "ok"
+            except PreSyncGateError as e:
+                # Corrupt/regressed data — keep it OUT of Firestore. Skip sync,
+                # record as an error so the run is 'partial' (not 'success').
+                logger.error("Pre-sync gate BLOCKED sync: {}", e)
+                errors.append(f"Pre-sync gate blocked sync: {e}")
+                stage_outcomes["pre_sync_gate"] = "blocked"
+                skip_sync = True
+            except Exception as e:  # noqa: BLE001 - gate compute failure is non-fatal
+                # If the gate itself cannot compute (transient DB error, etc.)
+                # we do NOT skip sync: the alembic-0010 CHECK constraints already
+                # make the worst corruption states unrepresentable at the DB
+                # level, and the post-run gate (Stage 5) still runs. Record it
+                # in stage_outcomes (NOT in `errors`) so it surfaces without
+                # flipping pipeline_status — mirrors Stage 4.5's non-fatal path.
+                logger.warning(
+                    "Pre-sync gate could not run (non-fatal, proceeding to "
+                    "sync): {}", e
+                )
+                stage_outcomes["pre_sync_gate"] = "error"
+
         # --- Stage 4: Sync active/inactive jobs to Firebase ---
-        logger.info("=== Stage 4: Firebase Job Sync ===")
-        try:
-            with _stage_timeout("sync", STAGE_BUDGETS["sync"]):
-                sync_stats = sync_jobs_to_firebase(since=run_started_at, full_sync=False)
-                logger.info("Firebase sync stats: {}", sync_stats)
-                stage_outcomes["sync"] = "ok"
-        except StageTimeoutError as e:
-            _record_timeout(errors, "sync", e)
-            stage_outcomes["sync"] = "timeout"
-        except Exception as e:
-            logger.error("Job sync crashed: {}", e)
-            errors.append(f"Job sync crash: {e}")
-            stage_outcomes["sync"] = "error"
+        # Guarded by skip_sync: a degraded sync credential (Stage 0) OR a
+        # tripped pre-sync gate (Stage 3.6) skips this stage so the night still
+        # refreshes Postgres without shipping bad/credential-less data.
+        if skip_sync:
+            logger.warning(
+                "=== Stage 4: Firebase Job Sync SKIPPED (skip_sync set) ==="
+            )
+            stage_outcomes["sync"] = "skipped"
+        else:
+            logger.info("=== Stage 4: Firebase Job Sync ===")
+            try:
+                with _stage_timeout("sync", STAGE_BUDGETS["sync"]):
+                    sync_stats = sync_jobs_to_firebase(since=run_started_at, full_sync=False)
+                    logger.info("Firebase sync stats: {}", sync_stats)
+                    stage_outcomes["sync"] = "ok"
+            except StageTimeoutError as e:
+                _record_timeout(errors, "sync", e)
+                stage_outcomes["sync"] = "timeout"
+            except Exception as e:
+                logger.error("Job sync crashed: {}", e)
+                errors.append(f"Job sync crash: {e}")
+                stage_outcomes["sync"] = "error"
 
         # --- Stage 4.5: Firestore <-> Postgres reconcile (fix #5) ---
         # Distinct from Stage 5's PG-side data-quality FLOORS: this is a
@@ -731,6 +885,13 @@ def run_daily_pipeline() -> dict:
                     "message": f"reliability gate raised: {e}",
                 }
             ]
+
+    except _PreflightAbort:
+        # Stage 0 hard fail (missing required core dependency). No stage ran;
+        # fall through to the always-fire finalizer so the completion email +
+        # the pipelineStatus sentinel still emit. core_ok == 0 -> status
+        # 'failed'. The error is already recorded in `errors`.
+        logger.error("Aborting run: Stage 0 preflight hard fail")
 
     finally:
         # =========================================================

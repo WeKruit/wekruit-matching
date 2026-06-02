@@ -490,6 +490,177 @@ def run_health_gate(
     return {"ok": ok, "metrics": metrics, "failures": failures}
 
 
+# ---------------------------------------------------------------------------
+# BLOCKING pre-sync gate (reliability audit 2026-06-01, Gate-4 / IL-5).
+#
+# ``run_health_gate`` above is the POST-run observability gate: it runs AFTER
+# sync and flips the run status when data quality regressed. That is too late to
+# stop a corrupt batch from reaching Firestore (the live matcher already served
+# it). ``assert_pre_sync_ready`` is the BLOCKING gate the orchestrator calls
+# AFTER embed and BEFORE the Firestore sync: on any absolute-invariant violation
+# it RAISES, so the caller skips the sync stage and corrupt data never
+# propagates to users.
+#
+# It deliberately reuses the EXACT metric queries in ``compute_metrics`` (the
+# same predicates the post-run gate and the live sync gate use) — no new
+# predicate is invented here, so writer and reader can never drift.
+#
+# The relative "matchable floor" comes from a rolling baseline persisted in the
+# ``jobs_health_state`` table (metric == "matchable"). On the FIRST run (no
+# baseline) only the absolute ==0 invariants are enforced and the relative floor
+# is skipped (logged), so a healthy first run is never blocked. After a
+# successful pass the current matchable count is UPSERTed as the new baseline.
+# ---------------------------------------------------------------------------
+
+# Table mirrored in db.tables + alembic 0011. Created/owned by the migration;
+# this module only reads/upserts the "matchable" baseline row.
+_HEALTH_STATE_TABLE = "jobs_health_state"
+_MATCHABLE_METRIC = "matchable"
+
+
+class PreSyncGateError(Exception):
+    """Raised by ``assert_pre_sync_ready`` when an absolute matching-ready
+    invariant is violated (or matchable dropped below the persisted floor),
+    signalling the caller to SKIP the Firestore sync so corrupt/regressed data
+    does not reach the live matcher."""
+
+
+def _read_matchable_baseline(conn) -> int | None:
+    """Return the last persisted matchable baseline, or None if absent.
+
+    Fail-soft: a missing table/row or unreadable value yields None (which
+    disables the relative floor for this run — the absolute invariants still
+    apply). Never raises.
+    """
+    try:
+        row = conn.execute(
+            f"SELECT value FROM {_HEALTH_STATE_TABLE} WHERE metric = %(m)s",
+            {"m": _MATCHABLE_METRIC},
+        ).fetchone()
+    except Exception as e:  # noqa: BLE001 - table may be absent / mock / transient
+        logger.warning(
+            "[health_gate] could not read matchable baseline: {}", e
+        )
+        return None
+    if row is None:
+        return None
+    value = row.get("value") if isinstance(row, dict) else (row[0] if row else None)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _upsert_matchable_baseline(conn, value: int) -> None:
+    """Persist the current matchable count as the rolling baseline.
+
+    Fail-soft: a write failure is logged and swallowed so the gate never blocks
+    a clean run merely because the baseline could not be recorded.
+    """
+    try:
+        conn.execute(
+            f"""
+            INSERT INTO {_HEALTH_STATE_TABLE} (metric, value, updated_at)
+            VALUES (%(m)s, %(v)s, now())
+            ON CONFLICT (metric) DO UPDATE
+                SET value = EXCLUDED.value,
+                    updated_at = now()
+            """,
+            {"m": _MATCHABLE_METRIC, "v": int(value)},
+        )
+        commit = getattr(conn, "commit", None)
+        if callable(commit):
+            commit()
+    except Exception as e:  # noqa: BLE001 - baseline persistence is best-effort
+        logger.warning(
+            "[health_gate] could not persist matchable baseline: {}", e
+        )
+
+
+def assert_pre_sync_ready(conn) -> None:
+    """BLOCKING pre-sync data-quality gate.
+
+    Computes the absolute matching-ready invariants from the live DB (reusing
+    ``compute_metrics``) and raises :class:`PreSyncGateError` if ANY of:
+
+      * ``stamp_without_verify_violations`` > 0
+      * ``embedded_no_vector_violations``   > 0
+      * ``stamped_thin_jd``                 > 0
+      * ``matchable_corpus`` < persisted floor (only when a baseline exists)
+
+    On a clean pass the current matchable count is UPSERTed into
+    ``jobs_health_state`` as the rolling baseline. On the first run (no baseline)
+    only the absolute ==0 invariants are enforced; the relative floor is skipped
+    and logged (a healthy first run is never blocked).
+
+    Args:
+        conn: a live psycopg connection (dict_row), as produced by
+            ``db.connection.get_connection``.
+
+    Raises:
+        PreSyncGateError: on any absolute-invariant violation or a matchable
+            drop below the persisted floor.
+    """
+    metrics = compute_metrics(conn)
+
+    swv = int(metrics.get("stamp_without_verify_violations", 0) or 0)
+    env = int(metrics.get("embedded_no_vector_violations", 0) or 0)
+    thin = int(metrics.get("stamped_thin_jd", 0) or 0)
+    matchable = int(metrics.get("matchable_corpus", 0) or 0)
+
+    problems: list[str] = []
+    if swv > 0:
+        problems.append(
+            f"stamp_without_verify_violations={swv} (active rows marked "
+            f"enriched with a usable JD>=200 but ZERO skills -> locked out of "
+            f"embed/matching; must be 0)"
+        )
+    if env > 0:
+        problems.append(
+            f"embedded_no_vector_violations={env} (active rows with "
+            f"embedded_at set but a NULL vector -> matcher scores against "
+            f"nothing; must be 0)"
+        )
+    if thin > 0:
+        problems.append(
+            f"stamped_thin_jd={thin} (active rows carrying a real ATS "
+            f"jd_fetch_source on a sub-200 JD -> certified fetched but "
+            f"unusable; must be 0)"
+        )
+
+    floor = _read_matchable_baseline(conn)
+    if floor is None:
+        logger.info(
+            "[health_gate] pre-sync gate: no matchable baseline yet -> "
+            "enforcing absolute invariants only, relative floor SKIPPED "
+            "(matchable={})",
+            matchable,
+        )
+    elif matchable < floor:
+        problems.append(
+            f"matchable_corpus={matchable} dropped below persisted floor "
+            f"{floor} -> corpus regression; refusing to sync a shrunken "
+            f"matchable set to the live matcher"
+        )
+
+    if problems:
+        detail = (
+            "pre-sync gate BLOCKED sync — "
+            + "; ".join(problems)
+            + ". Corrupt/regressed data was kept OUT of Firestore."
+        )
+        logger.error("[health_gate] {}", detail)
+        raise PreSyncGateError(detail)
+
+    # Clean pass — advance the rolling baseline to the current matchable count.
+    _upsert_matchable_baseline(conn, matchable)
+    logger.success(
+        "[health_gate] pre-sync gate PASS: matchable={} (baseline updated); "
+        "no absolute-invariant violations",
+        matchable,
+    )
+
+
 def main() -> int:
     result = run_health_gate()
     return 0 if result["ok"] else 1
