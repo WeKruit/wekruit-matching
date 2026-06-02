@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import httpx
 
+from wekruit_matching.enrichment.readiness import jd_usable
 from wekruit_matching.pipeline.ats_enricher import AtsJobData, build_ats_job_data, normalize_text
 from wekruit_matching.pipeline.url_classifier import normalize_job_url
 
@@ -112,7 +113,8 @@ async def run_with_timeout(awaitable, *, timeout_seconds: float):
 def _has_jd_content(markdown: str | None) -> bool:
     """Heuristic: markdown is a real JD only if it is substantive and job-like."""
     text = normalize_text(markdown)
-    if len(text) < 200:
+    # Length floor shared with every other stage (rank 3).
+    if not jd_usable(text):
         return False
     lowered = text.lower()
     return any(keyword in lowered for keyword in _JD_KEYWORDS)

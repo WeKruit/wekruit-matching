@@ -58,6 +58,7 @@ from loguru import logger
 
 from wekruit_matching.config import get_settings
 from wekruit_matching.db.connection import get_connection
+from wekruit_matching.enrichment.readiness import jd_usable
 from wekruit_matching.pipeline.ats_enricher import (
     AtsJobData,
     fetch_ashby_job,
@@ -189,8 +190,8 @@ def _jd_is_thin(data: AtsJobData | None) -> bool:
     """
     if data is None:
         return True
-    jd = (getattr(data, "description_plain", None) or "")
-    return len(jd.strip()) < 200
+    # Shared readiness definition (rank 3): "thin" == not a usable JD.
+    return not jd_usable(getattr(data, "description_plain", None))
 
 
 async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:

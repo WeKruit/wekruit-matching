@@ -83,7 +83,11 @@ COMPANY_SIZE_VOCAB: frozenset[str] = frozenset({"startup", "midsize", "large", "
 # is missing or shorter than this threshold. Worker handles the None
 # return by skipping the UPDATE — row stays eligible for next run when
 # Stage 2b may have landed a real JD.
-MIN_JD_CHARS_FOR_SKILLS = 200
+# Sourced from the shared readiness module (rank 3) so every stage's JD-length
+# floor is ONE definition; this alias is kept for backward compatibility.
+from wekruit_matching.enrichment.readiness import MIN_JD_CHARS  # noqa: E402
+
+MIN_JD_CHARS_FOR_SKILLS = MIN_JD_CHARS
 
 
 # ---------------------------------------------------------------------------
