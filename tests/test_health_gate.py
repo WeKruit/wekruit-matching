@@ -68,6 +68,7 @@ def test_default_thresholds_sane():
     # STAMP_WITHOUT_VERIFY guards are zero-tolerance invariants.
     assert t["max_stamp_without_verify_violations"] == 0
     assert t["max_embedded_no_vector_violations"] == 0
+    assert t["max_stamped_thin_jd"] == 0
 
 
 # --- STAMP_WITHOUT_VERIFY guard (2026-06-01 JobRight lockout class) ----------
@@ -133,6 +134,22 @@ def test_embedded_no_vector_zero_passes():
     m = _healthy_metrics()
     m["embedded_no_vector_violations"] = 0
     assert not any(f["metric"] == "embedded_no_vector_violations"
+                   for f in hg.evaluate(m, prior=None))
+
+
+def test_stamped_thin_jd_hard_fails():
+    """jd-fetch STAMP_WITHOUT_VERIFY: a real ATS source on a sub-200 JD ->
+    hard-fail at >0 (cleared the 32-row floor, then enabled the gate)."""
+    m = _healthy_metrics()
+    m["stamped_thin_jd"] = 4
+    keys = {f["metric"] for f in hg.evaluate(m, prior=None)}
+    assert "stamped_thin_jd" in keys
+
+
+def test_stamped_thin_jd_zero_passes():
+    m = _healthy_metrics()
+    m["stamped_thin_jd"] = 0
+    assert not any(f["metric"] == "stamped_thin_jd"
                    for f in hg.evaluate(m, prior=None))
 
 

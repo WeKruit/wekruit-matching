@@ -90,6 +90,11 @@ DEFAULT_THRESHOLDS: dict[str, float] = {
     # never valid — the matcher would score against nothing. 0 live violations
     # today, so this is a safe hard-fail.
     "max_embedded_no_vector_violations": 0,
+    # jd-fetch invariant: a real ATS source name stamped on a sub-200 JD ("done"
+    # but unusable). Cleared to 0 (rewrote the 32 floor rows to 'failed' so they
+    # re-enter Stage 2b) once ranks 5/6 stopped NEW thin stamps -> now a
+    # zero-tolerance hard-fail.
+    "max_stamped_thin_jd": 0,
     # Relative drop guards (apply only when a prior run exists).
     "max_matchable_drop_frac": 0.10,   # matchable corpus not down >10% vs prior
     "max_active_drop_frac": 0.10,      # active count not down >10% vs prior
@@ -353,6 +358,17 @@ def evaluate(
                   f"-> certified embedded with no vector. The matcher would score "
                   f"against nothing. An embed writer stamped the done-flag without "
                   f"persisting the vector it certifies. Must be 0.")
+        )
+
+    thin = g(metrics, "stamped_thin_jd")
+    if thin is not None and thin > t.get("max_stamped_thin_jd", 0):
+        failures.append(
+            _fail("stamped_thin_jd", thin,
+                  t.get("max_stamped_thin_jd", 0),
+                  f"{thin} active job(s) carry a real ATS jd_fetch_source on a "
+                  f"sub-200 JD -> fetch certified 'done' with an unusable body, "
+                  f"so the row never embeds and never re-fetches. A JD-fetch "
+                  f"writer stamped a source name without a usable JD. Must be 0.")
         )
 
     # --- relative guards (need a prior run) --------------------------------
