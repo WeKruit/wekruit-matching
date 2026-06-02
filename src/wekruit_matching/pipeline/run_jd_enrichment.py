@@ -476,6 +476,18 @@ def _process_one_job(
             out["failed_route"] = route.value
             out["failed"] = 1
             return out
+        # rank-5 fix: a non-None result can still carry a thin/empty JD (both the
+        # ATS API and the Firecrawl fallback came back short). Writing
+        # _write_success would stamp a real jd_fetch_source (= "done") on a body
+        # that fails the >=200 matchable gate -> the row is "fetched" but never
+        # "usable", never re-fetched (Stage 2b re-admits only source='failed'),
+        # and never embeds. Treat a thin result as a FAILURE so it stays
+        # jd_fetch_source='failed' and re-enters Stage 2b after the stale window.
+        if not jd_usable(getattr(result, "description_plain", None)):
+            _write_failure(write_conn, row["job_id"], permanent_404=False)
+            out["failed_route"] = route.value
+            out["failed"] = 1
+            return out
         _write_success(write_conn, row["job_id"], result)
     except ClosedAtSourceError as exc:
         # ATS page returned 200 + body says "closed". Tombstone with
@@ -618,12 +630,17 @@ def run_jd_enrichment(
             SELECT job_id, company_name, role_title, primary_url, ats_apply_url
             FROM jobs
             WHERE status = 'active'
-              AND (job_description IS NULL OR job_description = '')
+              -- rank-6 fix: admit any row WITHOUT a usable JD body — NULL, empty,
+              -- OR thin (<200). The old `IS NULL OR = ''` clause excluded a
+              -- 1..199-char JD, so a row stamped with a real source name on a
+              -- thin body (the rank-5 class, pre-fix) could never re-enter and
+              -- never embed. Mirrors readiness.jd_usable's >=200 floor.
+              AND (job_description IS NULL OR length(job_description) < 200)
               -- Pre-filter dropped 2026-05-20 (matching-quality launch blocker):
               -- the prior ``primary_url NOT LIKE jobright OR ats_apply_url NOT
               -- LIKE jobright`` clause silently hid jobright-only rows from
               -- every metric so the 6,888 NULL-JD backlog showed up as "no
-              -- pending work". Now every active null-JD row is admitted; the
+              -- pending work". Now every active thin-JD row is admitted; the
               -- _pick_target_url skip-path marks no-fetchable-URL rows with
               -- ``jd_fetch_source='skip_no_url'`` so they leave the queue
               -- after one pass (still re-enter when an ATS URL is backfilled
@@ -631,7 +648,12 @@ def run_jd_enrichment(
               AND (
                 jd_fetch_attempted_at IS NULL
                 OR (
-                  jd_fetch_source = 'failed'
+                  -- Re-admit a stale prior attempt for recovery. rank-6: this
+                  -- now covers BOTH 'failed' AND a real-source stamp left on a
+                  -- thin body (the row still has length<200 per the clause
+                  -- above), so already-stamped thin rows are not stuck forever.
+                  jd_fetch_source <> 'skip_no_url'
+                  AND jd_fetch_source <> 'closed_at_source'
                   AND COALESCE(permanent_404, FALSE) = FALSE
                   AND jd_fetch_attempted_at < NOW() - INTERVAL '{STAGE2B_STALE_DAYS} days'
                 )

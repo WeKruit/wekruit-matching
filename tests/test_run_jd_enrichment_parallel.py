@@ -140,7 +140,7 @@ def _make_sleeping_fetcher(probe: _ConcurrencyProbe, *, sleep_s: float = 0.1):
             probe.exit()
         return build_ats_job_data(
             source="greenhouse",
-            description_plain=f"JD for {url}",
+            description_plain=f"JD for {url}." + ' Responsibilities include building production services and collaborating across teams; requirements include strong CS fundamentals, prior project or internship experience, and the ability to ship features end to end in a fast-moving environment with high autonomy.',
             qualifications=["Python"],
         )
 
@@ -256,7 +256,7 @@ def test_parallel_per_job_error_isolation(monkeypatch):
             probe.exit()
         return build_ats_job_data(
             source="greenhouse",
-            description_plain=f"JD for {idx}",
+            description_plain=f"JD for {idx}." + ' Responsibilities include building production services and collaborating across teams; requirements include strong CS fundamentals, prior project or internship experience, and the ability to ship features end to end in a fast-moving environment with high autonomy.',
             qualifications=["Python"],
         )
 
@@ -297,7 +297,7 @@ def test_parallel_preserves_result_shape(monkeypatch):
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
         lambda url: build_ats_job_data(
             source="greenhouse",
-            description_plain="JD",
+            description_plain="JD." + ' Responsibilities include building production services and collaborating across teams; requirements include strong CS fundamentals, prior project or internship experience, and the ability to ship features end to end in a fast-moving environment with high autonomy.',
             qualifications=["Python"],
         ),
     )
@@ -380,7 +380,7 @@ def test_parallel_idempotency_same_input_same_writes(monkeypatch):
     def _deterministic_fetcher(url: str):
         return build_ats_job_data(
             source="greenhouse",
-            description_plain=f"JD body for {url}",
+            description_plain=f"JD body for {url}." + ' Responsibilities include building production services and collaborating across teams; requirements include strong CS fundamentals, prior project or internship experience, and the ability to ship features end to end in a fast-moving environment with high autonomy.',
             qualifications=["Python", "SQL"],
         )
 

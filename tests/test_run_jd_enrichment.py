@@ -62,7 +62,8 @@ def test_run_jd_enrichment_writes_successful_greenhouse_results(monkeypatch) -> 
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
         lambda url: build_ats_job_data(
             source="greenhouse",
-            description_plain="Build APIs for the matching engine.",
+            description_plain="Build APIs for the matching engine."
+            + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.',
             qualifications=["Python"],
         ),
     )
@@ -83,7 +84,12 @@ def test_run_jd_enrichment_writes_successful_greenhouse_results(monkeypatch) -> 
     ]
     assert update_params
     assert update_params[0]["jd_fetch_source"] == "greenhouse"
-    assert update_params[0]["job_description"] == "Build APIs for the matching engine."
+    # JD fixture padded to >=200 chars (rank-5: a thin JD is now rejected as a
+    # failure, so a SUCCESS fixture must carry a realistic full-length body).
+    assert update_params[0]["job_description"].startswith(
+        "Build APIs for the matching engine."
+    )
+    assert len(update_params[0]["job_description"]) >= 200
     assert update_params[0]["qualifications"] == ["Python"]
     assert len(update_params[0]["ats_content_hash"]) == 64
 
@@ -152,7 +158,8 @@ def test_run_jd_enrichment_uses_search_before_fetching_aggregator_urls(monkeypat
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
         lambda url: build_ats_job_data(
             source="greenhouse",
-            description_plain="Research ranking models for interns.",
+            description_plain="Research ranking models for interns."
+            + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.',
         ),
     )
 
@@ -212,13 +219,21 @@ def test_select_query_uses_two_clause_gating_with_staleness_window() -> None:
     assert "COALESCE(permanent_404, FALSE) = FALSE" in select_query, (
         "SELECT must exclude permanent 404 rows even after staleness window"
     )
-    assert "jd_fetch_source = 'failed'" in select_query, (
-        "SELECT staleness branch must scope to failed rows (not e.g. 'serper')"
+    # rank-6: the staleness branch was widened from `= 'failed'` to "any source
+    # except the terminal sentinels" so a real-source name left on a THIN body
+    # (the rank-5 pre-fix class) can still recover. permanent_404 + the
+    # length<200 clause keep it scoped to genuinely-unusable rows.
+    assert "jd_fetch_source <> 'skip_no_url'" in select_query, (
+        "SELECT staleness branch must exclude skip_no_url sentinel"
+    )
+    assert "jd_fetch_source <> 'closed_at_source'" in select_query, (
+        "SELECT staleness branch must exclude closed_at_source tombstones"
     )
 
 
 def test_select_query_keeps_data_gap_predicate() -> None:
-    """Fully-fetched jobs (have JD) must never re-enter regardless of age."""
+    """Fully-fetched jobs (usable JD >=200) must never re-enter regardless of age;
+    NULL or THIN (<200) JD rows are admitted (rank-6)."""
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 
     conn = _FakeConn([[]])
@@ -232,7 +247,7 @@ def test_select_query_keeps_data_gap_predicate() -> None:
 
     select_query = next(q for q, _ in conn.executed if q.lstrip().startswith("SELECT"))
     assert "job_description IS NULL" in select_query
-    assert "job_description = ''" in select_query
+    assert "length(job_description) < 200" in select_query
 
 
 def test_404_response_marks_permanent_404_true(monkeypatch) -> None:
@@ -445,7 +460,8 @@ def test_successful_fetch_clears_permanent_404_flag(monkeypatch) -> None:
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
         lambda url: build_ats_job_data(
             source="greenhouse",
-            description_plain="JD content available now.",
+            description_plain="JD content available now."
+            + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.',
         ),
     )
 
@@ -569,7 +585,8 @@ def test_jobright_primary_url_falls_back_to_ats_apply_url(monkeypatch) -> None:
         fetched_urls.append(url)
         return build_ats_job_data(
             source="greenhouse",
-            description_plain="Resolved via ats_apply_url fallback.",
+            description_plain="Resolved via ats_apply_url fallback."
+            + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.',
         )
 
     monkeypatch.setattr(
@@ -620,7 +637,7 @@ def test_real_ats_apply_url_preferred_over_primary_url(monkeypatch) -> None:
 
     def _capture_fetch(url: str):
         fetched_urls.append(url)
-        return build_ats_job_data(source="greenhouse", description_plain="ok")
+        return build_ats_job_data(source="greenhouse", description_plain="ok" + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.')
 
     monkeypatch.setattr(
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
@@ -665,7 +682,7 @@ def test_jobright_only_url_fetches_jobright_page(monkeypatch) -> None:
 
     def _capture_jobright(url: str):
         fetched_urls.append(url)
-        return build_ats_job_data(source="jobright", description_plain="Jobright inline JD")
+        return build_ats_job_data(source="jobright", description_plain="Jobright inline JD" + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.')
 
     monkeypatch.setattr(
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_jobright_job",
@@ -729,7 +746,7 @@ def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "wekruit_matching.pipeline.run_jd_enrichment.fetch_greenhouse_job",
-        lambda url: build_ats_job_data(source="greenhouse", description_plain="ok"),
+        lambda url: build_ats_job_data(source="greenhouse", description_plain="ok" + ' We are hiring across our engineering org; responsibilities include building and shipping production services, collaborating with cross-functional teams, and owning features end to end. Requirements: strong fundamentals and prior internship or project experience.'),
     )
 
     stats = run_jd_enrichment(

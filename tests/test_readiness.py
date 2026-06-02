@@ -83,6 +83,7 @@ def test_no_rogue_jd_length_literal_outside_readiness():
         "pipeline/job_sync.py",              # SQL gate
         "pipeline/dead_backfill.py",         # SQL gate
         "embedding/worker.py",               # SQL gate
+        "pipeline/run_jd_enrichment.py",     # Stage 2b SQL re-entry gate (rank 6)
         "pipeline/ats_enricher.py",          # data_quality_score banding
         "scraper/yc.py",                     # unrelated 200-char field check
     }
