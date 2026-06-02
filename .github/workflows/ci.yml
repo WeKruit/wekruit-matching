@@ -89,8 +89,13 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: uv sync (frozen)
-        run: uv sync --frozen
+      - name: uv sync (frozen, incl. dev)
+        # --extra dev is REQUIRED: pytest / pytest-asyncio / pytest-timeout live
+        # in the `dev` optional-dependency group. Plain `uv sync --frozen` omits
+        # it, so `uv run pytest` fails with "Failed to spawn: pytest". Core deps
+        # (alembic etc.) install either way, which is why migrations passed but
+        # the test step did not.
+        run: uv sync --frozen --extra dev
 
       - name: alembic upgrade head
         run: uv run alembic upgrade head
