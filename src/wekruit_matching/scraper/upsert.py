@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 import psycopg
 from loguru import logger
 
+from wekruit_matching.enrichment.readiness import is_matchable_ready
 from wekruit_matching.models.job import Job
 
 
@@ -376,7 +377,17 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     "company_size": job.company_size,
                     "required_skills": job.required_skills or [],
                     "sponsorship": job.sponsorship,
-                    "enriched_at": now if job.industry else None,
+                    # rank-14 fix: stamp enriched_at on the SHARED readiness
+                    # predicate (usable JD + skills), NOT on industry presence.
+                    # jobright_github always sets industry=category with empty
+                    # skills, so the old `if job.industry` stamped enriched_at on
+                    # a 0-skill row -> excluded from the gap-fill re-enricher for
+                    # 7 days and from the embed gate forever (the lockout class).
+                    "enriched_at": (
+                        now
+                        if is_matchable_ready(job.job_description, job.required_skills)
+                        else None
+                    ),
                     "seniority_level": job.seniority_level,
                     "role_function": job.role_function or [],
                     "sources": job.sources or [],

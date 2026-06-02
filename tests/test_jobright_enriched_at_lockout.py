@@ -64,12 +64,12 @@ class _FakeConn:
         return self._cursor.updates
 
 
-def _patch_fetch(monkeypatch, *, skills):
-    """Make _fetch_job_detail return a detail dict with the given skills."""
+def _patch_fetch(monkeypatch, *, skills, jd_text="A sufficiently long job description. " * 10):
+    """Make _fetch_job_detail return a detail dict with the given skills + JD."""
     def _fake(url):
         return {
             "skills": skills,
-            "jd_text": "A sufficiently long job description. " * 10,
+            "jd_text": jd_text,
             "responsibilities": [],
             "qualifications": [],
             "industry_list": [],
@@ -102,7 +102,7 @@ def test_empty_skills_does_not_stamp_enriched_at(monkeypatch) -> None:
 
 
 def test_nonempty_skills_stamps_enriched_at(monkeypatch) -> None:
-    """A JobRight job WITH skills must stamp enriched_at = NOW() as before."""
+    """A JobRight job WITH skills AND a usable JD must stamp enriched_at = NOW()."""
     _patch_fetch(monkeypatch, skills=["python", "sql"])
     conn = _FakeConn([[{"job_id": "j2", "primary_url": "https://jobright.ai/y", "role_title": "Eng"}], []])
 
@@ -110,7 +110,28 @@ def test_nonempty_skills_stamps_enriched_at(monkeypatch) -> None:
 
     assert len(conn.updates) == 1
     sql, _params = conn.updates[0]
-    assert "enriched_at = NOW()" in sql, "skills-present row must stamp enriched_at"
+    assert "enriched_at = NOW()" in sql, "skills + usable-JD row must stamp enriched_at"
+    assert "job_description = %(jd_text)s" in sql, "usable JD must be persisted"
+
+
+def test_skills_with_short_jd_does_not_stamp_or_persist_thin_jd(monkeypatch) -> None:
+    """rank-4: skills present BUT a short (<200) JD must NOT stamp enriched_at
+    (would fail the embed length gate -> lockout from the other side) and must
+    NOT persist the thin JD (so Stage 2b re-fetches the full page)."""
+    _patch_fetch(monkeypatch, skills=["python", "sql"], jd_text="too short")
+    conn = _FakeConn([[{"job_id": "j3", "primary_url": "https://jobright.ai/z", "role_title": "Eng"}], []])
+
+    ej.enrich_all_jobs(conn, max_workers=1, batch_size=50)
+
+    assert len(conn.updates) == 1
+    sql, _params = conn.updates[0]
+    assert "enriched_at = NOW()" not in sql, (
+        "skills + SHORT JD must NOT stamp enriched_at (embed length gate would lock it out)"
+    )
+    assert "job_description = %(jd_text)s" not in sql, (
+        "a thin JD must NOT be persisted (keeps the row eligible for Stage 2b re-fetch)"
+    )
+    assert "required_skills" in sql
 
 
 def test_empty_skills_run_terminates(monkeypatch) -> None:

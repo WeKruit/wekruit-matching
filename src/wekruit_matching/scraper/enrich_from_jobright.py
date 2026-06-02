@@ -26,6 +26,7 @@ import httpx
 import psycopg
 from loguru import logger
 
+from wekruit_matching.enrichment.readiness import is_matchable_ready, jd_usable
 from wekruit_matching.scraper.jobright import _extract_skills_from_qualifications, _map_industry
 from wekruit_matching.scraper.skill_normalize import normalize_skills
 
@@ -311,9 +312,19 @@ def enrich_all_jobs(
             # SELECT picks up enriched_at IS NULL + empty skills) which extracts
             # skills reliably on retry. The in-run attempted_ids set above stops
             # this from re-looping forever within a single run.
-            has_skills = bool(r["skills"])
+            # rank-4 fix: only stamp enriched_at when the row is genuinely
+            # matchable-ready (usable JD >=200 AND skills>0), via the shared
+            # readiness predicate. skills>0 alone is NOT enough — a short JD
+            # fails the embed gate's length floor, so stamping enriched_at on a
+            # skills+short-JD row would re-create the lockout from the other
+            # side. And do NOT persist a thin jd_text: leaving job_description
+            # NULL keeps the row eligible for Stage 2b's full-page jobright
+            # re-fetch (the /jobs/info/<id> page carries the ~3,800-char JD).
+            jd_text = r.get("jd_text") or ""
+            jd_ok = jd_usable(jd_text)
+            ready = is_matchable_ready(jd_text, r["skills"])
             set_parts = ["required_skills = %(skills)s"]
-            if has_skills:
+            if ready:
                 set_parts.append("enriched_at = NOW()")
             params: dict = {"job_id": r["job_id"], "skills": r["skills"]}
 
@@ -326,10 +337,11 @@ def enrich_all_jobs(
                         return [_sanitize(v) for v in val]
                     return val
 
-                # Store all rich data
-                if r.get("jd_text"):
+                # Store all rich data — but only persist the JD when it is
+                # usable (>=200); a thin JD stays NULL so Stage 2b re-fetches.
+                if jd_ok:
                     set_parts.append("job_description = %(jd_text)s")
-                    params["jd_text"] = _sanitize(r["jd_text"])
+                    params["jd_text"] = _sanitize(jd_text)
                 if r.get("responsibilities"):
                     set_parts.append("core_responsibilities = %(responsibilities)s")
                     params["responsibilities"] = _sanitize(r["responsibilities"])
