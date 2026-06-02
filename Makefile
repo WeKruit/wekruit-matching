@@ -56,3 +56,24 @@ rebuild: ## Force-rebuild the app image
 
 nuke: ## Stop and DROP the PG volume — destroys all local pipeline data
 	$(DC) down -v
+
+# ---------------------------------------------------------------------------
+# Test gate — mirrors .github/workflows/ci.yml so you can run it locally.
+# ---------------------------------------------------------------------------
+# `make ci` reproduces the CI job 1:1 (migrate + round-trip + full pytest) and
+# assumes DATABASE_URL + WEKRUIT_TEST_DB already point at a THROWAWAY *_test DB.
+# It runs no scrape / LLM stage — same as CI.
+
+.PHONY: test test-integration ci
+
+test: ## Run the fast unit suite (no DB / no integration tests)
+	uv run pytest -q -m "not integration"
+
+test-integration: ## Run the full suite incl. DB integration tests (needs WEKRUIT_TEST_DB=1 + a *_test DB)
+	uv run pytest -q
+
+ci: ## Reproduce the CI gate locally: migrate + alembic round-trip + full pytest
+	uv run alembic upgrade head
+	uv run alembic downgrade -1
+	uv run alembic upgrade head
+	uv run pytest -q

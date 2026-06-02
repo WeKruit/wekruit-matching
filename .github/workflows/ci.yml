@@ -1,0 +1,122 @@
+name: ci
+
+# ---------------------------------------------------------------------------
+# Cheap DB-backed test gate (no LLM / network spend).
+# ---------------------------------------------------------------------------
+# This is the missing enforcement boundary: it runs the FULL pytest suite —
+# including the DB-integration and CHECK-constraint tests — plus a forward +
+# round-trip alembic migration, against an ephemeral pgvector Postgres, on every
+# push and PR to main.
+#
+# It deliberately runs NO scrape / enrichment / embedding / sync stage and is
+# given NO Anthropic / OpenAI / Firestore / Serper / Firecrawl / Mailgun secret.
+# The owner's directive is explicit: do NOT spend money running the scrape on
+# GitHub (see daily-scrape.yml). So this gate stays $0 — it is only tests +
+# migrations — which is exactly what makes it safe to mark as a *required*
+# branch-protection check on `main`.
+#
+# Because the job exports WEKRUIT_TEST_DB=1 and a *_test database, the
+# integration-marked tests actually execute here (they skip locally without
+# that env). The final step then fails the build if the integration suite
+# collected 0 tests — so the DB-correctness suite can never silently go dark.
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    branches:
+      - main
+      - "**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (migrations + full pytest)
+    runs-on: ubuntu-22.04
+
+    # Postgres 16 with pgvector — same engine the macmini + daily-scrape use.
+    # NOTE: POSTGRES_DB ends with `_test` on purpose: tests/conftest.py refuses
+    # to hand out a DB connection unless the database name ends with `_test`
+    # (prod-safety guard), so this name is load-bearing.
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: wekruit
+          POSTGRES_PASSWORD: wekruit_ci
+          POSTGRES_DB: wekruit_matching_test
+        ports:
+          - 5432:5432
+        # Wait for `pg_isready` before letting the job step run. Without this we
+        # race the alembic migration.
+        options: >-
+          --health-cmd="pg_isready -U wekruit -d wekruit_matching_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # The `_test` suffix is required by the conftest prod-safety guard.
+      DATABASE_URL: postgresql+psycopg://wekruit:wekruit_ci@localhost:5432/wekruit_matching_test
+      WEKRUIT_TEST_DB: "1"
+      # A non-secret placeholder so pydantic-settings is satisfied; this job
+      # never serves the API, so the value is intentionally inert.
+      API_SECRET_KEY: ci-not-served
+      LOG_LEVEL: WARNING
+      # No ANTHROPIC / OPENAI / FIRESTORE / SERPER / FIRECRAWL / MAILGUN secret is
+      # set: this gate runs no network stage, which keeps it free.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.18"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: uv sync (frozen)
+        run: uv sync --frozen
+
+      - name: alembic upgrade head
+        run: uv run alembic upgrade head
+
+      - name: alembic round-trip (downgrade -1, re-upgrade) [Gate 3]
+        # Proves the newest migration is reversible and re-appliable — catches a
+        # broken downgrade() before it ships, not in an incident.
+        run: |
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+
+      - name: pytest (full suite, incl. integration)
+        # WEKRUIT_TEST_DB=1 + the *_test DB above means the integration-marked
+        # tests run here (they skip locally without that env).
+        run: uv run pytest -q
+
+      - name: integration suite not empty [guard]
+        # Belt-and-suspenders: fail the build if `-m integration` collected
+        # nothing, so the DB-correctness suite cannot silently go dark even if
+        # the static guard test is somehow skipped.
+        #
+        # We count the actual collected node ids (one `path::test_name` line per
+        # selected test under `-m integration --collect-only -q`). We deliberately
+        # do NOT parse the "X/Y tests collected" summary: with a marker filter its
+        # format is "<selected>/<total> tests collected", and a naive grep matches
+        # <total> — so it would pass even with 0 integration tests selected.
+        # Counting `::test_` lines is the selected count, fail-closed on a
+        # collection error (no node ids printed).
+        run: |
+          set -o pipefail
+          out="$(uv run pytest -m integration --collect-only -q 2>&1)"
+          echo "$out"
+          collected="$(printf '%s\n' "$out" | grep -cE '::test_')"
+          if [ "${collected:-0}" -lt 1 ]; then
+            echo "::error title=integration suite empty::-m integration collected 0 tests — the DB-correctness suite has gone dark."
+            exit 1
+          fi
+          echo "integration tests collected: ${collected}"
