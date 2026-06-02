@@ -49,6 +49,10 @@ while true; do
 done
 echo "[entrypoint] Postgres is reachable"
 
+# Shared migrate-then-run contract: this entrypoint, scripts/daily-update.sh,
+# and .github/workflows/daily-scrape.yml all run `alembic upgrade head` before
+# the pipeline so no entrypoint executes against a schema older than HEAD
+# (CID-05). This file already migrates here — do not duplicate the logic.
 if [[ "${SKIP_ALEMBIC:-0}" != "1" ]]; then
   echo "[entrypoint] running alembic upgrade head"
   uv run alembic upgrade head

@@ -11,6 +11,43 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$SCRIPT_DIR")"
 
+# ---------------------------------------------------------------------------
+# SHA-pin guard (CID-02 "working-tree-is-prod" fix).
+# ---------------------------------------------------------------------------
+# The nightly run must execute a known, committed revision — never a dirty
+# checkout that happens to be sitting on the laptop. Capture the SHA we are
+# about to run, and refuse to proceed if the working tree has uncommitted
+# changes (unless an operator explicitly opts in with ALLOW_DIRTY=1 for dev).
+# A best-effort `git fetch` lets us WARN (not fail — the laptop may be
+# offline) if the local branch is behind upstream.
+RUN_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
+
+DIRTY="$(git status --porcelain 2>/dev/null)"
+if [[ -n "$DIRTY" && "$ALLOW_DIRTY" != "1" ]]; then
+  echo "[daily-update] ERROR: working tree is dirty — refusing to run as prod." >&2
+  echo "[daily-update] uncommitted changes:" >&2
+  echo "$DIRTY" | sed 's/^/[daily-update]   /' >&2
+  echo "[daily-update] commit/stash the changes, or set ALLOW_DIRTY=1 to override (dev only)." >&2
+  exit 3
+fi
+
+# Best-effort freshness check. Never abort on this — a laptop runner is
+# frequently offline and a stale-but-clean tree is still a valid prod run.
+if git fetch origin >/dev/null 2>&1; then
+  UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo '')"
+  if [[ -n "$UPSTREAM" ]]; then
+    BEHIND="$(git rev-list --count "HEAD..${UPSTREAM}" 2>/dev/null || echo 0)"
+    if [[ "$BEHIND" =~ ^[0-9]+$ && "$BEHIND" -gt 0 ]]; then
+      echo "[daily-update] WARN: local HEAD is ${BEHIND} commit(s) behind ${UPSTREAM} — running anyway." >&2
+    fi
+  fi
+else
+  echo "[daily-update] note: git fetch failed (offline?) — skipping behind-upstream check." >&2
+fi
+
+echo "[daily-update] runSha=${RUN_SHA} allowDirty=${ALLOW_DIRTY}"
+
 if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -20,6 +57,63 @@ fi
 
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PIPELINE_LOG="/tmp/wekruit-matching-daily-$(date -u +%Y%m%d-%H%M%S).log"
+
+# Capture RUN_SHA into the pipeline log up front so the committed revision is
+# always recorded next to the run's output (the post-pipeline webhook arg slots
+# are fixed — arg 11 is runId — so we surface the SHA here + on lock release).
+echo "[daily-update] runSha=${RUN_SHA} startedAt=${STARTED}" | tee -a "$PIPELINE_LOG"
+
+# ---------------------------------------------------------------------------
+# Migrate + schema assert (CID-05 fix — previously ONLY GitHub Actions ran
+# `alembic upgrade head`, so a laptop/macmini run could execute against a
+# schema older than HEAD). Mirror the .venv/bin convention used below and the
+# entrypoint.sh / daily-scrape.yml migrate-then-run contract.
+# ---------------------------------------------------------------------------
+echo "[daily-update] running alembic upgrade head" | tee -a "$PIPELINE_LOG"
+if ! .venv/bin/alembic upgrade head 2>&1 | tee -a "$PIPELINE_LOG"; then
+  echo "[daily-update] ERROR: alembic upgrade head failed — aborting before lock acquire." >&2
+  exit 4
+fi
+
+# ---------------------------------------------------------------------------
+# Stage 0 preflight (CID-04 "whole-night-no-op" fix). Probe external deps
+# BEFORE taking the lock so a dead credential is known without burning today's
+# lock slot. WS-B's `pipeline.preflight` exit codes:
+#   0 = all deps live                          -> proceed
+#   2 = ONLY Firestore/sync credential is down -> degrade: skip sync, keep
+#       scrape/enrich/embed (export WEKRUIT_SKIP_SYNC=1, pipeline.daily reads it)
+#   1 = hard fail (DB/core dep down)           -> abort + alert
+# ---------------------------------------------------------------------------
+echo "[daily-update] running preflight (pipeline.preflight)" | tee -a "$PIPELINE_LOG"
+# This script does not run under `set -e`, so no errexit guard is needed here;
+# ${PIPESTATUS[0]} captures the preflight (not tee) exit code regardless.
+.venv/bin/python -m wekruit_matching.pipeline.preflight 2>&1 | tee -a "$PIPELINE_LOG"
+PREFLIGHT_RC="${PIPESTATUS[0]}"
+case "$PREFLIGHT_RC" in
+  0)
+    echo "[daily-update] preflight OK — all deps live." | tee -a "$PIPELINE_LOG"
+    ;;
+  2)
+    export WEKRUIT_SKIP_SYNC=1
+    echo "[daily-update] preflight DEGRADE: Firestore/sync credential down — exporting WEKRUIT_SKIP_SYNC=1 (scrape/enrich/embed still run, sync skipped)." | tee -a "$PIPELINE_LOG"
+    ;;
+  *)
+    # Treat exit 1 (and any other non-0/2 code) as a hard fail: a core dep is
+    # down, so running the pipeline would only burn cost. Fire the webhook with
+    # a failed/preflight_hard_fail status, then abort BEFORE the lock acquire.
+    echo "[daily-update] preflight HARD FAIL (rc=${PREFLIGHT_RC}) — aborting before lock acquire." >&2
+    PF_NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    scripts/post-pipeline-webhook.sh \
+      "failed" \
+      "$STARTED" \
+      "$PF_NOW" \
+      "0" "0" "0" "0" "0" \
+      "SimplifyJobs" \
+      "preflight_hard_fail_rc_${PREFLIGHT_RC}" \
+      || true
+    exit 5
+    ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Distributed lock — coordinate with GitHub Actions + any fallback runner.
@@ -45,7 +139,11 @@ elif [[ "$LOCK_RC" -ne 0 ]]; then
   exit "$LOCK_RC"
 fi
 
-if .venv/bin/python -m wekruit_matching.pipeline.daily 2>&1 | tee "$PIPELINE_LOG"; then
+# Append (not overwrite) so the runSha + alembic + preflight context recorded
+# above stays in the same log file. The JOBS_* greps below use `tail -1` on the
+# pipeline's own tokens, so the prefixed lines don't affect parsing. Exit-code
+# semantics are unchanged from the original (success branch -> 0, else -> $?).
+if .venv/bin/python -m wekruit_matching.pipeline.daily 2>&1 | tee -a "$PIPELINE_LOG"; then
   PIPELINE_RC=0
   STATUS="success"
 else
@@ -84,8 +182,8 @@ scripts/post-pipeline-webhook.sh \
 # leave the lock dangling beyond the 4h stale window.
 .venv/bin/python -m wekruit_matching.lock release \
   --outcome "$STATUS" \
-  --stats-json "$(printf '{"jobsScraped":%s,"jobsNew":%s,"jobsUpdated":%s,"jobsErrored":%s,"costUsd":%s,"runner":"%s"}' \
-      "$JOBS_SCRAPED" "$JOBS_NEW" "$JOBS_UPDATED" "$JOBS_ERRORED" "$COST_USD" "$LOCK_RUNNER")" \
+  --stats-json "$(printf '{"jobsScraped":%s,"jobsNew":%s,"jobsUpdated":%s,"jobsErrored":%s,"costUsd":%s,"runner":"%s","runSha":"%s"}' \
+      "$JOBS_SCRAPED" "$JOBS_NEW" "$JOBS_UPDATED" "$JOBS_ERRORED" "$COST_USD" "$LOCK_RUNNER" "$RUN_SHA")" \
   || echo "[daily-update] lock release failed — will be reclaimed as stale after 4h"
 
 exit $PIPELINE_RC
