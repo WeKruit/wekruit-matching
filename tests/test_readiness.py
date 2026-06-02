@@ -86,6 +86,7 @@ def test_no_rogue_jd_length_literal_outside_readiness():
         "pipeline/run_jd_enrichment.py",     # Stage 2b SQL re-entry gate (rank 6)
         "pipeline/ats_enricher.py",          # data_quality_score banding
         "scraper/yc.py",                     # unrelated 200-char field check
+        "db/tables.py",                      # CHECK constraint mirror (rank 2, alembic 0010)
     }
     pattern = re.compile(r"length\(job_description\)\s*[<>]=?\s*200|len\([^)]*\)\s*[<>]=?\s*200")
     offenders: list[str] = []
