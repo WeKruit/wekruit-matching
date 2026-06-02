@@ -278,13 +278,22 @@ def classify_job(job: Job) -> EnrichmentResult | None:
             cleaned = cleaned.strip()
         data = json.loads(cleaned)
     except Exception as e:
+        # rank-18 fix: on an LLM/parse FAILURE, return None ("do not write")
+        # instead of _safe_default(). The old behaviour wrote a fully-"unknown"
+        # result that (a) was counted as enriched and (b) clobbered any
+        # previously-good industry/company_size/sponsorship with unknown/NULL on
+        # a transient API blip. None leaves the row untouched + enriched_at NULL,
+        # so it simply retries next run with no data loss (same contract as the
+        # no-JD skip). _safe_default remains for any caller that wants a
+        # non-writing sentinel value.
         logger.warning(
-            "Classification failed for {company} ({role}): {error}",
+            "Classification failed for {company} ({role}): {error} — "
+            "leaving row untouched for retry (no clobber)",
             company=job.company_name,
             role=job.role_title,
             error=e,
         )
-        return _safe_default()
+        return None
 
     try:
         # Normalize sponsorship: convert None-in-JSON (null) to Python None

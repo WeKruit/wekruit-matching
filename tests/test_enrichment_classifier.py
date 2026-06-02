@@ -152,7 +152,11 @@ class TestClassifyJob:
         assert result.sponsorship is True
         assert skill in result.required_skills
 
-    def test_invalid_json_returns_safe_default(self):
+    def test_invalid_json_returns_none_no_clobber(self):
+        """rank-18: an LLM/parse FAILURE must return None ("do not write"), not a
+        fully-unknown safe-default — so a transient blip neither counts as
+        enriched nor clobbers previously-good industry/sponsorship. The worker
+        treats None as a skip and leaves the row untouched for retry."""
         from wekruit_matching.enrichment.classifier import classify_job
         mock_client = MagicMock()
         bad_msg = MagicMock()
@@ -160,10 +164,7 @@ class TestClassifyJob:
         mock_client.chat.completions.create.return_value = bad_msg
         with patch("wekruit_matching.enrichment.classifier._get_client", return_value=mock_client):
             result = classify_job(_make_job())
-        assert result.industry == "unknown"
-        assert result.company_size == "unknown"
-        assert result.required_skills == []
-        assert result.sponsorship is None
+        assert result is None
 
     def test_oov_skills_pass_through_under_freeform_contract(self):
         """v1.6 D5 + P7-C 2026-05-08: required_skills is informational
