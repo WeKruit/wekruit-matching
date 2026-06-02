@@ -38,6 +38,7 @@ from wekruit_matching.scraper.id_utils import (
     generate_job_id,
     normalize_company_name,
 )
+from wekruit_matching.scraper.http_util import ScrapeFetchError, get_with_retry
 from wekruit_matching.scraper.title_inference import infer_role_function, infer_seniority
 
 # ---------------------------------------------------------------------------
@@ -109,7 +110,12 @@ def scrape_greenhouse_company(
     try:
         url = f"{GH_BASE}/{slug}/jobs?content=true"
         try:
-            resp = cli.get(url)
+            # rank-19: retry 429/5xx/network before giving up so a transient
+            # rate-limit isn't misread as "no jobs". A final give-up raises
+            # ScrapeFetchError (a real dependency error, not an empty board).
+            resp = get_with_retry(cli, url, label=f"greenhouse:{slug}")
+        except ScrapeFetchError:
+            return []
         except httpx.HTTPError as e:
             logger.warning("greenhouse:{} request failed: {}", slug, e)
             return []

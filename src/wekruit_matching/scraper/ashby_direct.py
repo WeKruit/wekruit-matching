@@ -36,6 +36,7 @@ from wekruit_matching.scraper.id_utils import (
     generate_job_id,
     normalize_company_name,
 )
+from wekruit_matching.scraper.http_util import ScrapeFetchError, get_with_retry
 from wekruit_matching.scraper.title_inference import infer_role_function, infer_seniority
 
 # ---------------------------------------------------------------------------
@@ -97,7 +98,10 @@ def scrape_ashby_company(
     try:
         url = f"{ASHBY_BASE}/{slug}"
         try:
-            resp = cli.get(url)
+            # rank-19: retry 429/5xx/network; final give-up -> empty (logged).
+            resp = get_with_retry(cli, url, label=f"ashby:{slug}")
+        except ScrapeFetchError:
+            return []
         except httpx.HTTPError as e:
             logger.warning("ashby:{} request failed: {}", slug, e)
             return []
