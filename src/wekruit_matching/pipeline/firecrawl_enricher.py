@@ -356,8 +356,27 @@ async def fetch_firecrawl_job(
         or extract_data.get("description")
         or ""
     )
+    # rank-22: scrape (1) + extract (6) credits were spent regardless of outcome.
+    # The empty-extract MISS used to `return None`, which the caller scored as 0
+    # credits — silently losing ~7 real credits per miss. Return a result that
+    # carries job_data=None + the true credits so the caller's
+    # `firecrawl.credits_used if firecrawl else 0` accounts for them (a None
+    # job_data is treated exactly like the old None by _fetch_for_url).
     if not normalize_text(description):
-        return None
+        return FirecrawlFetchResult(
+            job_data=None,
+            credits_used=7,
+            resolved_url=normalize_job_url(url),
+        )
+
+    # rank-21: the SCRAPE branch tombstones a closed page via
+    # _detect_closed_at_source, but the EXTRACT branch did not — a closed
+    # posting recovered through extract was ingested as a live JD, bypassing the
+    # dead-link guard. Run the same closed-marker check here before building a
+    # success result.
+    closed_marker = _detect_closed_at_source(description)
+    if closed_marker is not None:
+        raise ClosedAtSourceError(url, closed_marker)
 
     return FirecrawlFetchResult(
         job_data=build_ats_job_data(
@@ -373,7 +392,7 @@ async def fetch_firecrawl_job(
                 if item
             ],
         ),
-        credits_used=6,
+        credits_used=7,
         resolved_url=normalize_job_url(url),
     )
 

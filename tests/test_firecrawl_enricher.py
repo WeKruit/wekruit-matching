@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 from wekruit_matching.pipeline.firecrawl_enricher import (
+    ClosedAtSourceError,
     _has_jd_content,
     fetch_firecrawl_job,
     fetch_workday_job,
@@ -147,7 +148,9 @@ async def test_fetch_firecrawl_job_escalates_to_extract_when_scrape_is_insuffici
         )
 
     assert result is not None
-    assert result.credits_used == 6
+    # rank-22: scrape (1) + extract (6) = 7 total credits — the old value of 6
+    # undercounted the scrape credit always spent before escalation.
+    assert result.credits_used == 7
     assert result.job_data.description_plain == "Own backend pipelines and partner with ops."
     assert result.job_data.qualifications == ["Python"]
 
@@ -177,3 +180,55 @@ async def test_search_canonical_job_url_skips_aggregators() -> None:
         )
 
     assert url == "https://careers.acme.com/jobs/backend-engineer"
+
+
+@pytest.mark.asyncio
+async def test_extract_closed_at_source_raises_not_ingested() -> None:
+    """rank-21: a closed posting recovered via the EXTRACT path must tombstone
+    (raise ClosedAtSourceError), not be ingested as a live JD."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).endswith("/v1/scrape"):
+            return httpx.Response(200, json={"success": True, "data": {"markdown": "Apply"}})
+        if str(request.url).endswith("/v1/extract"):
+            return httpx.Response(
+                200,
+                json={
+                    "success": True,
+                    "data": {
+                        "job_description": (
+                            "This role at Acme. This position is no longer available. "
+                            + "Filler text to clear the length floor. " * 8
+                        ),
+                    },
+                },
+            )
+        raise AssertionError(f"unexpected: {request.url}")
+
+    async with _async_client(handler) as client:
+        with pytest.raises(ClosedAtSourceError):
+            await fetch_firecrawl_job(
+                "https://careers.example.com/closed", api_key="fc-test", client=client
+            )
+
+
+@pytest.mark.asyncio
+async def test_empty_extract_returns_credits_not_silent_none() -> None:
+    """rank-22: an empty-extract MISS must report the 7 spent credits (scrape 1
+    + extract 6), not silently lose them. job_data is None (treated as a miss)."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).endswith("/v1/scrape"):
+            return httpx.Response(200, json={"success": True, "data": {"markdown": "Apply"}})
+        if str(request.url).endswith("/v1/extract"):
+            return httpx.Response(200, json={"success": True, "data": {"job_description": ""}})
+        raise AssertionError(f"unexpected: {request.url}")
+
+    async with _async_client(handler) as client:
+        result = await fetch_firecrawl_job(
+            "https://careers.example.com/empty", api_key="fc-test", client=client
+        )
+
+    assert result is not None, "must return a credits-carrying result, not None"
+    assert result.job_data is None, "empty extract -> no job_data (a miss)"
+    assert result.credits_used == 7, "must account for scrape(1)+extract(6) credits"
