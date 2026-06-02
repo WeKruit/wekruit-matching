@@ -237,12 +237,96 @@ def test_upsert_changed_content_hash_clears_embedding_state():
     assert row["embedding_is_null"] is True
 
 
+def test_upsert_changed_hash_clears_permanent_404_and_terminal_source():
+    """rank-16: a re-listed posting (content_hash CHANGED) must clear the
+    permanent_404 tombstone + the terminal jd_fetch_source sentinel so the JD
+    queue re-admits it (otherwise it thrashes active<->inactive forever)."""
+    job_v1 = make_job(
+        job_id="test-job-relist",
+        company_name="RelistCo",
+        role_title="SWE Intern",
+        content_hash=compute_content_hash("RelistCo", "SWE Intern"),
+    )
+    with _connect() as conn:
+        upsert_jobs([job_v1], conn)
+        # Tombstone it as closed-at-source (the unrecoverable state pre-fix).
+        conn.execute(
+            """
+            UPDATE jobs
+            SET permanent_404 = TRUE,
+                jd_fetch_source = 'closed_at_source',
+                jd_fetch_attempted_at = NOW()
+            WHERE job_id = 'test-job-relist'
+            """
+        )
+        conn.commit()
+
+    # Same job_id re-listed with a CHANGED hash (new title) = genuinely back.
+    job_v2 = make_job(
+        job_id="test-job-relist",
+        company_name="RelistCo",
+        role_title="Senior SWE",
+        content_hash=compute_content_hash("RelistCo", "Senior SWE"),
+    )
+    with _connect() as conn:
+        upsert_jobs([job_v2], conn)
+
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT permanent_404, jd_fetch_source, jd_fetch_attempted_at, status
+            FROM jobs WHERE job_id = 'test-job-relist'
+            """
+        ).fetchone()
+
+    assert row["permanent_404"] is False, "permanent_404 must reset on re-list"
+    assert row["jd_fetch_source"] is None, "terminal source sentinel must clear"
+    assert row["jd_fetch_attempted_at"] is None, "attempt timestamp must clear so Stage 2b re-admits"
+    assert row["status"] == "active"
+
+
+def test_upsert_unchanged_hash_keeps_permanent_404():
+    """A re-seen tombstone with the SAME hash (not genuinely re-listed) must KEEP
+    permanent_404 — only a content change signals a real re-list."""
+    job = make_job(
+        job_id="test-job-stilldead",
+        company_name="StillDeadCo",
+        role_title="Closed Role",
+        content_hash=compute_content_hash("StillDeadCo", "Closed Role"),
+    )
+    with _connect() as conn:
+        upsert_jobs([job], conn)
+        conn.execute(
+            "UPDATE jobs SET permanent_404 = TRUE, jd_fetch_source = 'closed_at_source' "
+            "WHERE job_id = 'test-job-stilldead'"
+        )
+        conn.commit()
+
+    # Re-seen, SAME hash.
+    with _connect() as conn:
+        upsert_jobs([job], conn)
+
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT permanent_404, jd_fetch_source FROM jobs WHERE job_id = 'test-job-stilldead'"
+        ).fetchone()
+
+    assert row["permanent_404"] is True, "unchanged-hash tombstone must persist"
+    assert row["jd_fetch_source"] == "closed_at_source"
+
+
 def test_mark_stale_jobs_marks_missing_ids_inactive():
     """Test 5: mark_stale_jobs sets status='inactive' for rows NOT in seen_ids,
     while rows IN seen_ids remain status='active'."""
-    job_a = make_job(job_id="test-job-a", company_name="CompanyA")
-    job_b = make_job(job_id="test-job-b", company_name="CompanyB")
-    job_c = make_job(job_id="test-job-c", company_name="CompanyC")
+    # Use a DEDICATED test repo (not a real one) so the partial-scrape circuit
+    # breaker — which trips when a run would deactivate >50% of a repo's active
+    # rows above a 20-row floor — sees only these test rows and stays out of the
+    # way (3 active < 20 floor). force=True also bypasses it; here the floor is
+    # the natural guard for a tiny isolated repo.
+    test_repo = "test-repo-stale-5"
+    job_a = make_job(job_id="test-job-a", company_name="CompanyA", source_repo=test_repo)
+    job_b = make_job(job_id="test-job-b", company_name="CompanyB", source_repo=test_repo)
+    job_c = make_job(job_id="test-job-c", company_name="CompanyC", source_repo=test_repo)
 
     with _connect() as conn:
         upsert_jobs([job_a, job_b, job_c], conn)
@@ -250,7 +334,7 @@ def test_mark_stale_jobs_marks_missing_ids_inactive():
     # Simulate: only job_a is in the latest scrape; job_b and job_c have disappeared
     seen_ids = {"test-job-a"}
     with _connect() as conn:
-        stale_count = mark_stale_jobs(seen_ids, "Summer2026-Internships", conn)
+        stale_count = mark_stale_jobs(seen_ids, test_repo, conn)
 
     assert stale_count == 2, f"Expected 2 stale rows, got {stale_count}"
 
@@ -268,23 +352,26 @@ def test_mark_stale_jobs_marks_missing_ids_inactive():
 def test_mark_stale_jobs_does_not_affect_other_repos():
     """Test 6: mark_stale_jobs scoped to source_repo — does NOT affect other repos."""
     # Insert one internships job and one new-grad job
+    repo_a = "test-repo-intern-6"
+    repo_b = "test-repo-newgrad-6"
     internship_job = make_job(
         job_id="test-job-intern",
         company_name="InternCo",
-        source_repo="Summer2026-Internships",
+        source_repo=repo_a,
     )
     newgrad_job = make_job(
         job_id="test-job-newgrad",
         company_name="NewGradCo",
-        source_repo="New-Grad-Positions",
+        source_repo=repo_b,
     )
 
     with _connect() as conn:
         upsert_jobs([internship_job, newgrad_job], conn)
 
-    # Mark stale for Summer2026-Internships only (seen_ids is empty — all should go stale)
+    # Mark stale for repo_a only (seen_ids empty — its 1 row goes stale; <20-row
+    # floor keeps the circuit-breaker out of the way for a tiny isolated repo).
     with _connect() as conn:
-        stale_count = mark_stale_jobs(set(), "Summer2026-Internships", conn)
+        stale_count = mark_stale_jobs(set(), repo_a, conn)
 
     assert stale_count == 1, f"Expected 1 stale row (internship only), got {stale_count}"
 

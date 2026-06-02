@@ -337,6 +337,30 @@ def upsert_jobs(jobs: list[Job], conn: psycopg.Connection) -> dict[str, int]:
                     THEN NULL
                     ELSE jobs.embedded_at
                 END,
+                -- rank-16 fix: a re-listed posting whose content_hash CHANGED is
+                -- genuinely back. Clear the permanent_404 tombstone + the
+                -- terminal jd_fetch_source sentinel so the Stage 2b JD queue
+                -- re-admits it; otherwise the row flips active but
+                -- permanent_404=TRUE keeps it permanently out of the JD queue
+                -- and reconcile_dead_inactive re-flips it inactive every run
+                -- (active<->inactive thrash, never matchable).
+                permanent_404   = CASE
+                    WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                    THEN FALSE
+                    ELSE jobs.permanent_404
+                END,
+                jd_fetch_source = CASE
+                    WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                         AND jobs.jd_fetch_source IN ('closed_at_source', 'failed', 'skip_no_url')
+                    THEN NULL
+                    ELSE jobs.jd_fetch_source
+                END,
+                jd_fetch_attempted_at = CASE
+                    WHEN jobs.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+                         AND jobs.jd_fetch_source IN ('closed_at_source', 'failed', 'skip_no_url')
+                    THEN NULL
+                    ELSE jobs.jd_fetch_attempted_at
+                END,
                 -- P10-audit fix: keep seniority_level / role_function /
                 -- sources / job_description fresh on every upsert. These
                 -- are derived from role_title which is stable per job_id,
