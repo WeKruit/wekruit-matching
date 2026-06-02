@@ -758,3 +758,34 @@ def test_missing_ats_apply_url_key_does_not_raise(monkeypatch) -> None:
     )
 
     assert stats["processed"] == 1
+
+
+# ---------------------------------------------------------------------------
+# 2026-06-02 regression: _write_success must not push a stamped-but-skill-less
+# row into a ck_enriched_requires_skills_or_no_jd violation when it lands a JD.
+# ---------------------------------------------------------------------------
+
+def test_write_success_clears_enriched_at_when_skills_empty():
+    """Landing a JD on a row previously enriched_at-stamped with EMPTY skills
+    must clear enriched_at (CASE on required_skills) so it cannot violate
+    ck_enriched_requires_skills_or_no_jd (= JD>=200 + enriched_at + no skills).
+    The Stage 2c gap-fill enricher then extracts skills + re-stamps."""
+    from wekruit_matching.pipeline.run_jd_enrichment import _write_success
+
+    captured = {}
+
+    class _Conn:
+        def execute(self, sql, params=None):
+            captured["sql"] = " ".join(sql.split())
+            captured["params"] = params
+
+    _write_success(
+        _Conn(),
+        "job-x",
+        build_ats_job_data(source="greenhouse", description_plain="x" * 250),
+    )
+    sql = captured["sql"]
+    # enriched_at is conditionally NULLed based on required_skills being empty.
+    assert "enriched_at = CASE" in sql
+    assert "cardinality(required_skills) = 0" in sql
+    assert "THEN NULL" in sql

@@ -251,6 +251,16 @@ async def _fetch_for_url(url: str, settings) -> tuple[AtsJobData | None, int]:
 
 
 def _write_success(conn, job_id: str, result: AtsJobData) -> None:
+    # 2026-06-02 fix: landing a usable JD on a row that was previously stamped
+    # enriched_at with EMPTY skills (legal under the no-JD floor exception of
+    # ck_enriched_requires_skills_or_no_jd) would push it into the violating
+    # state "enriched_at NOT NULL + JD>=200 + skills empty" and the INSERT/UPDATE
+    # would be REJECTED by the constraint (observed live: 2,200 rejections +
+    # poisoned batch txns in the first daily run after alembic 0010). A row that
+    # just got a JD but has no skills genuinely needs (re-)enrichment, so clear
+    # enriched_at here when skills are still empty — the Stage 2c gap-fill
+    # enricher then extracts skills and re-stamps. (When skills already exist the
+    # COALESCE leaves enriched_at untouched.)
     conn.execute(
         """
         UPDATE jobs
@@ -264,7 +274,12 @@ def _write_success(conn, job_id: str, result: AtsJobData) -> None:
           ats_content_hash = %(ats_content_hash)s,
           jd_fetch_source = %(jd_fetch_source)s,
           jd_fetch_attempted_at = NOW(),
-          permanent_404 = FALSE
+          permanent_404 = FALSE,
+          enriched_at = CASE
+              WHEN required_skills IS NULL OR cardinality(required_skills) = 0
+              THEN NULL
+              ELSE enriched_at
+          END
         WHERE job_id = %(job_id)s
         """,
         {
@@ -518,10 +533,25 @@ def _process_one_job(
             permanent,
             exc,
         )
+        # 2026-06-02: if the failure was a DB error (e.g. a CHECK violation from
+        # _write_success), psycopg has marked this txn ABORTED — any further
+        # statement raises "current transaction is aborted". Roll back FIRST so
+        # the recovery _write_failure runs in a clean transaction instead of
+        # silently no-op'ing (which previously left the row unmarked AND could
+        # poison the next sibling sharing this conn).
+        try:
+            write_conn.rollback()
+        except Exception:  # noqa: BLE001 — best-effort reset
+            pass
         try:
             _write_failure(write_conn, row["job_id"], permanent_404=permanent)
+            write_conn.commit()
         except Exception as write_exc:  # defensive — don't crash sibling workers
             logger.warning("Could not persist failure for {}: {}", row["job_id"], write_exc)
+            try:
+                write_conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
         out["failed_route"] = route.value
         out["failed"] = 1
 
