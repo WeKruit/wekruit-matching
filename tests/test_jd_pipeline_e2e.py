@@ -27,9 +27,29 @@ def _connect():
         pytest.skip(f"Cannot connect to DB: {exc}")
 
 
+@pytest.mark.integration
 def test_latest_1000_jobs_have_greenhouse_lever_and_ashby_jd_examples():
-    """Latest 1K jobs should include at least one enriched example from each free ATS."""
+    """Latest 1K jobs should include at least one enriched example from each free ATS.
+
+    This is a prod-data-quality assertion, not a code test: it can only pass
+    against a populated corpus. On a fresh/empty DB (CI's ephemeral *_test) there
+    are no greenhouse/lever/ashby rows, so we skip rather than fail — otherwise
+    the CI gate would ship permanently red and get ignored.
+    """
     with _connect() as conn:
+        present = conn.execute(
+            """
+            SELECT count(*) AS n FROM jobs
+            WHERE primary_url LIKE '%greenhouse%'
+               OR primary_url LIKE '%lever%'
+               OR primary_url LIKE '%ashbyhq%'
+            """
+        ).fetchone()
+        if not present or present["n"] == 0:
+            pytest.skip(
+                "no greenhouse/lever/ashby jobs in corpus — needs a populated "
+                "prod-data DB (empty CI DB has none)"
+            )
         row = conn.execute(
             """
             WITH latest AS (

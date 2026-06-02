@@ -157,6 +157,7 @@ def test_embed_pending_continues_after_failure():
     assert result["failed"] == 1, result
 
 
+@pytest.mark.integration
 @skip_no_db
 def test_hnsw_index_used_for_cosine_query():
     """Verify EXPLAIN ANALYZE shows HNSW index scan for cosine similarity query.
@@ -168,18 +169,35 @@ def test_hnsw_index_used_for_cosine_query():
     from wekruit_matching.db.connection import get_connection
     from pgvector.psycopg import register_vector
 
-    query_vector = [0.1] * 1536
+    # A vector LITERAL string + explicit ::vector cast in SQL. Passing a bare
+    # Python list relies on register_vector adapting the param, which does not
+    # stick on a pooled connection -> "operator does not exist: vector <=> double
+    # precision[]". The text->vector cast is unconditional and pool-safe.
+    query_vector = "[" + ",".join(["0.1"] * 1536) + "]"
 
     get_conn = get_connection
     with get_conn() as conn:
         register_vector(conn)
+        # On an EMPTY corpus (a fresh CI DB) the planner has no rows to scan and
+        # the HNSW index never appears in the plan -> this would fail spuriously.
+        # The SEEDED, always-meaningful version of this check lives in
+        # test_db_schema.py::test_cosine_query_uses_index (inserts dummy rows);
+        # here we skip when there is nothing embedded to scan.
+        n = conn.execute(
+            "SELECT count(*) AS n FROM jobs WHERE embedding IS NOT NULL"
+        ).fetchone()
+        if (n["n"] if isinstance(n, dict) else n[0]) == 0:
+            pytest.skip(
+                "no embedded rows — HNSW index usage is covered by "
+                "test_db_schema::test_cosine_query_uses_index (seeded)"
+            )
         conn.execute("SET enable_seqscan = OFF")
         explain_result = conn.execute(
             """
             EXPLAIN ANALYZE
-            SELECT job_id, embedding <=> %(v)s AS distance
+            SELECT job_id, embedding <=> %(v)s::vector AS distance
             FROM jobs
-            ORDER BY embedding <=> %(v)s
+            ORDER BY embedding <=> %(v)s::vector
             LIMIT 5
             """,
             {"v": query_vector},
