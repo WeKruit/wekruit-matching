@@ -16,6 +16,7 @@ import psycopg
 from loguru import logger
 
 from wekruit_matching.models.job import Job
+from wekruit_matching.scraper.id_utils import generate_job_id
 
 # Tracking params to strip from URLs before comparison
 TRACKING_PARAMS = {
@@ -197,6 +198,18 @@ def dedup_multi_source(jobs: list[Job]) -> list[Job]:
             > _priority_for_repo(existing.source_repo)
         ):
             existing.source_repo = job.source_repo
+            # rank-17 fix: job_id is derived from (source_repo, company, title)
+            # via generate_job_id. Promoting source_repo WITHOUT recomputing
+            # job_id breaks the identity invariant that mark_stale_jobs (scoped
+            # by source_repo) and the first_seen carry-forward depend on — the
+            # row would carry the new repo but the OLD repo's id, so stale-
+            # marking/first_seen target the wrong row. Recompute the id so it
+            # always agrees with the (now-promoted) source_repo.
+            existing.job_id = generate_job_id(
+                existing.source_repo,
+                existing.company_name,
+                existing.role_title,
+            )
             # Preserve richer payload fields if available
             if job.job_description and not existing.job_description:
                 existing.job_description = job.job_description

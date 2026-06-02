@@ -185,6 +185,11 @@ def test_dedup_promotes_to_higher_priority_source_repo():
     assert len(out) == 1
     # linkedin is higher priority
     assert out[0].source_repo == "linkedin"
+    # rank-17: job_id must be recomputed to agree with the promoted source_repo.
+    from wekruit_matching.scraper.id_utils import generate_job_id
+    assert out[0].job_id == generate_job_id(
+        out[0].source_repo, out[0].company_name, out[0].role_title
+    ), "promoted row's job_id must match generate_job_id(promoted source_repo, ...)"
 
 
 def test_dedup_merge_sources_array_is_sorted_and_deduped():
@@ -225,3 +230,36 @@ def test_dedup_company_punctuation_normalization():
     # Should collapse — punctuation normalized
     assert len(out) == 1
     assert sorted(out[0].sources) == ["linkedin", "wellfound"]
+
+
+def test_dedup_every_output_id_agrees_with_source_repo():
+    """rank-17 invariant: for EVERY deduped output job, job_id ==
+    generate_job_id(source_repo, company, title). A promotion that changed
+    source_repo without recomputing the id would break stale-marking /
+    first_seen carry-forward (both keyed on source_repo).
+
+    Inputs are built with REAL generate_job_id ids (as the scraper does) so the
+    invariant is meaningful for both promoted and pass-through rows.
+    """
+    from wekruit_matching.scraper.id_utils import generate_job_id
+
+    def real_job(*, company, title, source, url):
+        return _job(
+            job_id=generate_job_id(source, company, title),
+            company=company, title=title, source=source,
+            sources=[source.split(":")[0].split("-")[0]], url=url,
+        )
+
+    jobs = [
+        # same posting from two sources (collapses + promotes jobright->linkedin)
+        real_job(company="Acme", title="Senior SWE", source="jobright-newgrad", url="https://x.com/jobs/1"),
+        real_job(company="Acme", title="Senior SWE", source="linkedin", url="https://x.com/jobs/1"),
+        # a distinct pass-through row
+        real_job(company="Globex", title="Staff Eng", source="wellfound", url="https://y.com/jobs/2"),
+    ]
+    out = dedup_multi_source(jobs)
+    for j in out:
+        assert j.job_id == generate_job_id(j.source_repo, j.company_name, j.role_title), (
+            f"identity invariant broken for {j.source_repo}: "
+            f"{j.job_id} != generate_job_id(...)"
+        )
