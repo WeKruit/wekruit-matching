@@ -75,6 +75,14 @@ def scrape_all() -> dict[str, dict]:
             except Exception as e:
                 logger.error("Failed to scrape {}: {}", repo_slug, e)
                 all_stats[repo_slug] = {"error": str(e)}
+                # 2026-06-02: a DB error (e.g. a CHECK violation) marks the shared
+                # conn's txn ABORTED — without a rollback the NEXT repo's
+                # upsert/mark_stale fails with "current transaction is aborted"
+                # and the whole remaining sweep is lost. Reset so siblings run.
+                try:
+                    conn.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
 
         # --- JobRight.ai (GitHub repos) ---
         # C/v3 (2026-05-13): when JOBRIGHT_USE_GIT_DELTA=1 the scrape returns the
@@ -122,6 +130,11 @@ def scrape_all() -> dict[str, dict]:
         except Exception as e:
             logger.error("Failed to scrape JobRight: {}", e)
             all_stats["jobright"] = {"error": str(e)}
+            # Reset an aborted txn so the YC sweep below can still write.
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
 
         # --- Y Combinator (Phase A1) ---
         # Two phases: (a) scrape active job postings off
@@ -165,6 +178,11 @@ def scrape_all() -> dict[str, dict]:
             except Exception as e:
                 logger.error("Failed to scrape YC jobs: {}", e)
                 all_stats["yc"] = {"error": str(e)}
+                # Reset an aborted txn so later stages reusing this conn survive.
+                try:
+                    conn.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
 
             # Companies directory cache — non-fatal: if YC API is down
             # we just keep the previous snapshot. Logs but never raises.
