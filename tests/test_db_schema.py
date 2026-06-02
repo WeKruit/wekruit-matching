@@ -118,10 +118,12 @@ def test_cosine_query_uses_index():
             jid = hashlib.sha256(f"dummy-job-{i}".encode()).hexdigest()
             job_ids.append(jid)
             embedding = np.random.rand(1536).astype(np.float32)
+            # embedded_at NOW() to satisfy ck_vector_requires_embedded_stamp
+            # (alembic 0010): an embedding can never exist without its stamp.
             conn.execute("""
-                INSERT INTO jobs (job_id, source_repo, company_name, role_title, embedding, embedding_model)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (job_id) DO UPDATE SET embedding = EXCLUDED.embedding
+                INSERT INTO jobs (job_id, source_repo, company_name, role_title, embedding, embedding_model, embedded_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (job_id) DO UPDATE SET embedding = EXCLUDED.embedding, embedded_at = NOW()
             """, (jid, "test", f"Corp {i}", f"Role {i}", embedding, "text-embedding-3-small"))
         conn.commit()
 
