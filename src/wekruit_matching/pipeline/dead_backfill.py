@@ -49,6 +49,15 @@ _BACKFILL_BATCH_SIZE = 500
 _FIREBASE_PROJECT_ID = "wekruit-5f89b"
 _FIREBASE_COLLECTION = "matching-jobs"
 
+# rank-15: a `dead=TRUE` flag must persist at least this long before
+# reconcile_dead_inactive acts on it, so a single transient liveness miss does
+# not yank a live job from the matcher (recovery would otherwise wait for the
+# 90-day dead-retry). permanent_404 tombstones bypass this (they are confirmed).
+# Tunable via env for ops.
+import os  # noqa: E402
+
+RECONCILE_DEAD_GRACE_HOURS = int(os.environ.get("RECONCILE_DEAD_GRACE_HOURS", "24"))
+
 
 def _iter_dead_doc_ids(project_id: str, collection: str) -> Iterator[tuple[str, datetime | None]]:
     """Stream (job_id, deadAt) pairs for all dead docs in Firestore.
@@ -215,13 +224,28 @@ def reconcile_dead_inactive(conn: psycopg.Connection) -> int:
     Idempotent: re-running flips 0 once the corpus is clean. Caller-agnostic
     commit (commits its own single UPDATE). Returns rows flipped.
     """
+    # rank-15 debounce: a `dead=TRUE` flag from a SINGLE transient liveness
+    # miss should not immediately inactivate a live row (one flaky FS dead
+    # mirror or one 404 blip would yank a real job from the matcher, then the
+    # 90-day retry is the only way back). Require the dead flag to have persisted
+    # at least RECONCILE_DEAD_GRACE before acting. permanent_404 is a hard
+    # tombstone (set only on a confirmed-gone ATS page) so it flips immediately.
+    # A NULL dead_confirmed_at is legacy/already-confirmed -> treated as aged.
     result = conn.execute(
-        """
+        f"""
         UPDATE jobs
         SET status = 'inactive'
         WHERE status = 'active'
-          AND (COALESCE(dead, FALSE) = TRUE
-               OR COALESCE(permanent_404, FALSE) = TRUE)
+          AND (
+            COALESCE(permanent_404, FALSE) = TRUE
+            OR (
+              COALESCE(dead, FALSE) = TRUE
+              AND (
+                dead_confirmed_at IS NULL
+                OR dead_confirmed_at < NOW() - INTERVAL '{RECONCILE_DEAD_GRACE_HOURS} hours'
+              )
+            )
+          )
         """
     )
     conn.commit()

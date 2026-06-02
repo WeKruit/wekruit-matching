@@ -44,3 +44,22 @@ def test_only_touches_status_column():
     assert "dead =" not in set_clause
     assert "dead_confirmed_at" not in set_clause
     assert "permanent_404 =" not in set_clause
+
+
+def test_dead_flag_has_grace_debounce_but_permanent_404_immediate():
+    """rank-15: a `dead=TRUE` flag must age past the grace window before it
+    inactivates a live row (transient-miss protection), while permanent_404
+    tombstones flip immediately."""
+    from wekruit_matching.pipeline.dead_backfill import RECONCILE_DEAD_GRACE_HOURS
+
+    conn = _conn(rowcount=0)
+    reconcile_dead_inactive(conn)
+    sql = conn.execute.call_args[0][0]
+    where = sql.split("WHERE", 1)[1]
+    # dead branch is gated on dead_confirmed_at age...
+    assert "dead_confirmed_at" in where
+    assert f"INTERVAL '{RECONCILE_DEAD_GRACE_HOURS} hours'" in where
+    # ...but a NULL dead_confirmed_at (legacy/already-confirmed) still flips...
+    assert "dead_confirmed_at IS NULL" in where
+    # ...and permanent_404 bypasses the grace entirely.
+    assert "COALESCE(permanent_404, FALSE) = TRUE" in where
