@@ -16,17 +16,22 @@ cd "$(dirname "$SCRIPT_DIR")"
 # ---------------------------------------------------------------------------
 # The nightly run must execute a known, committed revision — never a dirty
 # checkout that happens to be sitting on the laptop. Capture the SHA we are
-# about to run, and refuse to proceed if the working tree has uncommitted
+# about to run, and refuse to proceed if a TRACKED file has uncommitted
 # changes (unless an operator explicitly opts in with ALLOW_DIRTY=1 for dev).
 # A best-effort `git fetch` lets us WARN (not fail — the laptop may be
 # offline) if the local branch is behind upstream.
 RUN_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 
-DIRTY="$(git status --porcelain 2>/dev/null)"
+# -uno: only TRACKED modifications count as "dirty". The laptop checkout always
+# carries untracked dev artifacts (.planning/, .claude/, .worktrees/) that must
+# NOT block prod — otherwise every nightly aborts and operators just pin
+# ALLOW_DIRTY=1, defeating the guard. Uncommitted edits to committed files are
+# the real "half-finished code" signal we refuse on.
+DIRTY="$(git status --porcelain -uno 2>/dev/null)"
 if [[ -n "$DIRTY" && "$ALLOW_DIRTY" != "1" ]]; then
-  echo "[daily-update] ERROR: working tree is dirty — refusing to run as prod." >&2
-  echo "[daily-update] uncommitted changes:" >&2
+  echo "[daily-update] ERROR: tracked working tree is dirty — refusing to run as prod." >&2
+  echo "[daily-update] uncommitted changes to tracked files:" >&2
   echo "$DIRTY" | sed 's/^/[daily-update]   /' >&2
   echo "[daily-update] commit/stash the changes, or set ALLOW_DIRTY=1 to override (dev only)." >&2
   exit 3

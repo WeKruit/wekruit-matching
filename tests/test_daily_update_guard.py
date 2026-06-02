@@ -34,7 +34,7 @@ set -u
 RUN_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
 
-DIRTY="$(git status --porcelain 2>/dev/null)"
+DIRTY="$(git status --porcelain -uno 2>/dev/null)"
 if [[ -n "$DIRTY" && "$ALLOW_DIRTY" != "1" ]]; then
   echo "[daily-update] ERROR: working tree is dirty — refusing to run as prod." >&2
   echo "$DIRTY" | sed 's/^/[daily-update]   /' >&2
@@ -119,27 +119,33 @@ def test_clean_tree_passes_guard(tmp_path: Path) -> None:
     assert "allowDirty=0" in result.stdout
 
 
-def test_dirty_tree_refuses_with_exit_3(tmp_path: Path) -> None:
-    """An untracked file makes the tree dirty -> guard refuses with exit 3."""
+def test_untracked_files_pass_guard(tmp_path: Path) -> None:
+    """UNTRACKED files must NOT trip the guard (-uno).
+
+    The laptop checkout always carries untracked dev artifacts (.planning/,
+    .claude/, .worktrees/). Blocking on those would abort every nightly, so the
+    guard uses ``git status --porcelain -uno`` (tracked modifications only). An
+    untracked file therefore flows past the guard.
+    """
     repo = _make_repo(tmp_path)
-    # Make the working tree dirty with an untracked file.
-    (repo / "uncommitted.txt").write_text("local edit not committed\n")
+    # An untracked file (mirrors .planning/, .worktrees/, etc.).
+    (repo / "untracked-artifact.txt").write_text("local dev artifact, not committed\n")
 
     result = _run_guard(repo)
 
-    assert result.returncode == 3, (
-        f"dirty tree must exit 3; got {result.returncode}; "
+    assert result.returncode == 0, (
+        f"untracked files must NOT trip the guard (-uno); got {result.returncode}; "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
-    # We must NOT have proceeded past the guard.
-    assert "GUARD_PASSED" not in result.stdout
-    assert "refusing to run as prod" in result.stderr
+    assert "GUARD_PASSED" in result.stdout
 
 
-def test_dirty_tree_with_allow_dirty_proceeds(tmp_path: Path) -> None:
-    """ALLOW_DIRTY=1 is the documented dev escape hatch -> proceeds past guard."""
+def test_dirty_tracked_tree_with_allow_dirty_proceeds(tmp_path: Path) -> None:
+    """ALLOW_DIRTY=1 is the documented dev escape hatch -> proceeds past guard
+    even with a modified TRACKED file (the case the guard would otherwise block)."""
     repo = _make_repo(tmp_path)
-    (repo / "uncommitted.txt").write_text("local edit not committed\n")
+    # Modify the committed stub -> a tracked modification the guard blocks on.
+    (repo / "guard.sh").write_text(_GUARD_STUB + "\n# local tweak\n")
 
     result = _run_guard(repo, allow_dirty="1")
 

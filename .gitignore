@@ -15,3 +15,7 @@ build/
 data/
 .env.bak
 .firebase-sa.json
+# local dev artifacts — keep out of git so the nightly dirty-guard (-uno) and
+# `git status` stay clean
+.planning/
+.worktrees/
