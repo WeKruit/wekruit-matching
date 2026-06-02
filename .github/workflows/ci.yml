@@ -65,8 +65,17 @@ jobs:
       # never serves the API, so the value is intentionally inert.
       API_SECRET_KEY: ci-not-served
       LOG_LEVEL: WARNING
-      # No ANTHROPIC / OPENAI / FIRESTORE / SERPER / FIRECRAWL / MAILGUN secret is
-      # set: this gate runs no network stage, which keeps it free.
+      # config.py's pydantic Settings REQUIRES these 4 (Field(...), no default),
+      # so alembic env.py — and ANY module that calls get_settings() — fails to
+      # import without them. They are INERT placeholders: this gate runs NO
+      # network stage, so no real key is ever used (keeps it $0). Real keys
+      # belong in daily-scrape.yml, never in this test gate.
+      ANTHROPIC_API_KEY: ci-not-used
+      OPENAI_API_KEY: ci-not-used
+      GITHUB_TOKEN: ci-not-used
+      SILICONFLOW_API_KEY: ci-not-used
+      # Still NO Firestore / Serper / Firecrawl / Mailgun key — those default to
+      # "" in config.py and their stages are skipped, keeping the gate free.
 
     steps:
       - uses: actions/checkout@v4

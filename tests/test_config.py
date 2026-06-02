@@ -11,6 +11,10 @@ def test_settings_loads_from_env(monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_TOKEN", "github_pat_test")
     monkeypatch.setenv("API_SECRET_KEY", "test-secret")
     monkeypatch.setenv("SILICONFLOW_API_KEY", "sf-test")
+    # Isolate from the ambient environment: CI (ci.yml) and many shells export
+    # LOG_LEVEL, which Settings would read over the default. This test asserts the
+    # DEFAULT, so it must control the var rather than assume it is unset.
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
 
     # Import inside test to avoid module-level .env read polluting other tests
     import importlib
