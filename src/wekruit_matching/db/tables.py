@@ -136,6 +136,31 @@ jobs_table = sa.Table(
     ),
     sa.Column("enriched_at", sa.DateTime(timezone=True), nullable=True),
     sa.Column("embedded_at", sa.DateTime(timezone=True), nullable=True),
+    # Matching-ready invariants (reliability audit 2026-06-01, rank 2). These
+    # mirror the CHECK constraints added in alembic 0010 so the SQLAlchemy schema
+    # and the live DB agree. They make the STAMP_WITHOUT_VERIFY corruption states
+    # unrepresentable: a done-flag can never certify data that isn't there.
+    sa.CheckConstraint(
+        "enriched_at IS NULL "
+        "OR cardinality(required_skills) > 0 "
+        "OR job_description IS NULL "
+        "OR length(job_description) < 200",
+        name="ck_enriched_requires_skills_or_no_jd",
+    ),
+    sa.CheckConstraint(
+        "embedded_at IS NULL OR embedding IS NOT NULL",
+        name="ck_embedded_requires_vector",
+    ),
+    sa.CheckConstraint(
+        "embedding IS NULL OR embedded_at IS NOT NULL",
+        name="ck_vector_requires_embedded_stamp",
+    ),
+    sa.CheckConstraint(
+        "jd_fetch_source IS NULL "
+        "OR jd_fetch_source IN ('failed','skip_no_url','closed_at_source') "
+        "OR (job_description IS NOT NULL AND length(job_description) >= 200)",
+        name="ck_jd_source_requires_usable_jd",
+    ),
 )
 
 user_profiles_table = sa.Table(
