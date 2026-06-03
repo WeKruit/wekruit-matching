@@ -1,6 +1,9 @@
 #!/bin/bash
 # Daily job pipeline: scrape, enrich, embed + email notifications
-# Runs via launchd at 6 AM CDT daily.
+# Runs via launchd at 06:00 local time on the laptop (StartCalendarInterval in
+# ~/Library/LaunchAgents/com.wekruit.scrape.daily.plist; currently EDT => 10:00
+# UTC). Re-aligned 2026-06-03 from a drifted 10:05 local. Adjust the plist Hour
+# (local time) + `launchctl unload/load` it to change the fire time.
 # v1.5 Stream-A2: post-pipeline webhook to wekruit-pa.
 
 # Resolve the repo root from this script's location so this works on any

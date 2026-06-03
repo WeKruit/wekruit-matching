@@ -303,13 +303,16 @@ def test_scrape_all_returns_one_entry_per_board_isolated_failures() -> None:
 
 
 def test_default_wait_ms_is_used_when_board_does_not_override() -> None:
-    captured: dict = {}
+    # Empty markdown now triggers a render-retry (2026-06-03), so capture EVERY
+    # attempt's waitFor and assert the FIRST attempt used the board's (default)
+    # wait — the retry deliberately uses a longer wait.
+    captured: dict = {"waits": []}
 
     def fake_post(url: str, **kwargs) -> httpx.Response:
-        captured["wait"] = kwargs.get("json", {}).get("waitFor")
+        captured["waits"].append(kwargs.get("json", {}).get("waitFor"))
         return _fake_response(200, body={"success": True, "data": {"markdown": ""}})
 
     client = FirecrawlClient(base_url="http://x", http_post=fake_post)
     board = VCBoardConfig("custom", "https://example.test/jobs", "Custom")
     scrape_board(client, board)
-    assert captured["wait"] == DEFAULT_WAIT_MS
+    assert captured["waits"][0] == DEFAULT_WAIT_MS

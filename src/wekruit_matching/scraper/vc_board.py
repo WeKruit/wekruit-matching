@@ -61,6 +61,17 @@ from wekruit_matching.scraper.id_utils import compute_content_hash, generate_job
 #: warm playwright workers. Override per board when slow.
 DEFAULT_WAIT_MS = 6000
 
+#: Render-completeness retry (2026-06-03). A single fixed-waitFor render often
+#: returns thin/partial markdown for JS-heavy boards (the SPA had not finished
+#: hydrating), under-capturing jobs — the mark_stale circuit-breaker then trips
+#: ("partial render, skipped deactivation") and we miss that board's new jobs.
+#: scrape_board now retries with a longer wait when a render looks incomplete
+#: (markdown shorter than MIN_RENDER_MARKDOWN_CHARS OR zero parsed jobs) and
+#: keeps the best (most-jobs) attempt. A fully-rendered board returns on the
+#: first attempt, so good boards pay no extra latency.
+RENDER_ATTEMPT_WAIT_MULTIPLIERS: tuple[float, ...] = (1.0, 2.0)
+MIN_RENDER_MARKDOWN_CHARS = 500
+
 #: Per-call HTTP timeout (Firecrawl render + extract). 75s gives Sequoia
 #: room without blocking the daily pipeline.
 DEFAULT_TIMEOUT_S = 75.0
@@ -627,17 +638,44 @@ class FirecrawlClient:
 
 
 def scrape_board(client: FirecrawlClient, board: VCBoardConfig) -> list[Job]:
-    """Render + parse one board. Failure is silent (empty list + log)."""
-    try:
-        markdown = client.scrape_markdown(board.url, wait_ms=board.wait_ms)
-    except (httpx.RequestError, httpx.TimeoutException) as e:
-        logger.error("firecrawl fetch failed for {}: {}", board.slug, e)
-        return []
-    if not markdown:
-        return []
-    jobs = parse_markdown_jobs(markdown, board)
-    logger.info("vc_board.scrape: {} → {} jobs", board.slug, len(jobs))
-    return jobs
+    """Render + parse one board, retrying with a longer wait on a thin/partial
+    render. Failure is silent (best-effort list + log).
+
+    A render is "thin" when the markdown is shorter than
+    MIN_RENDER_MARKDOWN_CHARS (the SPA almost certainly did not finish loading)
+    OR zero jobs parsed. On a thin render we retry at the next wait multiplier;
+    we always return the best (most-jobs) attempt so a partial-but-non-empty
+    render is never discarded.
+    """
+    best: list[Job] = []
+    n_attempts = len(RENDER_ATTEMPT_WAIT_MULTIPLIERS)
+    for attempt, mult in enumerate(RENDER_ATTEMPT_WAIT_MULTIPLIERS, start=1):
+        wait_ms = int(board.wait_ms * mult)
+        try:
+            markdown = client.scrape_markdown(board.url, wait_ms=wait_ms)
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            logger.error("firecrawl fetch failed for {} (attempt {}/{}): {}",
+                         board.slug, attempt, n_attempts, e)
+            markdown = ""
+        jobs = parse_markdown_jobs(markdown, board) if markdown else []
+        if len(jobs) > len(best):
+            best = jobs
+        rendered_ok = len(markdown) >= MIN_RENDER_MARKDOWN_CHARS and len(jobs) > 0
+        if rendered_ok:
+            if attempt > 1:
+                logger.info("vc_board.scrape: {} recovered on attempt {}/{} (wait={}ms) → {} jobs",
+                            board.slug, attempt, n_attempts, wait_ms, len(jobs))
+            else:
+                logger.info("vc_board.scrape: {} → {} jobs", board.slug, len(jobs))
+            return jobs
+        logger.warning(
+            "vc_board.scrape: {} thin render attempt {}/{} (md={}c jobs={}) — {}",
+            board.slug, attempt, n_attempts, len(markdown), len(jobs),
+            "retrying with a longer wait" if attempt < n_attempts else "giving up",
+        )
+    logger.warning("vc_board.scrape: {} still thin after {} attempt(s) → {} jobs (best-effort)",
+                   board.slug, n_attempts, len(best))
+    return best
 
 
 def scrape_all_boards(
