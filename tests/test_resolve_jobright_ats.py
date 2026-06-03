@@ -123,10 +123,14 @@ def test_resolved_flush_sets_url_bumped_hash_and_embedded_at(monkeypatch) -> Non
     assert len(conn.cursor_calls) == 1
     sql, params = conn.cursor_calls[0]
     assert "ats_apply_url = %(u)s" in sql
-    assert "jd_fetch_source = 'serper'" in sql
+    # 2026-06-03: the resolver no longer stamps a jd_fetch_source on a hit —
+    # resolving an apply URL is not a JD fetch, and a non-sentinel source on a
+    # thin JD violates ck_jd_source_requires_usable_jd (alembic 0010).
+    assert "jd_fetch_source" not in sql
     assert "content_hash = %(ch)s" in sql
-    # Fix #4 Option B: embedded_at = now() must be in the SET list.
-    assert "embedded_at = now()" in sql
+    # embedded_at is bumped only when the row is already embedded (guards
+    # ck_embedded_requires_vector on unembedded rows).
+    assert "embedded_at = CASE WHEN embedding IS NOT NULL THEN now()" in sql
     # Idempotency guard present.
     assert "(ats_apply_url IS NULL OR ats_apply_url='')" in sql
     assert params["u"] == resolved_url
@@ -138,8 +142,10 @@ def test_resolved_flush_sets_url_bumped_hash_and_embedded_at(monkeypatch) -> Non
     assert conn.committed >= 1
 
 
-def test_miss_is_stamped_serper_miss_without_embedded_at(monkeypatch) -> None:
-    """(b) A miss -> jd_fetch_source='serper_miss', NO embedded_at bump."""
+def test_miss_is_stamped_skip_no_url_without_embedded_at(monkeypatch) -> None:
+    """(b) A miss -> jd_fetch_source='skip_no_url' (constraint-legal sentinel),
+    NO embedded_at bump. (Was 'serper_miss' until 2026-06-03 — that value is not
+    in the 0010 allow-list and crashed Stage 2.5 on thin-JD rows.)"""
     module = _load_resolver()
     conn = _FakeConn(
         select_rows=[{"job_id": "job-miss", "company_name": "Acme", "role_title": "SWE Intern"}]
@@ -155,7 +161,7 @@ def test_miss_is_stamped_serper_miss_without_embedded_at(monkeypatch) -> None:
 
     assert len(conn.cursor_calls) == 1
     sql, params = conn.cursor_calls[0]
-    assert "jd_fetch_source = 'serper_miss'" in sql
+    assert "jd_fetch_source = 'skip_no_url'" in sql
     assert "embedded_at" not in sql  # misses must NOT touch embedded_at
     assert "ats_apply_url = " not in sql  # misses must not set a URL
     assert params["j"] == "job-miss"
@@ -183,7 +189,7 @@ def test_select_excludes_already_resolved_and_prior_misses(monkeypatch) -> None:
     assert conn.select_calls, "expected a pending SELECT to be issued"
     select_sql = conn.select_calls[0]
     assert "ats_apply_url IS NULL OR ats_apply_url=''" in select_sql
-    assert "jd_fetch_source <> 'serper_miss'" in select_sql
+    assert "jd_fetch_source NOT IN ('skip_no_url', 'serper_miss')" in select_sql
 
 
 def test_resolve_jobright_pending_returns_counts_dict(monkeypatch) -> None:

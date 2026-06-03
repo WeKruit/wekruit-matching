@@ -12,8 +12,10 @@ APPROACH (mirrors the deleted url_resolver.resolve_via_serper, self-contained):
     2. Pass 2 (broad):  '{role_title} {company_name} apply careers'  (if pass 1 misses)
     Pick best organic result: official employer/ATS > aggregator; skip
     jobright.ai / simplify.jobs. Optionally HEAD-verify alive. Write
-    ats_apply_url + jd_fetch_source='serper'. On no-match, stamp
-    jd_fetch_source='serper_miss' so reruns skip it.
+    ats_apply_url (the resolver finds a URL, it does NOT fetch a JD, so it does
+    NOT stamp a jd_fetch_source on a hit). On no-match, stamp
+    jd_fetch_source='skip_no_url' (a constraint-legal "no URL" sentinel) so
+    reruns skip it.
 
 SAFE:
   - --dry-run prints what it WOULD resolve, zero writes / zero Serper cost.
@@ -22,7 +24,8 @@ SAFE:
   - Reversible: every (job_id, old=NULL, new_url) appended to
     data/jobright_ats_resolved.tsv. To revert: set ats_apply_url=NULL for those.
   - 0.3s throttle between Serper calls; tenacity-free simple retry on 429.
-  - Idempotent: WHERE ats_apply_url IS NULL AND jd_fetch_source != 'serper_miss'.
+  - Idempotent: WHERE ats_apply_url IS NULL AND jd_fetch_source NOT IN
+    ('skip_no_url','serper_miss')  ('serper_miss' = legacy pre-2026-06-03 misses).
 
     uv run python scripts/resolve_jobright_ats.py --dry-run --limit 20
     uv run python scripts/resolve_jobright_ats.py --limit 200        # paid sample
@@ -154,7 +157,8 @@ def resolve_jobright_pending(
               AND (ats_apply_url IS NULL OR ats_apply_url='')
               AND primary_url ILIKE '%%jobright%%'
               AND company_name IS NOT NULL AND role_title IS NOT NULL
-              AND (jd_fetch_source IS NULL OR jd_fetch_source <> 'serper_miss')
+              AND (jd_fetch_source IS NULL
+                   OR jd_fetch_source NOT IN ('skip_no_url', 'serper_miss'))
             ORDER BY first_seen_at DESC
             {limit_sql}
             """
@@ -259,7 +263,10 @@ def main() -> int:
 
 
 def _flush(conn, updates: list[tuple[str, str]], misses: list[str]) -> None:
-    """Write a batch: ats_apply_url for resolved, jd_fetch_source='serper_miss' for misses."""
+    """Write a batch: ats_apply_url for resolved (NO jd_fetch_source stamp — the
+    resolver finds a URL, it does not fetch a JD), jd_fetch_source='skip_no_url'
+    for misses (a constraint-legal "no URL" sentinel; see alembic 0010
+    ck_jd_source_requires_usable_jd)."""
     import hashlib
     with conn.cursor() as cur:
         for url, jid in updates:
@@ -281,14 +288,26 @@ def _flush(conn, updates: list[tuple[str, str]], misses: list[str]) -> None:
             # this row on the next sync. Misses (below) are deliberately NOT
             # bumped: nothing about them needs to propagate.
             cur.execute(
-                "UPDATE jobs SET ats_apply_url = %(u)s, jd_fetch_source = 'serper', "
-                "content_hash = %(ch)s, embedded_at = now() "
+                # No jd_fetch_source stamp: resolving an apply URL is NOT a JD
+                # fetch, and stamping a non-sentinel source on a thin/empty JD
+                # violates ck_jd_source_requires_usable_jd (alembic 0010).
+                # embedded_at is bumped ONLY when the row is already embedded
+                # (embedding IS NOT NULL); bumping it on an unembedded row would
+                # violate ck_embedded_requires_vector — and an unembedded row
+                # gets its embedded_at from the embed stage anyway.
+                "UPDATE jobs SET ats_apply_url = %(u)s, content_hash = %(ch)s, "
+                "embedded_at = CASE WHEN embedding IS NOT NULL THEN now() "
+                "ELSE embedded_at END "
                 "WHERE job_id = %(j)s AND (ats_apply_url IS NULL OR ats_apply_url='')",
                 {"u": url, "ch": new_ch, "j": jid},
             )
         for jid in misses:
             cur.execute(
-                "UPDATE jobs SET jd_fetch_source = 'serper_miss' "
+                # 'skip_no_url' (not 'serper_miss'): a constraint-legal sentinel
+                # (alembic 0010 allow-list) meaning "no fetchable ATS URL found",
+                # which is exactly a serper miss. 'serper_miss' on a thin JD
+                # violated ck_jd_source_requires_usable_jd and crashed Stage 2.5.
+                "UPDATE jobs SET jd_fetch_source = 'skip_no_url' "
                 "WHERE job_id = %(j)s AND (ats_apply_url IS NULL OR ats_apply_url='')",
                 {"j": jid},
             )
