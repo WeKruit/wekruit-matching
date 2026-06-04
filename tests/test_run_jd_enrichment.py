@@ -394,10 +394,13 @@ def test_recoverable_timeout_does_not_mark_permanent_404(monkeypatch) -> None:
     )
 
 
-def test_lookup_error_marks_permanent_404_true(monkeypatch) -> None:
-    """When fetch_workday_job raises LookupError (page exists but no job
-    posting / CXS endpoint not discoverable), the listing was pulled —
-    permanent.
+def test_lookup_error_is_recoverable_not_permanent(monkeypatch) -> None:
+    """2026-06-04 poison_no_retry fix: a LookupError (Workday CXS endpoint not
+    yet rendered / Ashby posting absent from a transiently-empty board feed) is
+    TRANSIENT. It must NOT tombstone the row as permanent_404 — that both
+    excludes it from JD retry forever AND inactivates a live job. It is written
+    recoverable (jd_fetch_source='failed', permanent_404=FALSE) so the Stage 2b
+    SELECT re-admits it after the stale window.
     """
     from wekruit_matching.pipeline.run_jd_enrichment import run_jd_enrichment
 
@@ -432,9 +435,13 @@ def test_lookup_error_marks_permanent_404_true(monkeypatch) -> None:
     update_params = [
         params for query, params in conn.executed if query.lstrip().startswith("UPDATE")
     ]
-    assert update_params[0]["permanent_404"] is True, (
-        "LookupError on Workday CXS discovery means the listing is gone — "
-        "permanent."
+    assert update_params[0]["permanent_404"] is False, (
+        "LookupError is TRANSIENT — must NOT be tombstoned permanent_404 (that "
+        "would inactivate a live job on a render hiccup)."
+    )
+    assert update_params[0]["jd_fetch_source"] == "failed", (
+        "transient failure must be the recoverable 'failed' sentinel so the row "
+        "retries after the stale window."
     )
 
 
@@ -485,24 +492,44 @@ def test_successful_fetch_clears_permanent_404_flag(monkeypatch) -> None:
 def test_is_permanent_404_helper_classification() -> None:
     """Direct unit test of the classifier — guards against silent regressions
     in future fetcher additions.
+
+    2026-06-04 poison_no_retry fix: permanent_404 is now reserved for PROVABLY
+    gone URLs (real 404/410). Transient conditions that previously tombstoned —
+    and INACTIVATED — live jobs are now recoverable (return False):
+      * LookupError (Workday CXS not yet rendered / Ashby posting absent from a
+        transiently-empty feed),
+      * anti-bot 403 from aggregator hosts (the posting is blocked, not gone).
     """
     from wekruit_matching.pipeline.run_jd_enrichment import _is_permanent_404
 
     request = httpx.Request("GET", "https://example.com")
+    agg_request = httpx.Request("GET", "https://www.ziprecruiter.com/jobs/123")
     resp_404 = httpx.Response(status_code=404, request=request)
+    resp_410 = httpx.Response(status_code=410, request=request)
     resp_500 = httpx.Response(status_code=500, request=request)
     resp_429 = httpx.Response(status_code=429, request=request)
+    resp_403_agg = httpx.Response(status_code=403, request=agg_request)
 
+    # Provably gone -> permanent.
     assert _is_permanent_404(
         httpx.HTTPStatusError("404", request=request, response=resp_404)
     ) is True
+    assert _is_permanent_404(
+        httpx.HTTPStatusError("410", request=request, response=resp_410)
+    ) is True
+    # Transient/infra -> NOT permanent (recoverable 'failed', re-admitted later).
     assert _is_permanent_404(
         httpx.HTTPStatusError("500", request=request, response=resp_500)
     ) is False
     assert _is_permanent_404(
         httpx.HTTPStatusError("429", request=request, response=resp_429)
     ) is False
-    assert _is_permanent_404(LookupError("CXS discovery failed")) is True
+    # anti-bot 403 from an aggregator is NO LONGER permanent (was yanking live jobs).
+    assert _is_permanent_404(
+        httpx.HTTPStatusError("403", request=agg_request, response=resp_403_agg)
+    ) is False
+    # LookupError is NO LONGER permanent (transient Workday/Ashby render miss).
+    assert _is_permanent_404(LookupError("CXS discovery failed")) is False
     assert _is_permanent_404(httpx.ConnectTimeout("timeout")) is False
     assert _is_permanent_404(httpx.ConnectError("dns")) is False
     assert _is_permanent_404(ValueError("parse error")) is False

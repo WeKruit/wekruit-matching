@@ -107,6 +107,68 @@ def send_pipeline_start_email() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Dependency-down alert (mid-run)
+# ---------------------------------------------------------------------------
+
+def send_dependency_alert(
+    dependency: str,
+    detail: str,
+    *,
+    impact: str = "",
+    action: str = "",
+) -> bool:
+    """Send an IMMEDIATE, high-visibility alert that a pipeline dependency went
+    DOWN or degraded MID-RUN.
+
+    Preflight (Stage 0) only checks deps BEFORE the run; this covers a dependency
+    that dies or starts erroring DURING the run. It is the alert that was missing
+    while a credit-exhausted Serper resolved 0 jobs for days with status=ok.
+
+    Args:
+        dependency: short name, e.g. ``"Serper (ATS resolver)"``.
+        detail:     the cause string, e.g. ``"HTTP 400: Not enough credits"``.
+                    NEVER pass a secret/key here — callers surface response bodies
+                    and exception strings only.
+        impact:     optional one-line user-facing impact.
+        action:     optional human action required, e.g. ``"Top up Serper credits"``.
+
+    Returns True if the alert email was sent.
+    """
+    now = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
+    rows = [("Cause", detail)]
+    if impact:
+        rows.append(("Impact", impact))
+    if action:
+        rows.append(("Action required", action))
+    body_rows = "".join(
+        f'<tr><td style="font-weight:600;color:#922;width:140px;">{label}</td>'
+        f'<td style="color:#5c5040;">{value}</td></tr>'
+        for label, value in rows
+    )
+    html = f"""<!DOCTYPE html><html><head><style>{_STYLES}</style></head><body>
+<div class="container">
+  <div class="header" style="background:#7a241b;">
+    <h1>&#9888; Dependency Down: {dependency}</h1>
+    <div class="subtitle">{now} &middot; mid-run alert</div>
+  </div>
+  <div class="body-card">
+    <p style="margin:0 0 16px;color:#922;font-weight:600;">
+      A pipeline dependency failed during the run (not a "no results" answer).</p>
+    <div class="error-box"><table>{body_rows}</table></div>
+  </div>
+  <div class="footer">WeKruit Matching Engine &middot; dependency monitor</div>
+</div>
+</body></html>"""
+
+    text = f"DEPENDENCY DOWN: {dependency} -- {detail}"
+    if impact:
+        text += f" | impact: {impact}"
+    if action:
+        text += f" | action: {action}"
+    return _send_email(subject=f"[WeKruit] ⚠ DEPENDENCY DOWN: {dependency}", html=html, text=text)
+
+
+# ---------------------------------------------------------------------------
 # Completion email
 # ---------------------------------------------------------------------------
 
@@ -229,6 +291,7 @@ def send_pipeline_complete_email(
     url_resolution_stats: dict | None = None,
     health_failures: list[dict] | None = None,
     health_metrics: dict | None = None,
+    stage_outcomes: dict[str, str] | None = None,
 ) -> bool:
     """Send an HTML notification with pipeline results."""
     now = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
@@ -253,13 +316,25 @@ def send_pipeline_complete_email(
     total_resolved = url_res.get("total_resolved", 0)
     resolution_rate = url_res.get("resolution_rate", 0.0)
 
+    # Stages that ran but did not finish cleanly. 'skipped' is excluded — a
+    # skipped stage is usually intentional (no SERPER_API_KEY, sync gated off).
+    outcomes = stage_outcomes or {}
+    bad_stages = {
+        s: v for s, v in outcomes.items() if v in ("degraded", "error", "timeout")
+    }
+
     has_errors = (
         bool(errors)
         or any("error" in s for s in scrape_stats.values())
         or bool(health_failures)
+        or bool(bad_stages)
     )
     status_label = "Completed with Errors" if has_errors else "Completed"
     status_color = "#c0392b" if has_errors else "#2d7d46"
+    # Subject severity prefix — the only part a human reads without opening. A
+    # degraded/failed run must NOT look identical to a healthy one (the bug that
+    # let a dead Serper read as a normal night for days).
+    subject_prefix = "[DEGRADED] " if has_errors else ""
 
     scrape_rows = _scrape_rows_html(scrape_stats)
     stale_section = _stale_html(stale_jobs or [])
@@ -269,6 +344,21 @@ def send_pipeline_complete_email(
     if errors:
         items = "".join(f"<li>{e}</li>" for e in errors)
         error_section = f'<div class="error-box"><strong>Errors</strong><ul style="margin:8px 0 0;padding-left:18px;">{items}</ul></div>'
+
+    # Per-stage status — surfaces degraded/error/timeout stages even when no
+    # exception text landed in `errors` (e.g. a stage marked degraded by a
+    # result-predicate). Healthy runs render nothing here.
+    stage_section = ""
+    if bad_stages:
+        srows = "".join(
+            f'<tr><td>{stage}</td>'
+            f'<td><span class="tag tag-err">{outcome.upper()}</span></td></tr>'
+            for stage, outcome in sorted(bad_stages.items())
+        )
+        stage_section = (
+            '<h2 style="color:#c0392b;">Degraded / Failed Stages</h2>'
+            f'<table><tr><th>Stage</th><th>Outcome</th></tr>{srows}</table>'
+        )
 
     jd_failure_rows = ""
     if failed_by_source:
@@ -329,6 +419,7 @@ def send_pipeline_complete_email(
       <tr><td>Embedding (OpenAI)</td><td style="text-align:right;">{embedded:,} vectors</td><td style="text-align:right;color:#c0392b;">{embed_failed} failed</td></tr>
     </table>
 
+    {stage_section}
     {health_section}
     {stale_section}
     {error_section}
@@ -338,6 +429,6 @@ def send_pipeline_complete_email(
 </body></html>"""
 
     return _send_email(
-        subject=f"[WeKruit] {'+' if total_inserted else ''}{total_inserted:,} new jobs | {total_stale:,} stale -- {now}",
+        subject=f"{subject_prefix}[WeKruit] {'+' if total_inserted else ''}{total_inserted:,} new jobs | {total_stale:,} stale -- {now}",
         html=html,
     )

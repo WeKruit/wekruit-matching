@@ -57,6 +57,7 @@ from wekruit_matching.db.schema_guard import ensure_schema_current
 from wekruit_matching.embedding.run import embed_all
 from wekruit_matching.enrichment.run import enrich_all
 from wekruit_matching.notifications.email import (
+    send_dependency_alert,
     send_pipeline_complete_email,
     send_pipeline_start_email,
 )
@@ -187,6 +188,33 @@ def _record_timeout(errors: list[str], stage: str, exc: StageTimeoutError) -> No
     errors.append(msg)
 
 
+def _flag_degraded(
+    stage: str,
+    reason: str,
+    *,
+    stage_outcomes: dict[str, str],
+    errors: list[str],
+) -> None:
+    """Mark a stage DEGRADED and record a human-visible reason.
+
+    A "degraded" stage ran without raising but produced a DEGENERATE result
+    (resolved=0, embedded=0, every row failed, a skip-sentinel, terminally
+    rejected docs). Before 2026-06-04 every stage stamped ``"ok"`` purely on
+    "the call returned without raising", so a dependency that came back EMPTY
+    (a dead Serper, a no-cred Firestore mirror, an all-failed JD batch) reported
+    success with zero alerts — that is how a credit-exhausted Serper went unseen
+    for days.
+
+    Recording the reason in ``errors`` is deliberate: it (1) flips
+    pipeline_status to ``"partial"`` and (2) surfaces in the completion email +
+    the [DEGRADED] subject prefix — i.e. it reaches a human. ``stage_outcomes``
+    keeps the per-stage ``"degraded"`` marker for the webhook/diagnostics.
+    """
+    logger.error("stage degraded: {} -- {}", stage, reason)
+    errors.append(f"{stage} degraded: {reason}")
+    stage_outcomes[stage] = "degraded"
+
+
 def run_daily_pipeline() -> dict:
     """Execute the full daily pipeline with email notifications.
 
@@ -215,6 +243,10 @@ def run_daily_pipeline() -> dict:
     enrich_stats: dict = {"enriched": 0, "failed": 0, "skipped": 0}
     embed_stats: dict = {"embedded": 0, "failed": 0, "skipped": 0}
     sync_stats: dict = {"active_jobs": 0, "inactive_jobs": 0, "synced": 0, "batches": 0}
+    # Stage 2.5 ATS resolve stats — hoisted so the finalizer can wire the
+    # resolver's resolved/missed/infra_error into the completion email
+    # (url_resolution_stats) even when the stage is skipped.
+    ats_stats: dict = {"resolved": 0, "missed": 0, "infra_error": 0, "infra_detail": ""}
     dead_backfill_stats: dict = {"synced": 0, "total_seen": 0, "skipped": ""}
     stage_outcomes: dict[str, str] = {}  # stage_name -> "ok"|"error"|"timeout"
     # Post-run reliability gate (P-REL): data-quality failures discovered by
@@ -332,7 +364,33 @@ def run_daily_pipeline() -> dict:
                 with get_connection() as conn:
                     dead_backfill_stats = firestore_dead_backfill(conn)
                 logger.info("Dead-backfill stats: {}", dead_backfill_stats)
-                stage_outcomes["dead_backfill"] = "ok"
+                # The dead mirror is what flips confirmed-dead postings to
+                # inactive (Stage 3.5). If it SKIPPED (no SDK / no creds), nothing
+                # gets reconciled and dead jobs ride into the live matcher as
+                # clickable 404s — the documented "dead jobs served to users"
+                # regression, silently re-armed by a Firestore credential outage.
+                # Do NOT stamp 'ok' on a skip: degrade + alert a human.
+                _skip = dead_backfill_stats.get("skipped")
+                if _skip:
+                    _flag_degraded(
+                        "dead_backfill",
+                        f"Firestore dead-flag mirror skipped ({_skip}) — "
+                        "dead jobs will NOT be reconciled this run and may stay "
+                        "active in the matcher",
+                        stage_outcomes=stage_outcomes,
+                        errors=errors,
+                    )
+                    send_dependency_alert(
+                        "Firestore (dead-flag mirror)",
+                        f"dead-backfill skipped: {_skip}",
+                        impact=(
+                            "Confirmed-dead postings are not being flipped "
+                            "inactive — they may be served to users as 404 links."
+                        ),
+                        action="Restore Firestore SDK / credentials.",
+                    )
+                else:
+                    stage_outcomes["dead_backfill"] = "ok"
         except StageTimeoutError as e:
             _record_timeout(errors, "dead_backfill", e)
             stage_outcomes["dead_backfill"] = "timeout"
@@ -607,7 +665,25 @@ def run_daily_pipeline() -> dict:
                 with get_connection() as conn:
                     jd_stats = run_jd_enrichment(conn=conn)
                 logger.info("ATS JD enrichment stats: {}", jd_stats)
-                stage_outcomes["jd_enrich"] = "ok"
+                # Degenerate-result guard: attempted rows but resolved none, or a
+                # DB-pool/infra route in failed_by_source, means JD fetching is
+                # effectively down — not a clean "did-not-raise" night.
+                _jd_failed = int(jd_stats.get("failed", 0) or 0)
+                _jd_processed = int(jd_stats.get("processed", 0) or 0)
+                _jd_by_source = jd_stats.get("failed_by_source", {}) or {}
+                _jd_infra = any(
+                    k in _jd_by_source for k in ("connection_error", "db_error", "pool_timeout")
+                )
+                if _jd_infra or (_jd_failed > 0 and _jd_processed == 0):
+                    _flag_degraded(
+                        "jd_enrich",
+                        f"JD fetching degraded: processed={_jd_processed} "
+                        f"failed={_jd_failed} by_source={dict(_jd_by_source)}",
+                        stage_outcomes=stage_outcomes,
+                        errors=errors,
+                    )
+                else:
+                    stage_outcomes["jd_enrich"] = "ok"
         except StageTimeoutError as e:
             _record_timeout(errors, "jd_enrich", e)
             stage_outcomes["jd_enrich"] = "timeout"
@@ -658,7 +734,55 @@ def run_daily_pipeline() -> dict:
                 with _stage_timeout("ats_resolve", STAGE_BUDGETS["ats_resolve"]):
                     ats_stats = resolve_jobright_pending()
                     logger.info("ATS resolve stats: {}", ats_stats)
-                    stage_outcomes["ats_resolve"] = "ok"
+                    # Do NOT blindly stamp "ok". A dead Serper (out of credits)
+                    # resolved 0 jobs for DAYS while this stage reported ok and
+                    # fired zero alerts. Two degradation signals flip the run to
+                    # degraded + alert a human:
+                    #   1. infra_error: the resolver's circuit-breaker tripped on a
+                    #      credit/auth/quota failure (dependency DOWN).
+                    #   2. resolve-rate collapse: a non-trivial number of rows were
+                    #      queried but NONE resolved (e.g. silent API change) — even
+                    #      without an explicit infra error, 0% is a red flag.
+                    _resolved = int(ats_stats.get("resolved", 0) or 0)
+                    _missed = int(ats_stats.get("missed", 0) or 0)
+                    _queried = _resolved + _missed
+                    if ats_stats.get("infra_error"):
+                        _detail = str(ats_stats.get("infra_detail") or "unknown")
+                        msg = (
+                            "Stage 2.5 ATS resolve: Serper dependency DOWN "
+                            f"({_detail}); {ats_stats.get('aborted', 0)} rows left "
+                            "unqueried (not poisoned, will retry)."
+                        )
+                        logger.error(msg)
+                        errors.append(msg)
+                        stage_outcomes["ats_resolve"] = "degraded"
+                        send_dependency_alert(
+                            "Serper (ATS resolver)",
+                            _detail,
+                            impact=(
+                                "New jobright jobs are not getting direct ATS "
+                                "apply URLs (users see jobright redirect links). "
+                                "Matching is unaffected."
+                            ),
+                            action="Top up Serper credits / verify SERPER_API_KEY.",
+                        )
+                    elif _queried >= 50 and _resolved == 0:
+                        msg = (
+                            "Stage 2.5 ATS resolve: resolve-rate collapse — "
+                            f"{_queried} rows queried, 0 resolved (0%). Serper may "
+                            "be degraded or its response shape changed."
+                        )
+                        logger.error(msg)
+                        errors.append(msg)
+                        stage_outcomes["ats_resolve"] = "degraded"
+                        send_dependency_alert(
+                            "Serper (ATS resolver)",
+                            f"0 of {_queried} queries resolved (0% hit rate)",
+                            impact="New jobright jobs are not getting direct ATS apply URLs.",
+                            action="Check Serper account status + resolver output.",
+                        )
+                    else:
+                        stage_outcomes["ats_resolve"] = "ok"
         except StageTimeoutError as e:
             _record_timeout(errors, "ats_resolve", e)
             stage_outcomes["ats_resolve"] = "timeout"
@@ -673,7 +797,30 @@ def run_daily_pipeline() -> dict:
             with _stage_timeout("embed", STAGE_BUDGETS["embed"]):
                 embed_stats = embed_all()
                 logger.info("Embed stats: {}", embed_stats)
-                stage_outcomes["embed"] = "ok"
+                # Degenerate-result guard: rows failed but NONE embedded means the
+                # embedder is effectively down (OpenAI key revoked / 429 storm).
+                # embed_all's drain loop breaks on embedded==0 even when failed>0,
+                # so it returns {embedded:0, failed:N} and would otherwise stamp
+                # 'ok'. The Stage 5 backlog floor only catches this once coverage
+                # decays; flag it at the stage so the outage is visible tonight.
+                _emb_failed = int(embed_stats.get("failed", 0) or 0)
+                _emb_done = int(embed_stats.get("embedded", 0) or 0)
+                if _emb_failed > 0 and _emb_done == 0:
+                    _flag_degraded(
+                        "embed",
+                        f"embedding degraded: embedded=0 failed={_emb_failed} "
+                        "(embedder may be down — check OpenAI key/quota)",
+                        stage_outcomes=stage_outcomes,
+                        errors=errors,
+                    )
+                    send_dependency_alert(
+                        "OpenAI (embeddings)",
+                        f"0 embedded, {_emb_failed} failed",
+                        impact="New/changed jobs are not getting embeddings — they cannot be matched.",
+                        action="Check OPENAI_API_KEY + account quota.",
+                    )
+                else:
+                    stage_outcomes["embed"] = "ok"
         except StageTimeoutError as e:
             _record_timeout(errors, "embed", e)
             stage_outcomes["embed"] = "timeout"
@@ -753,7 +900,22 @@ def run_daily_pipeline() -> dict:
                 with _stage_timeout("sync", STAGE_BUDGETS["sync"]):
                     sync_stats = sync_jobs_to_firebase(since=run_started_at, full_sync=False)
                     logger.info("Firebase sync stats: {}", sync_stats)
-                    stage_outcomes["sync"] = "ok"
+                    # Terminally-rejected docs (400/413/422 after bisection) are
+                    # NOT delivered to the matcher this run. Rows stay re-selectable
+                    # via the watermark (not data-loss), but a non-zero count is a
+                    # partial delivery worth a human's eyes — don't bury it in
+                    # job_sync's logger.error.
+                    _skipped_docs = int(sync_stats.get("skipped_docs", 0) or 0)
+                    if _skipped_docs > 0:
+                        _flag_degraded(
+                            "sync",
+                            f"{_skipped_docs} docs terminally rejected and not "
+                            "delivered this run (will retry next run)",
+                            stage_outcomes=stage_outcomes,
+                            errors=errors,
+                        )
+                    else:
+                        stage_outcomes["sync"] = "ok"
             except StageTimeoutError as e:
                 _record_timeout(errors, "sync", e)
                 stage_outcomes["sync"] = "timeout"
@@ -924,6 +1086,8 @@ def run_daily_pipeline() -> dict:
 
         # Notify: complete (always — even on partial / total failure)
         try:
+            _ats_resolved = int(ats_stats.get("resolved", 0) or 0)
+            _ats_missed = int(ats_stats.get("missed", 0) or 0)
             send_pipeline_complete_email(
                 scrape_stats=scrape_stats,
                 jd_stats=jd_stats,
@@ -932,8 +1096,14 @@ def run_daily_pipeline() -> dict:
                 duration_seconds=duration,
                 errors=errors,
                 stale_jobs=stale_jobs,
+                url_resolution_stats={
+                    "total_resolved": _ats_resolved,
+                    "resolution_rate": _ats_resolved / max(_ats_resolved + _ats_missed, 1),
+                    "infra_error": ats_stats.get("infra_error", 0),
+                },
                 health_failures=health_failures,
                 health_metrics=health_metrics,
+                stage_outcomes=stage_outcomes,
             )
         except Exception as e:
             logger.warning("send_pipeline_complete_email failed: {}", e)
@@ -972,7 +1142,16 @@ def run_daily_pipeline() -> dict:
             print(f"costUsd=0")  # no cost_usd field plumbed yet
             # NEW (P7-B) — wrapper greps this to override exit-code-based status
             print(f"pipelineStatus={pipeline_status}")
-            # Stage outcomes for diagnostic purposes (parsed by future tooling)
+            # Degraded/failed/timeout stage count — daily-update.sh greps this +
+            # the stageOutcome lines so the webhook (operator's pager) carries the
+            # degradation reason, not just the status. Before this, stage_outcomes
+            # were printed but discarded before the webhook left the box.
+            _degraded = sorted(
+                f"{s}={v}" for s, v in stage_outcomes.items()
+                if v in ("degraded", "error", "timeout")
+            )
+            print(f"degradedStages={len(_degraded)}")
+            # Stage outcomes for diagnostic purposes (parsed by daily-update.sh).
             for stage, outcome in stage_outcomes.items():
                 print(f"stageOutcome.{stage}={outcome}")
         except Exception as e:

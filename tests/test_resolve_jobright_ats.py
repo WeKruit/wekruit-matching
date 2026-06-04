@@ -181,7 +181,10 @@ def test_select_excludes_already_resolved_and_prior_misses(monkeypatch) -> None:
 
     counts = module.resolve_jobright_pending(limit=10, workers=1, dry_run=False, verify=False)
 
-    assert counts == {"resolved": 0, "missed": 0, "skipped": 0, "errors": 0}
+    assert counts == {
+        "resolved": 0, "missed": 0, "skipped": 0, "errors": 0, "aborted": 0,
+        "infra_error": 0, "infra_detail": "",
+    }
     # No cursor writes when there is nothing pending.
     assert conn.cursor_calls == []
 
@@ -217,11 +220,20 @@ def test_resolve_jobright_pending_returns_counts_dict(monkeypatch) -> None:
 
     counts = module.resolve_jobright_pending(limit=10, workers=1, dry_run=False, verify=False)
 
-    assert set(counts.keys()) == {"resolved", "missed", "skipped", "errors"}
+    # Counts dict now also carries outage signals (aborted / infra_error /
+    # infra_detail) so daily.py can distinguish a DOWN Serper from genuine misses.
+    assert set(counts.keys()) == {
+        "resolved", "missed", "skipped", "errors", "aborted",
+        "infra_error", "infra_detail",
+    }
     assert counts["resolved"] == 1
     assert counts["missed"] == 1
     assert counts["skipped"] == 0
     assert counts["errors"] == 0
+    # Healthy run: breaker never tripped.
+    assert counts["aborted"] == 0
+    assert counts["infra_error"] == 0
+    assert counts["infra_detail"] == ""
 
 
 def test_missing_serper_key_raises_runtimeerror(monkeypatch) -> None:
@@ -248,3 +260,97 @@ def test_dry_run_performs_no_writes(monkeypatch) -> None:
 
     assert counts["resolved"] == 1
     assert conn.cursor_calls == []  # zero writes in dry-run
+
+
+# ---------------------------------------------------------------------------
+# Infra-vs-miss distinction (2026-06-04). A dead Serper (out of credits) went
+# unnoticed for days because _serper swallowed the 400 as an empty result and
+# the run stamped status=ok with zero alerts. These tests lock in: an infra
+# failure RAISES (is not a miss), the run ABORTS without poisoning rows, and the
+# outage signal is surfaced for alerting.
+# ---------------------------------------------------------------------------
+class _FakeResp:
+    def __init__(self, status: int, body: str = "", organic=None):
+        self.status_code = status
+        self.text = body
+        self._organic = organic or []
+
+    def json(self) -> dict:
+        return {"organic": self._organic}
+
+
+class _FakeHttpClient:
+    def __init__(self, resp: _FakeResp):
+        self._resp = resp
+        self.calls = 0
+
+    def post(self, *a, **k) -> _FakeResp:
+        self.calls += 1
+        return self._resp
+
+
+@pytest.mark.parametrize("status", [400, 401, 402, 403])
+def test_serper_raises_infra_on_auth_credit_status(status: int) -> None:
+    """A 400/401/402/403 means the dependency is DOWN (credit/auth/quota), not
+    'no results' — _serper must raise SerperInfraError, not return []."""
+    module = _load_resolver()
+    body = '{"message":"Not enough credits","statusCode":400}' if status == 400 else f"err {status}"
+    client = _FakeHttpClient(_FakeResp(status, body=body))
+    with pytest.raises(module.SerperInfraError) as ei:
+        module._serper(client, "key", "q")
+    assert ei.value.status_code == status
+    # Futile statuses are NOT retried (would just burn time against a down dep).
+    assert client.calls == 1
+    if status == 400:
+        assert "credits" in str(ei.value).lower()
+
+
+def test_serper_returns_empty_list_on_genuine_200_no_results() -> None:
+    """A 200 with an empty organic list is a GENUINE miss — return [], do not raise."""
+    module = _load_resolver()
+    client = _FakeHttpClient(_FakeResp(200, organic=[]))
+    assert module._serper(client, "key", "q") == []
+    assert client.calls == 1
+
+
+def test_serper_returns_organic_on_200_hit() -> None:
+    module = _load_resolver()
+    organic = [{"link": "https://boards.greenhouse.io/acme/jobs/1"}]
+    client = _FakeHttpClient(_FakeResp(200, organic=organic))
+    assert module._serper(client, "key", "q") == organic
+
+
+def test_infra_error_aborts_run_without_poisoning_rows(monkeypatch) -> None:
+    """When Serper is down, the run aborts: un-queried rows are NOT stamped
+    skip_no_url (so they retry after credits refill), and infra_error/infra_detail
+    are surfaced so daily.py can alert a human."""
+    module = _load_resolver()
+    conn = _FakeConn(
+        select_rows=[
+            {"job_id": "j1", "company_name": "Acme", "role_title": "SWE"},
+            {"job_id": "j2", "company_name": "Beta", "role_title": "Data"},
+        ]
+    )
+    monkeypatch.setattr(module, "get_settings", lambda: SimpleNamespace(serper_api_key="k" * 12))
+
+    @contextmanager
+    def _fake_get_connection():
+        yield conn
+
+    monkeypatch.setattr(module, "get_connection", _fake_get_connection)
+
+    def _boom(*a, **k):
+        raise module.SerperInfraError("HTTP 400: Not enough credits", status_code=400)
+
+    monkeypatch.setattr(module, "_serper", _boom)
+
+    counts = module.resolve_jobright_pending(limit=10, workers=1, dry_run=False, verify=False)
+
+    assert counts["infra_error"] == 1
+    assert "credits" in str(counts["infra_detail"]).lower()
+    assert counts["aborted"] == 2
+    assert counts["missed"] == 0
+    assert counts["resolved"] == 0
+    # CRITICAL: no skip_no_url poison written for rows that were never queried.
+    poison = [sql for (sql, _params) in conn.cursor_calls if "skip_no_url" in sql]
+    assert poison == [], conn.cursor_calls

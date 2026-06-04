@@ -100,34 +100,32 @@ def _is_aggregator_url(url: str) -> bool:
 
 
 def _is_permanent_404(exc: BaseException) -> bool:
-    """Return True if ``exc`` indicates a permanently-dead URL.
+    """Return True ONLY for a PROVABLY-gone URL (real HTTP 404 / 410 Gone).
 
-    Treated as permanent:
-      * HTTP 404 (resource gone)
-      * HTTP 403 from aggregator hosts that systematically block bots
-        (ziprecruiter, indeed, glassdoor). Retrying these wastes
-        Firecrawl/HTTP budget and never succeeds — the user-facing apply
-        URL is the source-of-truth from PA's perspective anyway, so we
-        tombstone the JD fetch as "won't ever work".
-      * LookupError (URL parse / Workday CXS discovery gave up)
+    ``permanent_404=TRUE`` is load-bearing in two destructive ways: the Stage 2b
+    SELECT excludes the row from JD retry FOREVER (no stale-window, unlike the
+    ``'failed'`` sentinel), AND ``reconcile_dead_inactive()`` flips it
+    active->inactive — removed from the live matcher. So it must be reserved for
+    actual proof of permanence.
+
+    2026-06-04 poison_no_retry fix — the following were tombstoning LIVE jobs on
+    TRANSIENT hiccups and are now treated as recoverable (``jd_fetch_source=
+    'failed'``, which the Stage 2b SELECT re-admits after the stale window):
+      * ``LookupError`` — raised when the Workday CXS endpoint hasn't rendered
+        yet, or an Ashby posting is absent from a transiently-empty/paginated
+        board feed. Transient, not gone.
+      * HTTP 403 from anti-bot aggregator hosts — the posting is NOT gone, the
+        bot was blocked. Tombstoning it inactivates a live job. (Periodic
+        re-fetch after the stale window costs a little budget; that is the right
+        trade vs. yanking a real posting out of the matcher.)
     """
     if isinstance(exc, httpx.HTTPStatusError):
         try:
             status = exc.response.status_code
-            if status == 404:
-                return True
-            if status == 403:
-                # Aggregator hosts known to block bots — treat as permanent.
-                host = exc.response.request.url.host.lower() if exc.response.request else ""
-                if any(
-                    blocker in host
-                    for blocker in ("ziprecruiter.com", "indeed.com", "glassdoor.com", "simplyhired.com")
-                ):
-                    return True
         except AttributeError:
             return False
-    if isinstance(exc, LookupError):
-        return True
+        if status in (404, 410):
+            return True
     return False
 
 

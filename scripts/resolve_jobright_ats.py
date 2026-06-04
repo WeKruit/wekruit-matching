@@ -55,6 +55,28 @@ _AGGREGATOR_DOMAINS = (
 _RESOLVED_LOG = Path("data/jobright_ats_resolved.tsv")
 _THROTTLE_S = 0.3
 
+# HTTP statuses that mean "the dependency is DOWN / misconfigured", not "no
+# result". Serper returns 400 with body {"message":"Not enough credits"} when the
+# account balance is zero; 401/403 = bad/revoked key; 402 = payment required.
+# Retrying these is futile — they require a human (top up credits / rotate key).
+# Swallowing them as an empty result is exactly the bug that hid a dead Serper
+# for days (resolved=0, errors=0, status ok, zero alerts).
+_SERPER_INFRA_STATUSES = frozenset({400, 401, 402, 403})
+
+
+class SerperInfraError(RuntimeError):
+    """Serper signalled an infrastructure failure (auth/credit/quota or a
+    persistent 429/5xx/network), NOT a 'no results' answer.
+
+    The caller MUST treat this as the dependency being DOWN: abort the run, alert
+    a human, and do NOT write miss-sentinels. A row that was never truly queried
+    must stay eligible for retry — poisoning it as ``skip_no_url`` would block
+    re-resolution even after credits are topped up."""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
 
 def _classify(url: str) -> tuple[int, str]:
     u = url.lower()
@@ -94,6 +116,12 @@ def _best_url(organic: list[dict], client: httpx.Client, verify: bool) -> tuple[
 
 
 def _serper(client: httpx.Client, key: str, q: str) -> list[dict]:
+    """Run one Serper search. Returns the ``organic`` list — possibly empty, which
+    is a GENUINE no-result miss. Raises :class:`SerperInfraError` when Serper
+    signals an infrastructure failure (auth/credit/quota, or a 429/5xx/network
+    error that persists across retries) so the caller can tell a DOWN dependency
+    apart from an empty result instead of silently treating both as ``[]``."""
+    last_detail = "unknown error"
     for attempt in range(3):
         try:
             r = client.post(
@@ -102,15 +130,31 @@ def _serper(client: httpx.Client, key: str, q: str) -> list[dict]:
                 json={"q": q, "num": 6},
                 timeout=15.0,
             )
+            if r.status_code == 200:
+                return r.json().get("organic", [])
+            if r.status_code in _SERPER_INFRA_STATUSES:
+                # Auth/credit/quota: human action required. Do NOT retry, do NOT
+                # swallow. Surface the body so the alert names the cause (e.g.
+                # "Not enough credits"). Never include the key — body has none.
+                detail = r.text[:200].replace("\n", " ").strip()
+                raise SerperInfraError(
+                    f"HTTP {r.status_code}: {detail}", status_code=r.status_code
+                )
             if r.status_code == 429:
+                last_detail = "HTTP 429 rate limited"
                 time.sleep(2 * (attempt + 1))
                 continue
-            if r.status_code != 200:
-                return []
-            return r.json().get("organic", [])
-        except Exception:
+            # Unexpected 5xx/other: retry, then escalate to infra if persistent.
+            last_detail = f"HTTP {r.status_code}: {r.text[:120].strip()}"
             time.sleep(1)
-    return []
+        except SerperInfraError:
+            raise
+        except Exception as exc:  # network/timeout — retry, then escalate
+            last_detail = f"{type(exc).__name__}: {exc}"
+            time.sleep(1)
+    # Retries exhausted on a transient class → the dependency is effectively down
+    # right now. Escalate instead of returning [] (the old silent-swallow bug).
+    raise SerperInfraError(last_detail)
 
 
 def resolve_jobright_pending(
@@ -119,19 +163,25 @@ def resolve_jobright_pending(
     workers: int = 16,
     dry_run: bool = False,
     verify: bool = True,
-) -> dict[str, int]:
+) -> dict[str, object]:
     """Resolve direct ATS apply URLs for pending jobright jobs via Serper.
 
     Importable entry point (e.g. daily.py Stage 2a). Selects active jobright
     jobs missing ``ats_apply_url`` (skipping prior ``serper_miss`` rows),
     resolves each in a thread pool, and flushes results in batches.
 
-    Returns a counts dict: ``{'resolved', 'missed', 'skipped', 'errors'}``.
-    ``skipped`` counts rows the SELECT itself excluded as already-resolved or
-    previously-missed is NOT observable here (they never enter ``rows``); the
-    key reflects per-row write skips — a resolve/miss whose UPDATE matched zero
-    rows because another writer already set ``ats_apply_url`` (the WHERE guard
-    keeps that idempotent). ``errors`` counts rows whose network resolve raised.
+    Returns a counts dict with int values plus two outage signals:
+    ``{'resolved','missed','skipped','errors','aborted','infra_error','infra_detail'}``.
+    ``aborted`` counts rows left unqueried because the Serper circuit-breaker
+    tripped mid-run (a DOWN dependency) — these are NOT written as misses, so they
+    stay eligible for retry. ``infra_error`` is 1 if Serper signalled an
+    infrastructure failure (credit/auth/quota), else 0; ``infra_detail`` carries
+    the cause string (e.g. ``HTTP 400: ... Not enough credits``) for alerting.
+    ``errors`` counts rows whose network resolve raised a non-infra error.
+
+    A non-zero ``infra_error`` means the caller (daily.py Stage 2.5) MUST flip the
+    run to degraded + alert a human — it is the signal that was missing while a
+    dead Serper went unnoticed for days.
 
     Raises:
         RuntimeError: if ``serper_api_key`` is not configured. (A dict-returning
@@ -145,7 +195,11 @@ def resolve_jobright_pending(
         raise RuntimeError("serper_api_key not configured")
     logger.info(f"serper key present (len={len(key)}), dry_run={dry_run}, limit={limit}")
 
-    counts = {"resolved": 0, "missed": 0, "skipped": 0, "errors": 0}
+    counts = {"resolved": 0, "missed": 0, "skipped": 0, "errors": 0, "aborted": 0}
+    # Serper circuit-breaker: holds the failure-cause string once a SerperInfraError
+    # trips it mid-run, else None. Function-scoped so the post-loop return + alert
+    # can read it after the worker pool closes.
+    abort: dict[str, str | None] = {"infra": None}
 
     limit_sql = f" LIMIT {int(limit)}" if limit else ""
     with get_connection() as conn:
@@ -166,8 +220,8 @@ def resolve_jobright_pending(
         total = len(rows)
         logger.info(f"jobright jobs missing ats_apply_url to resolve: {total}")
         if total == 0:
-            print("RESOLVE_DONE resolved=0 missed=0")
-            return counts
+            print("RESOLVE_DONE resolved=0 missed=0 pct=0 infra_error=0")
+            return {**counts, "infra_error": 0, "infra_detail": ""}
 
         official = aggregator = 0
         updates: list[tuple[str, str]] = []   # (ats_apply_url, job_id)
@@ -178,9 +232,14 @@ def resolve_jobright_pending(
         def _resolve_one(r) -> tuple[str, str | None, str]:
             """Pure network step (thread-safe: httpx client per call). No DB.
 
-            Returns (job_id, url_or_None, source).
+            Returns (job_id, url_or_None, source). ``source='__aborted__'`` means
+            the Serper breaker was already tripped (or tripped on this row) — the
+            row was NOT queried and MUST NOT be written as a miss, so it stays
+            eligible for retry after the dependency recovers.
             """
             jid = r["job_id"] if isinstance(r, dict) else r[0]
+            if abort["infra"]:
+                return jid, None, "__aborted__"
             company = (r["company_name"] if isinstance(r, dict) else r[1]) or ""
             title = (r["role_title"] if isinstance(r, dict) else r[2]) or ""
             with httpx.Client(
@@ -188,7 +247,14 @@ def resolve_jobright_pending(
             ) as client:
                 for q in (f'"{title}" "{company}" careers apply',
                           f'{title} {company} apply careers'):
-                    organic = _serper(client, key, q)
+                    try:
+                        organic = _serper(client, key, q)
+                    except SerperInfraError as exc:
+                        # Trip the breaker (first writer wins) and bail WITHOUT
+                        # poisoning this row as a miss.
+                        if not abort["infra"]:
+                            abort["infra"] = str(exc)
+                        return jid, None, "__aborted__"
                     url, src = _best_url(organic, client, verify=verify)
                     if url:
                         return jid, url, src
@@ -198,6 +264,11 @@ def resolve_jobright_pending(
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for jid, url, src in pool.map(_resolve_one, rows):
                 done += 1
+                if src == "__aborted__":
+                    # Breaker tripped: dependency down. Not a miss — leave the row
+                    # untouched (no skip_no_url stamp) so it retries next run.
+                    counts["aborted"] += 1
+                    continue
                 if url:
                     counts["resolved"] += 1
                     if src == "serper":
@@ -229,16 +300,28 @@ def resolve_jobright_pending(
             if log_fh:
                 log_fh.close()
 
-    pct = 100 * counts["resolved"] / max(total, 1)
+    infra_detail = abort["infra"] or ""
+    infra_error = 1 if infra_detail else 0
+    # Denominator excludes aborted rows: pct is "of what we actually queried".
+    queried = counts["resolved"] + counts["missed"]
+    pct = 100 * counts["resolved"] / max(queried, 1)
+    if infra_error:
+        logger.error(
+            "Serper dependency DOWN — circuit-breaker tripped. Resolved "
+            f"{counts['resolved']} before the trip; {counts['aborted']} rows left "
+            "UNQUERIED and NOT poisoned (they retry next run). Human action "
+            f"required. cause: {infra_detail}"
+        )
     logger.info(
-        f"DONE: resolved={counts['resolved']}/{total} ({pct:.0f}%) "
-        f"official={official} aggregator={aggregator} missed={counts['missed']}"
+        f"DONE: resolved={counts['resolved']}/{total} ({pct:.0f}% of {queried} "
+        f"queried) official={official} aggregator={aggregator} "
+        f"missed={counts['missed']} aborted={counts['aborted']} infra_error={infra_error}"
     )
     print(
         f"RESOLVE_DONE resolved={counts['resolved']} "
-        f"missed={counts['missed']} pct={pct:.0f}"
+        f"missed={counts['missed']} pct={pct:.0f} infra_error={infra_error}"
     )
-    return counts
+    return {**counts, "infra_error": infra_error, "infra_detail": infra_detail}
 
 
 def main() -> int:

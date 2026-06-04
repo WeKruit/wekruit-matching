@@ -32,7 +32,9 @@ def _make_stubs(monkeypatch, *, enrich_jobright_side_effect=None, enrich_jobrigh
     monkeypatch.setattr("wekruit_matching.pipeline.daily.scrape_all", lambda: {})
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.firestore_dead_backfill",
-        lambda conn: {"synced": 0, "total_seen": 0, "skipped": "test"},
+        # skipped="" == real success shape; a truthy skipped now degrades the
+        # stage (dead jobs would go unreconciled), which is tested separately.
+        lambda conn: {"synced": 0, "total_seen": 0, "skipped": ""},
     )
     # Stage 3.5 reconcile flips dead/404 active rows to inactive; stub it like
     # every other stage so this test stays DB-free (the fake conn has no

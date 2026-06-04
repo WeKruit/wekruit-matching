@@ -74,9 +74,13 @@ def _patch_all_stages(monkeypatch):
         "ENABLE_ASHBY_DIRECT",
     ):
         monkeypatch.setenv(env_key, "0")
+    # skipped="" mirrors the REAL success shape (firestore_dead_backfill returns
+    # skipped="" on success, "no_sdk"/"no_creds" only when it actually skips). A
+    # truthy skipped now correctly degrades the stage, so the healthy-path stub
+    # must use the real success value.
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.firestore_dead_backfill",
-        lambda conn: {"synced": 0, "total_seen": 0, "skipped": "test"},
+        lambda conn: {"synced": 0, "total_seen": 0, "skipped": ""},
     )
     monkeypatch.setattr(
         "wekruit_matching.pipeline.daily.scrape_all",
@@ -534,6 +538,102 @@ def test_ats_resolve_crash_is_isolated(monkeypatch):
     assert "job_sync" in call_order, "sync must still run after ats_resolve crash"
     assert result["stage_outcomes"].get("ats_resolve") == "error"
     assert any("ATS resolve" in e for e in result["errors"])
+
+
+def test_ats_resolve_infra_error_degrades_and_alerts(monkeypatch):
+    """A DOWN Serper (infra_error=1, e.g. out of credits) must NOT be stamped
+    'ok'. It flips the run to 'degraded'/partial, records an error, and fires a
+    human alert — this is the signal that was missing for days."""
+    from wekruit_matching.pipeline import daily as daily_mod
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.resolve_jobright_pending",
+        lambda **kw: (
+            call_order.append("ats_resolve"),
+            {
+                "resolved": 0, "missed": 0, "skipped": 0, "errors": 0,
+                "aborted": 12302, "infra_error": 1,
+                "infra_detail": "HTTP 400: Not enough credits",
+            },
+        )[1],
+    )
+    alerts: list[tuple] = []
+    monkeypatch.setattr(
+        daily_mod, "send_dependency_alert",
+        lambda dep, detail, **kw: alerts.append((dep, detail, kw)) or True,
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("ats_resolve") == "degraded"
+    assert result["pipeline_status"] == "partial"
+    assert any("Serper dependency DOWN" in e for e in result["errors"])
+    # embed/sync still run — the degraded resolver does not block the pipeline.
+    assert "embed" in call_order and "job_sync" in call_order
+    # A human alert was fired naming Serper + the cause.
+    assert alerts, "expected a dependency-down alert"
+    assert alerts[0][0] == "Serper (ATS resolver)"
+    assert "credits" in alerts[0][1].lower()
+
+
+def test_ats_resolve_rate_collapse_degrades_and_alerts(monkeypatch):
+    """Even WITHOUT an explicit infra_error, a 0% resolve rate over a non-trivial
+    number of queries (e.g. a silent API change) must degrade + alert."""
+    from wekruit_matching.pipeline import daily as daily_mod
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    call_order = _patch_all_stages(monkeypatch)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.resolve_jobright_pending",
+        lambda **kw: (
+            call_order.append("ats_resolve"),
+            {
+                "resolved": 0, "missed": 200, "skipped": 0, "errors": 0,
+                "aborted": 0, "infra_error": 0, "infra_detail": "",
+            },
+        )[1],
+    )
+    alerts: list[tuple] = []
+    monkeypatch.setattr(
+        daily_mod, "send_dependency_alert",
+        lambda dep, detail, **kw: alerts.append((dep, detail, kw)) or True,
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("ats_resolve") == "degraded"
+    assert result["pipeline_status"] == "partial"
+    assert any("resolve-rate collapse" in e for e in result["errors"])
+    assert alerts, "expected a dependency-down alert on 0% resolve rate"
+
+
+def test_dead_backfill_skip_degrades_and_alerts(monkeypatch):
+    """If the Firestore dead-flag mirror SKIPS (no SDK/creds), confirmed-dead
+    postings are not reconciled and can be served to users as 404s. The stage
+    must degrade + alert, not silently stamp 'ok' (the documented 'dead jobs
+    served to users' regression, re-armed by an FS credential outage)."""
+    from wekruit_matching.pipeline import daily as daily_mod
+    from wekruit_matching.pipeline.daily import run_daily_pipeline
+
+    _patch_all_stages(monkeypatch)
+    monkeypatch.setattr(
+        "wekruit_matching.pipeline.daily.firestore_dead_backfill",
+        lambda conn: {"synced": 0, "total_seen": 0, "skipped": "no_creds"},
+    )
+    alerts: list[tuple] = []
+    monkeypatch.setattr(
+        daily_mod, "send_dependency_alert",
+        lambda dep, detail, **kw: alerts.append((dep, detail, kw)) or True,
+    )
+
+    result = run_daily_pipeline()
+
+    assert result["stage_outcomes"].get("dead_backfill") == "degraded"
+    assert result["pipeline_status"] == "partial"
+    assert any("dead-flag mirror skipped" in e for e in result["errors"])
+    assert alerts and alerts[0][0] == "Firestore (dead-flag mirror)"
 
 
 # ---------------------------------------------------------------------------

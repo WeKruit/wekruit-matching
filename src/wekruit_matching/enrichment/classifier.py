@@ -314,10 +314,17 @@ def classify_job(job: Job) -> EnrichmentResult | None:
             sponsorship=sponsorship,
         )
     except Exception as e:
+        # 2026-06-04: mirror the parse-failure except above — return None ("do
+        # not write") instead of _safe_default(). A malformed payload that
+        # survived pydantic coercion is an infra/model failure, not a real
+        # classification; writing industry='unknown'/skills=[] here counted as
+        # enriched AND clobbered previously-good metadata. None leaves the row
+        # untouched (enriched_at NULL) so it retries next run with no data loss.
         logger.warning(
-            "Classification result validation failed for {company} ({role}): {error}",
+            "Classification result validation failed for {company} ({role}): {error} — "
+            "leaving row untouched for retry (no clobber)",
             company=job.company_name,
             role=job.role_title,
             error=e,
         )
-        return _safe_default()
+        return None

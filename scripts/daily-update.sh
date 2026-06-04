@@ -159,6 +159,16 @@ else
   STATUS="failed"
 fi
 
+# pipeline.daily exits 1 on BOTH 'partial' (degraded result, core stages ok) and
+# 'failed' (a core stage crashed/timed out). Prefer the precise pipelineStatus
+# token it prints so a DEGRADED run is reported as 'partial', not a hard
+# 'failed', to the webhook/operator. Falls back to the exit-code STATUS if the
+# token is absent (older builds / a crash before the finalizer printed it).
+PIPELINE_STATUS_TOKEN="$(grep -oE 'pipelineStatus=(success|partial|failed)' "$PIPELINE_LOG" | tail -1 | cut -d= -f2 || true)"
+if [[ -n "$PIPELINE_STATUS_TOKEN" ]]; then
+  STATUS="$PIPELINE_STATUS_TOKEN"
+fi
+
 FINISHED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 JOBS_SCRAPED="$(grep -oE 'jobsScraped[: =][0-9]+' "$PIPELINE_LOG" | tail -1 | grep -oE '[0-9]+' || echo 0)"
@@ -168,8 +178,21 @@ JOBS_ERRORED="$(grep -oE 'jobsErrored[: =][0-9]+' "$PIPELINE_LOG" | tail -1 | gr
 COST_USD="$(grep -oE 'costUsd[: =][0-9.]+' "$PIPELINE_LOG" | tail -1 | grep -oE '[0-9.]+' || echo 0)"
 
 ERROR_MSG=""
+# Carry the degraded/failed/timeout stage list into the webhook's `error` field
+# so the operator's pager shows WHY a run is partial/failed — not just the
+# status. pipeline.daily prints stageOutcome.<stage>=<outcome>; these lines were
+# previously computed then discarded before the webhook left the box (the gap
+# that let a dead Serper reach no human for days).
+DEGRADED_STAGES="$(grep -oE 'stageOutcome\.[a-z_]+=(degraded|error|timeout)' "$PIPELINE_LOG" 2>/dev/null | sed 's/^stageOutcome\.//' | sort -u | paste -sd ',' - 2>/dev/null || true)"
 if [[ "$STATUS" == "failed" ]]; then
   ERROR_MSG="pipeline_exit_${PIPELINE_RC}"
+fi
+if [[ -n "$DEGRADED_STAGES" ]]; then
+  if [[ -n "$ERROR_MSG" ]]; then
+    ERROR_MSG="${ERROR_MSG}; stages: ${DEGRADED_STAGES}"
+  else
+    ERROR_MSG="degraded: ${DEGRADED_STAGES}"
+  fi
 fi
 
 scripts/post-pipeline-webhook.sh \

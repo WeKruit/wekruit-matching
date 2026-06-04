@@ -72,3 +72,55 @@ def test_backward_compatible_without_health_args(monkeypatch):
     captured = _intercept(monkeypatch)
     email.send_pipeline_complete_email(**_base_kwargs())
     assert "Reliability Gate" not in captured["html"]
+
+
+# ---------------------------------------------------------------------------
+# 2026-06-04: dependency-down alert + degraded-stage visibility in the email.
+# ---------------------------------------------------------------------------
+
+def test_send_dependency_alert_subject_and_body(monkeypatch):
+    captured = _intercept(monkeypatch)
+    ok = email.send_dependency_alert(
+        "Serper (ATS resolver)",
+        "HTTP 400: Not enough credits",
+        impact="New jobright jobs lack direct ATS apply URLs.",
+        action="Top up Serper credits.",
+    )
+    assert ok is True
+    assert "DEPENDENCY DOWN" in captured["subject"]
+    assert "Serper (ATS resolver)" in captured["subject"]
+    html = captured["html"]
+    assert "Not enough credits" in html
+    assert "Top up Serper credits." in html
+
+
+def test_completion_subject_prefixed_degraded_when_stage_degraded(monkeypatch):
+    captured = _intercept(monkeypatch)
+    email.send_pipeline_complete_email(
+        **_base_kwargs(),
+        stage_outcomes={"scrape": "ok", "ats_resolve": "degraded", "embed": "ok"},
+    )
+    assert captured["subject"].startswith("[DEGRADED] "), captured["subject"]
+    assert "Degraded / Failed Stages" in captured["html"]
+    assert "ats_resolve" in captured["html"]
+
+
+def test_completion_subject_clean_when_all_ok(monkeypatch):
+    captured = _intercept(monkeypatch)
+    email.send_pipeline_complete_email(
+        **_base_kwargs(),
+        stage_outcomes={"scrape": "ok", "ats_resolve": "ok", "embed": "ok"},
+    )
+    assert not captured["subject"].startswith("[DEGRADED]"), captured["subject"]
+    assert "Degraded / Failed Stages" not in captured["html"]
+
+
+def test_url_resolution_stats_rendered_when_passed(monkeypatch):
+    """The resolver's resolved-count/rate must render (was always 0 because
+    daily.py never wired url_resolution_stats)."""
+    captured = _intercept(monkeypatch)
+    email.send_pipeline_complete_email(
+        **_base_kwargs(),
+        url_resolution_stats={"total_resolved": 873, "resolution_rate": 0.87},
+    )
+    assert "873" in captured["html"]
