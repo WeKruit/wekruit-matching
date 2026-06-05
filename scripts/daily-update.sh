@@ -124,6 +124,36 @@ case "$PREFLIGHT_RC" in
 esac
 
 # ---------------------------------------------------------------------------
+# Firecrawl health-gate (2026-06-05). The self-hosted Firecrawl (localhost:3002)
+# is a SPOF: on 2026-06-05 a wedged firecrawl-api container held a single render
+# ~1.5h and Stage 1.7 ran ~4h49m. A container that wedges OVERNIGHT would do it
+# again. Probe it with a fast hard timeout; if it does not answer a trivial
+# scrape quickly, recycle the containers BEFORE the run so it self-heals. Only
+# probes a LOCAL/self-hosted Firecrawl (skip when pointed at Firecrawl Cloud),
+# and never aborts the run — a broken Firecrawl just degrades Stage 1.7.
+FIRECRAWL_URL="${FIRECRAWL_BASE_URL:-http://localhost:3002}"
+firecrawl_healthy() {
+  curl -fsS --max-time 30 -X POST "${FIRECRAWL_URL%/}/v1/scrape" \
+    -H 'Content-Type: application/json' \
+    -d '{"url":"https://example.com","formats":["markdown"],"timeout":15000}' \
+    >/dev/null 2>&1
+}
+if command -v docker >/dev/null 2>&1 && [[ "$FIRECRAWL_URL" == *localhost* || "$FIRECRAWL_URL" == *127.0.0.1* ]]; then
+  if firecrawl_healthy; then
+    echo "[daily-update] Firecrawl health-gate: healthy" | tee -a "$PIPELINE_LOG"
+  else
+    echo "[daily-update] Firecrawl health-gate: UNHEALTHY/slow — recycling containers" | tee -a "$PIPELINE_LOG"
+    docker restart firecrawl-api-1 firecrawl-playwright-service-1 >/dev/null 2>&1 || true
+    for _i in $(seq 1 12); do firecrawl_healthy && break; sleep 5; done
+    if firecrawl_healthy; then
+      echo "[daily-update] Firecrawl health-gate: recovered after restart" | tee -a "$PIPELINE_LOG"
+    else
+      echo "[daily-update] Firecrawl health-gate: WARN still unhealthy after restart — Stage 1.7 may under-capture" | tee -a "$PIPELINE_LOG"
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Distributed lock — coordinate with GitHub Actions + any fallback runner.
 # ---------------------------------------------------------------------------
 # 2026-05-27: the daily pipeline is now triggered from two places by design:
@@ -216,5 +246,14 @@ scripts/post-pipeline-webhook.sh \
   --stats-json "$(printf '{"jobsScraped":%s,"jobsNew":%s,"jobsUpdated":%s,"jobsErrored":%s,"costUsd":%s,"runner":"%s","runSha":"%s"}' \
       "$JOBS_SCRAPED" "$JOBS_NEW" "$JOBS_UPDATED" "$JOBS_ERRORED" "$COST_USD" "$LOCK_RUNNER" "$RUN_SHA")" \
   || echo "[daily-update] lock release failed — will be reclaimed as stale after 4h"
+
+# Dead-man's-switch marker: record that a run COMPLETED today (any status). A
+# separate launchd watchdog (scripts/check-daily-ran.sh, ~13:00 local) emails if
+# this marker is missing/stale AND no run is in progress — catching a laptop that
+# slept through 06:00 or a run that crashed before finishing. Durable path (not
+# /tmp, which clears on reboot).
+mkdir -p "$HOME/.wekruit" 2>/dev/null || true
+printf '%s status=%s sha=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$STATUS" "$RUN_SHA" \
+  > "$HOME/.wekruit/last-run" 2>/dev/null || true
 
 exit $PIPELINE_RC
