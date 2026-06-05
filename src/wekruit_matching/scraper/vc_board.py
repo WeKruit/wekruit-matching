@@ -39,6 +39,7 @@ Scope guardrails
 """
 from __future__ import annotations
 
+import concurrent.futures
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -75,6 +76,38 @@ MIN_RENDER_MARKDOWN_CHARS = 500
 #: Per-call HTTP timeout (Firecrawl render + extract). 75s gives Sequoia
 #: room without blocking the daily pipeline.
 DEFAULT_TIMEOUT_S = 75.0
+
+#: HARD wall-clock ceiling for a single Firecrawl POST, on top of the httpx
+#: timeout. 2026-06-05: httpx's read timeout only fires when NO bytes arrive for
+#: `timeout_s`; a backed-up self-hosted Firecrawl can hold the connection open
+#: (trickling keep-alives) for HOURS without tripping it — one render blocked
+#: ~1.5h despite timeout_s=75, and SIGALRM-based stage timeouts get eaten by
+#: httpcore's EINTR-restart. A ThreadPoolExecutor future with a hard
+#: `.result(timeout)` is immune to both: the caller always proceeds; the orphan
+#: request thread dies when the server finally responds or the process exits.
+HARD_DEADLINE_BUFFER_S = 15.0
+
+
+def _post_with_hard_deadline(post_fn: Callable[..., httpx.Response], *, deadline_s: float, **kwargs):
+    """Run a blocking HTTP POST but never wait longer than ``deadline_s``.
+
+    Raises ``httpx.ReadTimeout`` if the deadline is hit (so existing callers that
+    catch ``httpx.TimeoutException`` treat it as a failed render). The orphaned
+    worker thread is abandoned (``shutdown(wait=False)``) — it is bounded in
+    count (one per board) and exits when Firecrawl eventually answers.
+    """
+    ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        fut = ex.submit(post_fn, **kwargs)
+        try:
+            return fut.result(timeout=deadline_s)
+        except concurrent.futures.TimeoutError as e:
+            raise httpx.ReadTimeout(
+                f"hard deadline {deadline_s:.0f}s exceeded (Firecrawl unresponsive)"
+            ) from e
+    finally:
+        # Never block on a hung request thread (the whole point of the deadline).
+        ex.shutdown(wait=False, cancel_futures=True)
 
 #: Cap how many jobs we accept from one board per run. Protects against a
 #: runaway markdown response from melting PG.
@@ -612,8 +645,12 @@ class FirecrawlClient:
             "timeout": int(self.timeout_s * 1000),
         }
         post = self.http_post or httpx.post
-        resp = post(
-            f"{self.base_url.rstrip('/')}/v1/scrape",
+        # Hard wall-clock ceiling on top of httpx's (trickle-defeatable) timeout
+        # so a backed-up Firecrawl can never block the pipeline for hours.
+        resp = _post_with_hard_deadline(
+            post,
+            deadline_s=self.timeout_s + HARD_DEADLINE_BUFFER_S,
+            url=f"{self.base_url.rstrip('/')}/v1/scrape",
             headers=headers,
             json=body,
             timeout=self.timeout_s,
@@ -668,6 +705,18 @@ def scrape_board(client: FirecrawlClient, board: VCBoardConfig) -> list[Job]:
             else:
                 logger.info("vc_board.scrape: {} → {} jobs", board.slug, len(jobs))
             return jobs
+        # 2026-06-05: a FAILED render (empty markdown = non-200 / timeout / hard
+        # deadline) means Firecrawl is slow or down. A 2nd attempt with a LONGER
+        # wait only doubles the stall against a sick service (this is what turned
+        # a degraded-Firecrawl morning into a ~5h Stage 1.7). Only a render that
+        # actually RETURNED but parsed thin is worth a longer-wait retry.
+        if not markdown:
+            logger.warning(
+                "vc_board.scrape: {} render FAILED (empty) attempt {}/{} — not "
+                "retrying a slow/down Firecrawl; best-effort {} jobs",
+                board.slug, attempt, n_attempts, len(best),
+            )
+            break
         logger.warning(
             "vc_board.scrape: {} thin render attempt {}/{} (md={}c jobs={}) — {}",
             board.slug, attempt, n_attempts, len(markdown), len(jobs),

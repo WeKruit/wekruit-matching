@@ -88,3 +88,41 @@ def test_min_render_floor_is_positive():
     assert MIN_RENDER_MARKDOWN_CHARS > 0
     assert RENDER_ATTEMPT_WAIT_MULTIPLIERS[0] == 1.0
     assert len(RENDER_ATTEMPT_WAIT_MULTIPLIERS) >= 2
+
+
+def test_failed_render_does_not_retry():
+    """2026-06-05: a FAILED render (non-200 → empty markdown) must NOT trigger a
+    longer-wait retry — that only doubles the stall against a slow/down Firecrawl
+    (the ~5h Stage 1.7 regression). A thin-but-returned render still retries."""
+    client, state = _client([_Resp("", status=408, success=False)])
+    jobs = scrape_board(client, _BOARD)
+    assert jobs == [], jobs
+    assert state["n"] == 1, "a failed render must not retry a slow/down Firecrawl"
+
+
+def test_hard_deadline_raises_readtimeout_on_slow_post():
+    """A Firecrawl POST that exceeds the hard wall-clock deadline raises
+    ReadTimeout (so scrape_board treats it as a failed render) instead of
+    blocking forever — the fix for the 1.5h single-request hang."""
+    import time
+
+    import httpx
+    import pytest
+
+    from wekruit_matching.scraper.vc_board import _post_with_hard_deadline
+
+    def _slow_post(**kwargs):
+        time.sleep(5.0)  # would block well past the deadline
+        return _Resp(_FULL_MD)
+
+    with pytest.raises(httpx.ReadTimeout):
+        _post_with_hard_deadline(_slow_post, deadline_s=0.2, url="x")
+
+
+def test_hard_deadline_passes_through_fast_post():
+    """Under the deadline, the response is returned unchanged."""
+    from wekruit_matching.scraper.vc_board import _post_with_hard_deadline
+
+    resp = _Resp(_FULL_MD)
+    out = _post_with_hard_deadline(lambda **k: resp, deadline_s=5.0, url="x")
+    assert out is resp
