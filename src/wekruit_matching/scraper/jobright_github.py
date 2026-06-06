@@ -22,6 +22,7 @@ from loguru import logger
 from wekruit_matching.config import get_settings
 from wekruit_matching.models.job import Job, JobStatus
 from wekruit_matching.scraper import jobright_git_delta
+from wekruit_matching.scraper.http_util import call_with_hard_deadline
 from wekruit_matching.scraper.id_utils import (
     compute_content_hash,
     generate_job_id,
@@ -111,7 +112,14 @@ def _fetch_readme(repo: str) -> str:
         "Authorization": f"token {settings.github_token}",
         "Accept": "application/vnd.github.v3.raw",
     }
-    resp = httpx.get(url, headers=headers, timeout=30, follow_redirects=True)
+    # Hard total deadline (on top of timeout=30): a trickling GitHub connection
+    # held one fetch open ~48 min on 2026-06-06 because httpx's read timeout only
+    # fires on a fully idle socket. The per-repo caller catches + skips on raise,
+    # so a stuck repo now costs ~45s, not 48 min, and the rest still scrape.
+    resp = call_with_hard_deadline(
+        httpx.get, url, headers=headers, timeout=30, follow_redirects=True,
+        deadline_s=45.0,
+    )
     resp.raise_for_status()
     return resp.text
 

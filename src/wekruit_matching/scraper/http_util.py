@@ -16,6 +16,8 @@ returned as-is for the caller to handle.
 """
 from __future__ import annotations
 
+import concurrent.futures
+
 import httpx
 from loguru import logger
 from tenacity import (
@@ -26,6 +28,35 @@ from tenacity import (
 )
 
 _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+
+#: Hard wall-clock ceiling for a single GET (on top of httpx's own timeout).
+#: 2026-06-06: a GitHub raw README fetch blocked ~48 min despite timeout=30 — an
+#: httpx *read* timeout only fires when NO bytes arrive for the interval, so a
+#: server trickling bytes (slow GitHub, a backed-up ATS) holds the socket open
+#: indefinitely. The SIGALRM stage-budget can't save us either (httpcore restarts
+#: on EINTR). A ThreadPoolExecutor future with a hard ``.result(timeout)`` is
+#: immune to both and lets the caller's per-item skip-and-continue fire FAST.
+GET_HARD_DEADLINE_S = 30.0
+
+
+def call_with_hard_deadline(fn, *args, deadline_s: float, **kwargs):
+    """Run a blocking callable but never wait longer than ``deadline_s``.
+
+    Raises :class:`httpx.ReadTimeout` on the deadline so existing retry/except
+    paths treat it as a transient network failure. The orphaned worker thread is
+    abandoned (it dies when the server finally answers or the process exits).
+    """
+    ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        fut = ex.submit(fn, *args, **kwargs)
+        try:
+            return fut.result(timeout=deadline_s)
+        except concurrent.futures.TimeoutError as e:
+            raise httpx.ReadTimeout(
+                f"hard deadline {deadline_s:.0f}s exceeded (server unresponsive)"
+            ) from e
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
 
 class ScrapeFetchError(RuntimeError):
@@ -54,7 +85,9 @@ class _RetryableStatus(Exception):
     reraise=True,
 )
 def _get_once(client: httpx.Client, url: str) -> httpx.Response:
-    resp = client.get(url)
+    # Hard total deadline so a trickling server can't hold one attempt open for
+    # minutes (a ReadTimeout here is retryable, so tenacity still backs off).
+    resp = call_with_hard_deadline(client.get, url, deadline_s=GET_HARD_DEADLINE_S)
     if resp.status_code in _RETRYABLE_STATUS:
         raise _RetryableStatus(resp.status_code)
     return resp

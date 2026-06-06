@@ -13,6 +13,7 @@ import httpx
 from loguru import logger
 
 from wekruit_matching.config import get_settings
+from wekruit_matching.scraper.http_util import call_with_hard_deadline
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -67,7 +68,11 @@ def fetch_readme(repo_slug: str) -> bytes:
     last_response = None
     for attempt in range(_MAX_RETRIES):
         logger.debug("Fetching {} (attempt {}/{})", url, attempt + 1, _MAX_RETRIES)
-        response = httpx.get(url, headers=headers)
+        # Hard total deadline so a trickling GitHub connection can't hang the
+        # scrape stage (see http_util.GET_HARD_DEADLINE_S note).
+        response = call_with_hard_deadline(
+            httpx.get, url, headers=headers, timeout=30, deadline_s=45.0
+        )
 
         if response.status_code == 429:
             backoff = 2 ** attempt  # 1s, 2s, 4s
