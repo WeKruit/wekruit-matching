@@ -58,6 +58,15 @@ def _serialize_job(row: dict[str, Any]) -> dict[str, Any]:
             payload[key] = value.isoformat()
         elif key == "embedding":
             payload[key] = _serialize_embedding(value)
+        elif key == "sponsorship" and value is None:
+            # 2026-06-07: serve an explicit "unknown" instead of NULL so the
+            # downstream matcher/UI shows a clear value rather than a blank for
+            # jobs whose JD doesn't state visa sponsorship. A boolean consumer
+            # treats "unknown" exactly like NULL did (neither == true nor false,
+            # so excluded from both "sponsors" and "no-sponsor" filters) — no
+            # behaviour change, just clarity. Postgres keeps NULL, so the
+            # health-gate's sponsorship-coverage signal stays honest.
+            payload[key] = "unknown"
         elif isinstance(value, tuple):
             payload[key] = list(value)
         else:

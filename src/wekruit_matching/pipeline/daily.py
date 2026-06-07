@@ -1016,6 +1016,14 @@ def run_daily_pipeline() -> dict:
                 gate = run_health_gate()
                 health_metrics = gate.get("metrics", {}) or {}
                 health_failures = gate.get("failures", []) or []
+                # Non-blocking warnings (e.g. sponsorship "can't tell" drift) go
+                # to dependency_errors so they're surfaced/logged WITHOUT flipping
+                # the run to partial — honors "if it can't tell, it's fine".
+                for _w in gate.get("warnings", []) or []:
+                    dependency_errors.append(
+                        f"health-gate warning [{_w.get('metric', '?')}]: "
+                        f"{_w.get('message', '')}"
+                    )
                 if gate.get("ok"):
                     stage_outcomes["health_gate"] = "ok"
                 else:

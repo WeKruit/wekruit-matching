@@ -111,14 +111,27 @@ DEFAULT_STATE_PATH = Path(
     os.environ.get("HEALTH_GATE_STATE", "/tmp/wekruit_health_gate_state.json")
 )
 
-# Fields tracked for relative coverage-drop detection (key -> human label).
-_COVERAGE_FIELDS: dict[str, str] = {
+# Fields whose coverage DROP is a hard failure (flips the run to partial). These
+# reflect matchability — losing them silently shrinks the served corpus.
+_HARD_COVERAGE_FIELDS: dict[str, str] = {
     "embedded_cov_of_active": "embedded",
     "industry_cov_of_enriched": "industry",
     "skills_nonempty_cov_of_enriched": "non-empty skills",
-    "sponsorship_cov_of_enriched": "sponsorship",
     "seniority_cov_of_enriched": "seniority",
 }
+
+# Soft coverage fields: a drop is a non-blocking WARNING, not a failure.
+# 2026-06-07: sponsorship is "can the LLM tell if this job sponsors a visa" —
+# for thin-JD jobs it legitimately can't, and the user's directive is "if it
+# can't tell, it's fine". A drop is worth SEEING (drift signal) but must NOT
+# flip the run to partial. The synced doc serves "unknown" for these rows so
+# they're explicit downstream; Postgres keeps NULL so this metric stays honest.
+_SOFT_COVERAGE_FIELDS: dict[str, str] = {
+    "sponsorship_cov_of_enriched": "sponsorship",
+}
+
+# Back-compat alias: everything still tracked for coverage (hard ∪ soft).
+_COVERAGE_FIELDS: dict[str, str] = {**_HARD_COVERAGE_FIELDS, **_SOFT_COVERAGE_FIELDS}
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +402,7 @@ def evaluate(
                               f"{t[frac_key] * 100:.0f}%")
                     )
 
-        for key, label in _COVERAGE_FIELDS.items():
+        for key, label in _HARD_COVERAGE_FIELDS.items():
             cur = g(metrics, key)
             prev = g(prior, key)
             if cur is not None and prev is not None:
@@ -402,6 +415,35 @@ def evaluate(
                     )
 
     return failures
+
+
+def evaluate_warnings(
+    metrics: dict[str, Any],
+    *,
+    prior: Optional[dict] = None,
+    thresholds: Optional[dict[str, float]] = None,
+) -> list[dict]:
+    """Non-blocking warnings: soft-coverage drops (e.g. sponsorship) worth
+    surfacing but which must NOT flip the run status. Same dict shape as
+    failures so callers can render them identically.
+    """
+    t = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
+    warnings: list[dict] = []
+    if not prior:
+        return warnings
+    for key, label in _SOFT_COVERAGE_FIELDS.items():
+        cur = metrics.get(key)
+        prev = prior.get(key)
+        if cur is not None and prev is not None:
+            drop_pts = prev - cur
+            if drop_pts > t["max_coverage_drop_points"]:
+                warnings.append(
+                    _fail(key, round(cur, 4), round(prev, 4),
+                          f"{label} coverage dipped {drop_pts * 100:.1f} pts vs "
+                          f"prior ({prev:.4f} -> {cur:.4f}) — non-blocking "
+                          f"('can't tell' is acceptable; served as 'unknown')")
+                )
+    return warnings
 
 
 def summarize_failures(failures: list[dict]) -> str:
@@ -467,6 +509,9 @@ def run_health_gate(
     with get_connection() as conn:
         metrics = compute_metrics(conn)
     failures = evaluate(metrics, prior=prior, thresholds=thresholds)
+    warnings = evaluate_warnings(metrics, prior=prior, thresholds=thresholds)
+    for w in warnings:
+        logger.warning("[health_gate] WARNING (non-blocking) [{}] {}", w["metric"], w["message"])
 
     # Persist current metrics even when the gate fails, so a one-off cliff
     # doesn't permanently wedge the relative checks against a stale-high
@@ -487,7 +532,7 @@ def run_health_gate(
     else:
         logger.error(summarize_failures(failures))
 
-    return {"ok": ok, "metrics": metrics, "failures": failures}
+    return {"ok": ok, "metrics": metrics, "failures": failures, "warnings": warnings}
 
 
 # ---------------------------------------------------------------------------

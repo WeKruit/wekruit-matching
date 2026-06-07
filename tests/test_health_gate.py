@@ -269,12 +269,12 @@ def test_active_collapse_vs_prior_fails():
 
 
 def test_field_coverage_regression_vs_prior_fails():
-    """Low-but-stable fields are fine; a real DROP vs prior trips the guard."""
-    prior = _healthy_metrics()  # sponsorship 0.169
+    """A real DROP in a HARD coverage field (matchability) trips the guard."""
+    prior = _healthy_metrics()  # industry 0.989
     m = _healthy_metrics()
-    m["sponsorship_cov_of_enriched"] = 0.05  # -11.9 pts
+    m["industry_cov_of_enriched"] = 0.80  # -18.9 pts
     keys = {f["metric"] for f in hg.evaluate(m, prior=prior)}
-    assert "sponsorship_cov_of_enriched" in keys
+    assert "industry_cov_of_enriched" in keys
 
 
 def test_field_coverage_stable_low_ok_vs_prior():
@@ -282,6 +282,28 @@ def test_field_coverage_stable_low_ok_vs_prior():
     m = _healthy_metrics()  # identical low sponsorship 0.169
     keys = {f["metric"] for f in hg.evaluate(m, prior=prior)}
     assert "sponsorship_cov_of_enriched" not in keys
+
+
+def test_sponsorship_drop_is_a_warning_not_a_failure():
+    """2026-06-07: 'can't tell' sponsorship is acceptable — a drop must be a
+    NON-BLOCKING warning, never a hard failure that flips the run to partial."""
+    prior = _healthy_metrics()  # sponsorship 0.169
+    m = _healthy_metrics()
+    m["sponsorship_cov_of_enriched"] = 0.05  # -11.9 pts
+
+    # NOT in failures (would flip the run).
+    fail_keys = {f["metric"] for f in hg.evaluate(m, prior=prior)}
+    assert "sponsorship_cov_of_enriched" not in fail_keys
+
+    # IS surfaced as a non-blocking warning.
+    warn_keys = {w["metric"] for w in hg.evaluate_warnings(m, prior=prior)}
+    assert "sponsorship_cov_of_enriched" in warn_keys
+
+
+def test_sponsorship_stable_no_warning():
+    prior = _healthy_metrics()
+    m = _healthy_metrics()  # identical sponsorship
+    assert hg.evaluate_warnings(m, prior=prior) == []
 
 
 # --- failure object shape + summary ----------------------------------------

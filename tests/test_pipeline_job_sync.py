@@ -458,6 +458,16 @@ def test_serialize_job_converts_pgvector_string_embedding_to_number_array() -> N
     assert payload["embedded_at"] == _dt(4).isoformat()
 
 
+def test_serialize_job_maps_null_sponsorship_to_unknown() -> None:
+    """2026-06-07: a NULL sponsorship is served as the explicit string
+    "unknown" (clear downstream) while true/false pass through unchanged."""
+    from wekruit_matching.pipeline.job_sync import _serialize_job
+
+    assert _serialize_job({"job_id": "j", "sponsorship": None})["sponsorship"] == "unknown"
+    assert _serialize_job({"job_id": "j", "sponsorship": True})["sponsorship"] is True
+    assert _serialize_job({"job_id": "j", "sponsorship": False})["sponsorship"] is False
+
+
 def test_sync_jobs_to_firebase_bulk_load_queries_all_active_embedded_jobs(monkeypatch) -> None:
     """Bulk load must query all active embedded jobs without a since filter."""
     from wekruit_matching.pipeline.job_sync import sync_jobs_to_firebase
