@@ -58,19 +58,23 @@ def _serialize_job(row: dict[str, Any]) -> dict[str, Any]:
             payload[key] = value.isoformat()
         elif key == "embedding":
             payload[key] = _serialize_embedding(value)
-        elif key == "sponsorship" and value is None:
-            # 2026-06-07: serve an explicit "unknown" instead of NULL so the
-            # downstream matcher/UI shows a clear value rather than a blank for
-            # jobs whose JD doesn't state visa sponsorship. A boolean consumer
-            # treats "unknown" exactly like NULL did (neither == true nor false,
-            # so excluded from both "sponsors" and "no-sponsor" filters) — no
-            # behaviour change, just clarity. Postgres keeps NULL, so the
-            # health-gate's sponsorship-coverage signal stays honest.
-            payload[key] = "unknown"
         elif isinstance(value, tuple):
             payload[key] = list(value)
         else:
             payload[key] = value
+    # Backward-compatible display value (2026-06-07). `sponsorship` stays a
+    # boolean|null (its owner is the pa enricher; the matcher already treats
+    # null as ELIGIBLE — filters.filter_by_sponsorship / the CF
+    # keepSponsorshipEligible). We ADD a derived 3-state `sponsorship_status`
+    # so the UI can show an explicit "unknown" instead of a blank, WITHOUT
+    # touching the boolean (pa won't fight a field it doesn't own). The CF
+    # receiver (buildMatchingJobRecord) maps this through to `sponsorshipStatus`.
+    _spon = payload.get("sponsorship")
+    payload["sponsorship_status"] = (
+        "sponsors" if _spon is True
+        else "no_sponsorship" if _spon is False
+        else "unknown"
+    )
     # Track E (matching-quality launch blocker, 2026-05-20): emit the
     # cross-source canonical signature so wekruit-pa can read it from
     # Firestore for the `pa-job-canonical-signature/{sig}` dedup index.
